@@ -6,73 +6,73 @@ updated: 2026-08-19
 
 # Branding — ownsi
 
-O que é este arquivo: a referência visual da marca **ownsi**, o produto de prova de posse
-de domínio especificado em `docs/domain-ownership/prd.md`. Use estes valores em qualquer
-UI, doc ou apresentação do produto — não invente cor, fonte ou variação de logo fora daqui.
+What this file is: the visual reference for the **ownsi** brand, the domain ownership proof product
+specified in `docs/domain-ownership/prd.md`. Use these values in any UI, doc or presentation for the
+product — do not invent a colour, typeface or logo variation outside this file.
 
-Imagem canônica: `docs/branding/ownsi-brand-reference.png` (brand sheet completo).
+Canonical image: `docs/branding/ownsi-brand-reference.png` (the full brand sheet).
 
 ---
 
-## Marca
+## Brand
 
-- **Nome:** ownsi
+- **Name:** ownsi
 - **Tagline:** *Prove what's yours.*
-- **Assinatura curta:** *Own it. See it. Prove it.* (variante de rodapé: *See it. Prove it. Own it.*)
-- **Domínio:** ownsi.dev
-- **Pitch:** o ownsi ajuda a provar ownership de qualquer recurso digital através de
-  verificações DNS simples, transparentes e confiáveis. Rápido de integrar, fácil de confiar.
+- **Short signature:** *Own it. See it. Prove it.* (footer variant: *See it. Prove it. Own it.*)
+- **Domain:** ownsi.dev
+- **Pitch:** ownsi helps you prove ownership of any digital resource through DNS verifications that
+  are simple, transparent and reliable. Quick to integrate, easy to trust.
 
-## Símbolo
+## Symbol
 
-Um suricato (sentinela) em pé + o conceito de observar. Representa vigilância, curiosidade
-e confiabilidade — a postura de quem está atento e assume responsabilidade pelo que é seu.
+A standing meerkat (a sentinel) plus the idea of watching. It stands for vigilance, curiosity and
+reliability — the posture of someone who pays attention and takes responsibility for what is theirs.
 
-Variações:
+Variations:
 
-| Variação | Quando usar |
+| Variation | When to use it |
 |---|---|
-| **Primary** (horizontal: símbolo + wordmark) | Uso padrão em materiais, site, apresentações |
-| **Stacked** (símbolo acima do wordmark) | Espaços estreitos ou verticais |
-| **Verified seal** (suricato dentro de escudo) | Dentro do produto, para indicar verificação concluída / confiança |
+| **Primary** (horizontal: symbol + wordmark) | Default use in materials, site, presentations |
+| **Stacked** (symbol above the wordmark) | Narrow or vertical spaces |
+| **Verified seal** (meerkat inside a shield) | Inside the product, to indicate completed verification / trust |
 
-Regras de uso:
+Usage rules:
 
-- **Clear space:** sempre manter uma área de respiro mínima ao redor da marca.
-- **Tamanho mínimo:** 16px para o ícone isolado (favicon, avatar); 120px para o logo
-  completo em uso digital.
+- **Clear space:** always keep a minimum breathing area around the mark.
+- **Minimum size:** 16px for the icon on its own (favicon, avatar); 120px for the full logo in
+  digital use.
 
-## Essência
+## Essence
 
-| Pilar | Significado |
+| Pillar | Meaning |
 |---|---|
-| **Observe** | Vigilante e atento — sempre observando os sinais que provam o que é seu |
-| **Verify** | Transparente e confiável — verificações simples que o usuário entende e confia |
-| **Own** | Seguro e seu — prove ownership e assuma o controle |
+| **Observe** | Vigilant and attentive — always watching the signals that prove what is yours |
+| **Verify** | Transparent and reliable — simple verifications the user understands and trusts |
+| **Own** | Secure and yours — prove ownership and take control |
 
-## Atributos
+## Attributes
 
-- **Confiável** — precisão e consistência em cada verificação.
-- **Simples** — fácil de integrar, fácil de entender.
-- **Seguro** — privacidade e segurança em primeiro lugar.
-- **Amigável** — tecnologia que parece humana e acessível.
+- **Reliable** — accuracy and consistency in every verification.
+- **Simple** — easy to integrate, easy to understand.
+- **Secure** — privacy and security first.
+- **Friendly** — technology that feels human and approachable.
 
-## Paleta
+## Palette
 
-| Token | Hex | Uso |
+| Token | Hex | Use |
 |---|---|---|
-| Preto | `#000000` | Tinta primária: logo, texto, superfícies invertidas |
-| Branco | `#FFFFFF` | Fundo, logo sobre superfície escura |
+| Black | `#000000` | Primary ink: logo, text, inverted surfaces |
+| White | `#FFFFFF` | Background, logo on a dark surface |
 
-A marca é estritamente monocromática. Qualquer cor de estado (sucesso, erro, pendente) é
-decisão de UI do produto, não faz parte da paleta de marca — se precisar de uma, adicione
-como token de produto e registre em `docs/domain-ownership/decisions.md`.
+The brand is strictly monochrome. Any state colour (success, error, pending) is a product UI
+decision and is not part of the brand palette — if you need one, add it as a product token and record
+it in `docs/domain-ownership/decisions/`.
 
-## Tipografia
+## Typography
 
-**Inter** — moderna, legível e neutra. Transmite clareza e confiança.
+**Inter** — modern, legible and neutral. It conveys clarity and confidence.
 
-## Aplicações previstas
+## Expected applications
 
-Marca sobre fundo preto (invertida), sobre fundo branco, ícone em círculo preto e o
-verified seal em card branco — todas exemplificadas no brand sheet.
+The mark on a black background (inverted), on a white background, the icon in a black circle, and the
+verified seal on a white card — all shown on the brand sheet.
