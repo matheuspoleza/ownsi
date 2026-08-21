@@ -1,0 +1,3 @@
+// Template: claim-nudge
+
+export {}

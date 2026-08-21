@@ -1,0 +1,3 @@
+// Template: magic-link
+
+export {}

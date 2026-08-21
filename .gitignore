@@ -1,0 +1,24 @@
+# deps
+node_modules/
+
+# build
+dist/
+.output/
+.turbo/
+*.tsbuildinfo
+
+# prisma
+packages/db/generated/
+
+# env
+.env
+.env.*
+!.env.example
+
+# cloudflare
+.wrangler/
+
+# editor / os
+.DS_Store
+.idea/
+*.log

@@ -1,0 +1,7 @@
+@import "tailwindcss";
+
+/* Tokens do ownsi — marca monocromática (docs/branding/README.md).
+   TODO(D5): cores de estado do claim, tipografia Inter, radius. */
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+}

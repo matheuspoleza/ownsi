@@ -1,0 +1,3 @@
+// GET /api/health
+
+export {}

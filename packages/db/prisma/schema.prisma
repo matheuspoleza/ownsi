@@ -1,0 +1,15 @@
+// Esquema do ownsi. Modelos em PRD §3.5: Claim · CheckRun · ClaimEvent · ProofLink.
+// URLs de conexão ficam em prisma.config.ts (Prisma 7).
+// As tabelas de auth são geradas pelo better-auth:
+//   bunx @better-auth/cli generate --config apps/api/src/infra/auth.ts
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// TODO(D1): modelos

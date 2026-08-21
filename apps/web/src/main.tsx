@@ -1,0 +1,3 @@
+// Bootstrap do React
+
+export {}

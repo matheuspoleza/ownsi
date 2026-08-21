@@ -1,0 +1,3 @@
+// Template: proof-expired
+
+export {}

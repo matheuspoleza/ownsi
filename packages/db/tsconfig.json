@@ -1,0 +1,5 @@
+{
+  "extends": "@ownsi/tsconfig/bun.json",
+  "include": ["src", "generated"],
+  "exclude": ["node_modules"]
+}

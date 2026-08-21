@@ -1,0 +1,6 @@
+[install]
+# workspaces resolvem por link simbólico; sem hoisting agressivo
+linker = "hoisted"
+
+[test]
+coverage = false

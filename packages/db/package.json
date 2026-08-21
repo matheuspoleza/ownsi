@@ -1,0 +1,27 @@
+{
+  "name": "@ownsi/db",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./client": "./generated/prisma/client.ts"
+  },
+  "scripts": {
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:studio": "prisma studio",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check ."
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "^7.0.0",
+    "@prisma/client": "^7.0.0"
+  },
+  "devDependencies": {
+    "@ownsi/tsconfig": "workspace:*",
+    "prisma": "^7.0.0",
+    "typescript": "^5.9.0"
+  }
+}

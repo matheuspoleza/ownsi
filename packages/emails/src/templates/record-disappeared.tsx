@@ -1,0 +1,3 @@
+// Template: record-disappeared
+
+export {}

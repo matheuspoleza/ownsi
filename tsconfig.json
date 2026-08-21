@@ -1,0 +1,4 @@
+{
+  "extends": "@ownsi/tsconfig/base.json",
+  "files": []
+}
