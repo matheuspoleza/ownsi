@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Proof — Domain ownership</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="states.css" />
+    <link rel="stylesheet" href="resend-brand.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <aside class="sidebar">
+        <a class="brand" href="#" aria-label="Resend home">
+          <img src="assets/resend-wordmark-white.svg" alt="Resend" />
+        </a>
+        <button class="workspace-switcher"><span class="workspace-avatar">A</span><span><strong>Acme</strong><small>Developer</small></span><span class="workspace-caret">⌄</span></button>
+        <nav class="nav" aria-label="Navegação principal">
+          <a class="nav-item" href="#"><span class="nav-icon">⌂</span> Overview</a>
+          <a class="nav-item" href="#"><span class="nav-icon">↗</span> Emails</a>
+          <a class="nav-item active" href="#"><span class="nav-icon">◇</span> Domains</a>
+          <a class="nav-item" href="#"><span class="nav-icon">⌁</span> Logs</a>
+          <a class="nav-item" href="#"><span class="nav-icon">⌘</span> API Keys</a>
+          <a class="nav-item" href="#"><span class="nav-icon">⇄</span> Webhooks</a>
+        </nav>
+        <div class="sidebar-bottom">
+          <a class="nav-item" href="#"><span class="nav-icon">?</span> Help</a>
+          <a class="nav-item" href="#"><span class="nav-icon">⚙</span> Settings</a>
+          <button class="account"><span class="avatar">MP</span><span><strong>Matheus</strong><small>m@acme.com</small></span><span class="dots">•••</span></button>
+        </div>
+      </aside>
+
+      <main>
+        <header class="topbar"><span>Domains</span><div class="top-actions"><button class="feedback">Feedback?</button><button class="icon-button" aria-label="Notifications">♢</button></div></header>
+        <section class="page">
+          <div class="page-heading">
+            <div><p class="eyebrow">DOMAIN OWNERSHIP</p><h1>Domains</h1><p>Prove ownership with one DNS record and know exactly what happens next.</p></div>
+            <button class="button primary" id="add-domain">Add domain <span>＋</span></button>
+          </div>
+
+          <div class="summary-grid">
+            <article class="summary-card"><span class="summary-icon success">✓</span><div><strong>2</strong><span>Verified</span></div></article>
+            <article class="summary-card"><span class="summary-icon pending">↻</span><div><strong>1</strong><span>Needs attention</span></div></article>
+            <article class="summary-card"><span class="summary-icon neutral">◇</span><div><strong>3</strong><span>Total domains</span></div></article>
+          </div>
+
+          <section class="panel domain-panel">
+            <div class="panel-toolbar">
+              <label class="search"><span>⌕</span><input type="search" placeholder="Search domains" /></label>
+              <button class="filter">All domains⌄</button>
+            </div>
+            <div class="table-head"><span>Domain</span><span>Status</span><span>Last checked</span><span></span></div>
+            <button class="domain-row selected" data-domain="acme.com">
+              <span class="domain-name"><span class="favicon">A</span><span><strong>acme.com</strong><small>Added Aug 19, 2026</small></span></span>
+              <span class="status-copy"><span class="dot amber"></span><span><strong>Propagating</strong><small>DNS is correct. About 8 min left.</small></span></span>
+              <span class="last-check">12 seconds ago</span><span class="chevron">›</span>
+            </button>
+            <button class="domain-row" data-domain="resend.dev">
+              <span class="domain-name"><span class="favicon violet">R</span><span><strong>resend.dev</strong><small>Added Aug 12, 2026</small></span></span>
+              <span class="status-copy"><span class="dot green"></span><span><strong>Verified</strong><small>Ownership confirmed</small></span></span>
+              <span class="last-check">4 minutes ago</span><span class="chevron">›</span>
+            </button>
+            <button class="domain-row" data-domain="northstar.studio">
+              <span class="domain-name"><span class="favicon blue">N</span><span><strong>northstar.studio</strong><small>Added Jul 28, 2026</small></span></span>
+              <span class="status-copy"><span class="dot green"></span><span><strong>Verified</strong><small>Ownership confirmed</small></span></span>
+              <span class="last-check">18 minutes ago</span><span class="chevron">›</span>
+            </button>
+          </section>
+
+          <section class="detail-layout" id="detail">
+            <article class="detail-main panel">
+              <div class="detail-title"><button class="back">←</button><div><h2>acme.com</h2><p>Ownership verification</p></div><span class="badge pending-badge" id="status-badge">Propagating</span><button class="more">•••</button></div>
+
+              <div class="diagnosis" id="diagnosis">
+                <span class="diagnosis-icon">↻</span>
+                <div><h3 id="diagnosis-title">Your record is correct. DNS is catching up.</h3><p id="diagnosis-copy">Cloudflare already has the record. Some public resolvers are still using an older answer.</p><div class="progress"><span id="progress-bar"></span></div><p class="estimate" id="estimate"><strong>About 8 minutes left</strong> based on acme.com's DNS cache.</p></div>
+              </div>
+
+              <div class="section-heading"><div><h3>Add this DNS record</h3><p>We detected <strong>Cloudflare</strong>. Open DNS › Records and add:</p></div><span class="provider"><span>☁</span> Cloudflare</span></div>
+              <div class="dns-record">
+                <div><span>TYPE</span><code>TXT</code></div>
+                <div><span>NAME</span><code>_proof-challenge</code><button class="copy" data-copy="_proof-challenge">Copy</button></div>
+                <div><span>CONTENT</span><code>proof=6Jb9wD2kxP8mQ4tN</code><button class="copy" data-copy="proof=6Jb9wD2kxP8mQ4tN">Copy</button></div>
+                <div><span>TTL</span><code>Auto</code></div>
+              </div>
+              <div class="provider-note"><span>i</span><p>Enter only <code>_proof-challenge</code> in the Name field. Cloudflare adds <code>.acme.com</code> automatically.</p></div>
+              <div class="record-actions"><button class="button secondary" id="email-record">Send to a teammate</button><button class="button primary" id="check-now">Check again</button></div>
+              <p class="microcopy">You can close this page. We'll keep checking and email you when the status changes.</p>
+
+              <details class="evidence"><summary><span>Raw DNS evidence</span><span>For advanced troubleshooting</span></summary><pre>Google      TXT  proof=6Jb9wD2kxP8mQ4tN  TTL 420
+Cloudflare  TXT  proof=6Jb9wD2kxP8mQ4tN  TTL 480
+Quad9      NODATA · cached 7m 42s ago
+Authoritative (lara.ns.cloudflare.com) · record found</pre></details>
+            </article>
+
+            <aside class="timeline panel">
+              <div class="timeline-head"><h3>Activity</h3><button>View all</button></div>
+              <div class="timeline-item current"><span></span><div><strong>DNS is propagating</strong><p>2 of 3 public resolvers found the record.</p><time>Just now</time></div></div>
+              <div class="timeline-item"><span></span><div><strong>Record found at Cloudflare</strong><p>Your provider is publishing the right value.</p><time>Today, 2:41 PM</time></div></div>
+              <div class="timeline-item"><span></span><div><strong>Domain added</strong><p>Verification started by m@acme.com.</p><time>Today, 2:37 PM</time></div></div>
+            </aside>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <div class="demo-switcher"><span>Demo state</span><button data-state="missing">Missing</button><button class="active" data-state="pending">Propagating</button><button data-state="verified">Verified</button></div>
+
+    <dialog id="add-dialog">
+      <form method="dialog" class="modal">
+        <button class="modal-close" value="cancel" aria-label="Close">×</button>
+        <span class="modal-icon">◇</span><p class="eyebrow">NEW DOMAIN</p><h2>Which domain do you control?</h2><p>Paste a domain or URL. We'll clean it up before checking DNS.</p>
+        <label class="field"><span>DOMAIN</span><input id="domain-input" autocomplete="off" placeholder="example.com" value="HTTP://WWW.Acme.com/path" /></label>
+        <div class="normalized"><span>✓</span><p>We'll verify <strong id="normalized-domain">acme.com</strong><small>Protocol, www and path were removed.</small></p></div>
+        <div class="modal-actions"><button class="button secondary" value="cancel">Cancel</button><button class="button primary" value="default" id="continue">Continue</button></div>
+      </form>
+    </dialog>
+
+    <div class="toast" id="toast"><span>✓</span><p><strong>Copied</strong><small>Ready to paste in Cloudflare.</small></p></div>
+    <script src="app.js"></script>
+  </body>
+</html>

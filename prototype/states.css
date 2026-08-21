@@ -1,0 +1,25 @@
+.diagnosis.missing {
+  border-color: #efcdc8;
+  background: var(--red-bg);
+}
+
+.diagnosis.missing .diagnosis-icon {
+  background: #f7d8d3;
+  color: var(--red);
+}
+
+.diagnosis.missing .progress span { background: var(--red); }
+
+.diagnosis.verified {
+  border-color: #c8e8db;
+  background: var(--green-bg);
+}
+
+.diagnosis.verified .diagnosis-icon {
+  background: #ccebdd;
+  color: var(--green);
+}
+
+.diagnosis.verified .progress span { background: var(--green); }
+.missing-badge { color: var(--red); background: var(--red-bg); }
+.verified-badge { color: var(--green); background: var(--green-bg); }
