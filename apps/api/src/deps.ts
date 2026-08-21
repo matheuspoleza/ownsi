@@ -1,3 +1,3 @@
-// Montagem das Deps — sem container de DI, Deps é parâmetro (PRD §3.3)
+// Deps assembly — no DI container, Deps is a parameter (PRD §3.3)
 
 export {}

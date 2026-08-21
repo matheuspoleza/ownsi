@@ -1,3 +1,3 @@
-// nextCheckIn(soa, idade, falhas) (D11/D12)
+// nextCheckIn(soa, age, failures) (D11/D12)
 
 export {}

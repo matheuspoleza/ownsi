@@ -9,7 +9,7 @@
     "not_found_handling": "single-page-application"
   },
   "vars": {
-    // origem do Cloud Run; /api/* e /p/* são proxiados para cá (PRD §3.1)
+    // Cloud Run origin; /api/* and /p/* are proxied here (PRD §3.1)
     "API_ORIGIN": "https://ownsi-api-xxxxx.a.run.app"
   }
 }

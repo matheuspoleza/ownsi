@@ -1,3 +1,3 @@
-// Cron diário de reconciliação — rede de segurança, não agendador (§3.7)
+// Daily reconciliation cron — safety net, not a scheduler (§3.7)
 
 export {}

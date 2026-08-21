@@ -1,3 +1,3 @@
-// Casca compartilhada dos e-mails: marca monocromática, Inter
+// Shared email shell: monochrome brand, Inter
 
 export {}

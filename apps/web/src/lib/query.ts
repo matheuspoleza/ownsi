@@ -1,3 +1,5 @@
-// QueryClient e chaves de query
+import { QueryClient } from "@tanstack/react-query"
 
-export {}
+export const queryClient = new QueryClient({
+  defaultOptions: { queries: { staleTime: 5_000, retry: 1 } },
+})

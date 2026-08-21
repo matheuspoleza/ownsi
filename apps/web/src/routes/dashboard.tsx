@@ -1,3 +1,3 @@
-// Rota: Lista de domínios com Next step (D6)
+// Route: domain list with the Next step column (D6)
 
 export {}

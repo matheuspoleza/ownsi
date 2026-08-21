@@ -1,3 +1,3 @@
-// Rota: Claim inicial + leitura da zona
+// Route: initial claim + zone reading
 
 export {}

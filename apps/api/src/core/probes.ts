@@ -1,3 +1,3 @@
-// As 12 sondas (D16)
+// The 12 probes (D16)
 
 export {}

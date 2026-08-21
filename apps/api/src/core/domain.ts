@@ -1,3 +1,3 @@
-// Value object Domain: normalização + PSL (D10)
+// Domain value object: normalization + public suffix list (D10)
 
 export {}

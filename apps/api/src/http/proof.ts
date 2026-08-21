@@ -1,3 +1,3 @@
-// Página pública /p/:slug (render no servidor, OG)
+// Public proof page /p/:slug (server-rendered, OG tags)
 
 export {}

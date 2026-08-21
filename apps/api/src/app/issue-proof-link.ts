@@ -1,3 +1,3 @@
-// Caso de uso: link público de prova (§3.11)
+// Use case: public proof link (§3.11)
 
 export {}

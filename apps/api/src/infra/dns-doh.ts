@@ -1,3 +1,3 @@
-// DnsPort sobre DoH: Google · Cloudflare · Quad9 (D9)
+// DnsPort over DoH: Google · Cloudflare · Quad9 (D9)
 
 export {}

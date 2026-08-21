@@ -8,7 +8,7 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "turbo run dev",
+    "dev": "turbo run dev --filter=@ownsi/api --filter=@ownsi/web",
     "build": "turbo run build",
     "test": "turbo run test",
     "lint": "turbo run lint",
@@ -17,7 +17,13 @@
     "check": "biome check --write .",
     "db:generate": "turbo run db:generate",
     "db:migrate": "bun --filter @ownsi/db db:migrate",
-    "db:studio": "bun --filter @ownsi/db db:studio"
+    "db:studio": "bun --filter @ownsi/db db:studio",
+    "infra:up": "docker compose up -d --wait",
+    "infra:down": "docker compose down",
+    "infra:logs": "docker compose logs -f",
+    "db:seed": "bun --filter @ownsi/db db:seed",
+    "setup": "bun run infra:up && bun run db:migrate && bun run db:seed",
+    "dev:emails": "bun --filter @ownsi/emails dev"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.0",

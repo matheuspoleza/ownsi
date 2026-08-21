@@ -1,3 +1,3 @@
-// Política de notificação: teto de 24h, queda em massa (§3.10)
+// Notification policy: 24h cap, mass outage sends nothing (§3.10)
 
 export {}

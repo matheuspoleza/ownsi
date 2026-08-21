@@ -1,3 +1,3 @@
-// Função durável: um relógio por claim, step.sleep (§3.7)
+// Durable function: one clock per claim, step.sleep (§3.7)
 
 export {}

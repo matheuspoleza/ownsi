@@ -1,1 +1,1 @@
-# Favicon, og-image e o suricato. Ver docs/branding/
+# Favicon, og-image and the meerkat. See docs/branding/

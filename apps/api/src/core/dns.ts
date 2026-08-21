@@ -1,3 +1,3 @@
-// DnsObservation, ResolverAnswer — forma do que a casca coleta (§3.6)
+// DnsObservation, ResolverAnswer — the shape the shell collects (§3.6)
 
 export {}

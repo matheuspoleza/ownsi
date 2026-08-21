@@ -1,3 +1,3 @@
-// ClaimRepo · CheckLog · EventLog sobre Prisma/Neon
+// ClaimRepo · CheckLog · EventLog over Prisma/Neon
 
 export {}

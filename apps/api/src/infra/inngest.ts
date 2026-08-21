@@ -1,3 +1,3 @@
-// Cliente Inngest
+// Inngest client wiring
 
 export {}

@@ -1,1 +1,1 @@
-# Respostas DNS gravadas, uma por sonda (§3.10)
+# Recorded DNS answers, one per probe (§3.10)

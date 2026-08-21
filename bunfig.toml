@@ -1,5 +1,5 @@
 [install]
-# workspaces resolvem por link simbólico; sem hoisting agressivo
+# workspaces resolve through symlinks; no aggressive hoisting
 linker = "hoisted"
 
 [test]

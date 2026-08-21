@@ -2,7 +2,7 @@ import tailwindcss from "@tailwindcss/vite"
 import react from "@vitejs/plugin-react"
 import { defineConfig } from "vite"
 
-// Em dev o proxy imita o Worker: uma origem só, cookie first-party (PRD §3.1).
+// In dev the proxy mimics the Worker: a single origin, first-party cookie (PRD §3.1).
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {

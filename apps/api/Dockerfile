@@ -1,4 +1,4 @@
-# Container único para o Cloud Run. Build a partir da RAIZ do monorepo:
+# Single container for Cloud Run. Build from the MONOREPO ROOT:
 #   docker build -f apps/api/Dockerfile .
 FROM oven/bun:1.4 AS base
 WORKDIR /app

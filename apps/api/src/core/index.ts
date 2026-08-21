@@ -1,3 +1,3 @@
-// Barrel do núcleo puro
+// Pure core barrel
 
 export {}

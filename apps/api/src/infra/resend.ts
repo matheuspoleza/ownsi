@@ -1,3 +1,3 @@
-// Mailer sobre a Resend + templates de @ownsi/emails (D19)
+// Mailer over Resend, templates from @ownsi/emails (D19)
 
 export {}

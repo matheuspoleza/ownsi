@@ -1,3 +1,3 @@
-// cn() — merge de classes Tailwind
+// cn() — Tailwind class merging
 
 export {}

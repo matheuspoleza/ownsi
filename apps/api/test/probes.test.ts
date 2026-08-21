@@ -1,3 +1,3 @@
-// 12 sondas × 1 fixture cada (§3.10)
+// 12 probes × 1 fixture each (§3.10)
 
 export {}

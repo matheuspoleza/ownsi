@@ -1,3 +1,3 @@
-// Handler do better-auth em /api/auth/* (fora do /openapi)
+// better-auth handler at /api/auth/* (kept out of /openapi)
 
 export {}

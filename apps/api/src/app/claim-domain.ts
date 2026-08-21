@@ -1,3 +1,3 @@
-// Caso de uso: adicionar domínio e cunhar token
+// Use case: add a domain and mint its token
 
 export {}

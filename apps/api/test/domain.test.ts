@@ -1,3 +1,3 @@
-// Domain.parse: punycode, ponto final, www, PSL (§3.10)
+// Domain.parse: punycode, trailing dot, www, PSL (§3.10)
 
 export {}

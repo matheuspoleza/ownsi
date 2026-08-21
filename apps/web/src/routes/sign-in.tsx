@@ -1,3 +1,3 @@
-// Rota: Magic link / Google
+// Route: magic link / Google
 
 export {}

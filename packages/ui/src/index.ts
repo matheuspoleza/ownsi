@@ -1,3 +1,3 @@
-// Barrel do design system
+// Design system barrel
 
 export {}

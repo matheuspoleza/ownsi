@@ -1,0 +1,35 @@
+# Local infra: Postgres + Inngest Dev Server.
+# The API and the front end run outside Docker (`bun run dev`), with hot reload.
+services:
+  postgres:
+    image: postgres:18-alpine
+    container_name: ownsi-postgres
+    environment:
+      POSTGRES_USER: ownsi
+      POSTGRES_PASSWORD: ownsi
+      POSTGRES_DB: ownsi
+    ports:
+      - "5432:5432"
+    volumes:
+      # Postgres 18 wants the mount one level up from ./data
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ownsi -d ownsi"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  inngest:
+    image: inngest/inngest:latest
+    container_name: ownsi-inngest
+    command: inngest dev -u http://host.docker.internal:3000/api/inngest
+    ports:
+      - "8288:8288"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  pgdata:

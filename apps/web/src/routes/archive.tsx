@@ -1,3 +1,3 @@
-// Rota: Arquivados + autocomplete de reativação (D18)
+// Route: archived domains + reactivation autocomplete (D18)
 
 export {}

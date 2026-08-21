@@ -1,3 +1,3 @@
-// Caso de uso: contestação e instrução de despejo (D8)
+// Use case: contest and eviction instructions (D8)
 
 export {}

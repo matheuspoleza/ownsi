@@ -1,3 +1,3 @@
-// Caso de uso: arquivar · reativar · hibernar · retomar (D18)
+// Use case: archive · reactivate · pause · resume (D18)
 
 export {}

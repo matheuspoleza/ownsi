@@ -1,3 +1,3 @@
-// Rota: Tela do registro, estado ao vivo e evidência
+// Route: record screen, live state and evidence
 
 export {}

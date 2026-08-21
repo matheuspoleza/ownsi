@@ -1,3 +1,3 @@
-// DnsPort com respostas gravadas — demo determinística (§3.10)
+// DnsPort with recorded answers — deterministic demo (§3.10)
 
 export {}
