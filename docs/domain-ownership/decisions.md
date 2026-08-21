@@ -118,6 +118,24 @@ O medo do 72h é ansiedade não quantificada. O produto quantifica — e a esper
 
 ## D13 — Revogação
 
+> **Revisado em 2026-08-21 — monitoramento contínuo virou NIT.** O enunciado pede provar posse, entender a verificação, entender a falha e recuperar de erro. Nenhum dos quatro exige rechecagem perpétua de um domínio já provado. A decisão original abaixo continua sendo o desenho certo; o que mudou é que ela sai do escopo do build.
+>
+> **Decisão vigente:** o produto não revoga sozinho. Ele diz a verdade sempre que perguntado.
+>
+> | | |
+> |---|---|
+> | **Fica no core** | Polling enquanto a reivindicação está pendente (D11/D12). Isso é a verificação única acontecendo, não monitoramento: a resposta do DNS não é instantânea. |
+> | **Fica no core** | Recheck manual (`Check again`) em qualquer estado, inclusive verificado. Mesmo caminho de código, custo marginal zero, e responde "isso ainda é verdade?" sem cron. |
+> | **Sai** | Cron sobre domínios verificados, relógio de graça de 72h, estado `At risk`, revogação automática, e os dois e-mails correspondentes (D19). |
+> | **Vira UI** | A tela do domínio verificado mostra `Confirmed <data>` em vez de "checamos todo dia". Ela afirma quando foi confirmado, não que é verdade agora. |
+>
+> **Por quê:** revogar automático exige uma política (as 72h) que o enunciado não pede, e errar essa política é pior do que não tê-la — é exatamente o modo de falha que o D6 existe para evitar. O custo de acertar (cron sobre todos os verificados, retenção, máquina de restauração, teto anti-spam) é alto para uma semana de build, e nenhuma parte dele demonstra os quatro verbos do enunciado. Não enviando, a classe de risco inteira desaparece.
+>
+> **Custo aceito:** uma prova antiga cujo registro foi removido segue exibida como provada até alguém pedir recheck. A mitigação é de linguagem, não de mecanismo: a UI data a confirmação em vez de afirmar validade corrente.
+>
+> **Reativação:** se o monitoramento voltar, tudo abaixo vale como está. Nada aqui foi invalidado, só adiado.
+
+
 **Decidido por:** Matheus
 **Decisão:** Graça de 72h, reversível. `absent` dispara e-mail na hora e abre 72h em que o domínio segue válido mas com aviso visível; passado o prazo, a prova deixa de valer. Volta sozinho a válido se o registro reaparecer, a qualquer momento, sem token novo.
 **Por quê:** Simétrico ao lado da pendência (D12) e tolera falha transitória, que é a maioria. Revogar na primeira checagem faria qualquer instabilidade virar revogação — exatamente o modo de falha que a distinção `absent` vs `unresolvable` (D6) existe pra evitar. Nunca revogar enganaria: uma prova de 2024 com registro sumido há 18 meses não deve seguir de pé, porque domínio troca de dono.
@@ -221,10 +239,80 @@ O medo do 72h é ansiedade não quantificada. O produto quantifica — e a esper
 |---|---|
 | Magic link | sim (D5) |
 | Prova concedida | sim |
-| Registro sumiu (`absent`) | sim, imediato (D13) |
-| Prova revogada após graça | sim |
+| Registro sumiu (`absent`) | ~~sim, imediato (D13)~~ suspenso enquanto D13 estiver diferido |
+| Prova revogada após graça | ~~sim~~ suspenso enquanto D13 estiver diferido |
 | Pendência sem resolver | nudge em D+1 e D+3, e só (D12) |
 | Nova conta provou seu domínio | sim (D7) |
 | `unresolvable` | **não** — é falha nossa, não dele (D6) |
 
 **Regra anti-spam:** no máximo um e-mail por domínio por tipo de evento a cada 24h, e nada de "continua quebrado" recorrente. O relógio de graça já comunica urgência sem repetir.
+
+---
+
+# Técnico
+
+## D20 — Quem agenda
+
+**Decidido por:** Matheus
+**Decisão:** Inngest segura o relógio; o Postgres segura o estado. `next_check_at` vira coluna de leitura.
+**Por quê:** `step.sleep` dá agendamento por claim com granularidade de segundos — o que a UI promete ("próxima checagem em 22s") e o que o D11/D14 tinham como problema em aberto, resolvido no serverless só com tick fixo. Com o relógio fora, a fila no Postgres deixa de existir: sem `FOR UPDATE SKIP LOCKED`, sem query de drain, sem cron de tick. A conclusão do D14 ("não traga Redis") continua de pé por outro motivo: não há fila para o Redis melhorar.
+**Invariante:** um relógio por claim, garantido por `concurrency: { limit: 1, key: claimId }`. Dois `send` sem isso = dois agendadores disputando o mesmo domínio.
+**Fronteira:** todo `step.run` lê e escreve o Postgres. Se o Inngest sumisse, o `next_check_at` ainda descreveria a verdade e um cron burro reconstruiria a fila. Se essa disciplina cair, o dual-write que o D14 rejeitou volta.
+**Bordas:** pausar e arquivar não interrompem um `sleep` — a função relê o claim no topo de cada volta e sai; a parada vale no próximo acordar, e a UI já mostra o estado na hora porque lê do banco.
+
+## D21 — Stack e topologia
+
+**Decidido por:** Matheus
+**Decisão:** Bun + Elysia + Eden na API, Vite + React na Cloudflare, Neon + Prisma, better-auth self-hospedado, Inngest, Resend. Uma origem só.
+**Por quê:** preferência declarada por front e back separados com tipagem end-to-end, e é a stack já rodando no Citou — pegadinhas documentadas valem mais que preferência de ferramenta numa semana.
+**Uma origem:** o Worker serve os assets e faz proxy de `/api/*` e `/p/*` para o Cloud Run. Cookie first-party, sem CORS, sem `SameSite=None`, sem subdomínio de API. E resolve a página pública de prova sem framework fullstack: o Elysia renderiza o HTML, o Worker proxia, as OG tags são reais.
+**Prisma e não Drizzle:** as pegadinhas do Prisma 7 já estão escritas e o better-auth tem adapter. Trocar de ORM por preferência custaria mais do que rende.
+**better-auth self-hospedado e não o Managed do Neon:** o Managed é real (better-auth 1.4.18 no schema `neon_auth`, Google OAuth pronto, free até 60k MAU), mas não documenta magic link com provedor de e-mail próprio — e mandar o magic link pela API da Resend é decisão de produto num take-home da Resend, não detalhe de implementação. Vira plano B se o domínio verificado na Resend não existir.
+**Em aberto:** Cloud Run depende do spike de UDP/53. Railway é o plano B.
+
+## D22 — Arquitetura interna
+
+**Decidido por:** Matheus
+**Decisão:** Functional core, imperative shell. `core/` puro (Domain, sondas, diagnose, transition, schedule) sem importar Elysia, Prisma, Inngest ou `node:dns`. Casos de uso recebem portas por parâmetro; sem container de DI.
+**Por quê:** clean architecture inteira não se paga com seis tabelas, mas a regra da dependência tem um lugar óbvio aqui: o motor de diagnóstico é o produto. Puro, cada uma das 12 sondas vira teste com fixture — que é o que se demonstra no vídeo.
+**Efeitos como dados:** o núcleo devolve `effects[]`, a casca executa. É isso que faz "queda dos resolvers não envia um único e-mail" ser asserção sobre array em vez de mock de SMTP.
+**Payoff concreto:** o botão "Check again" e o `step.run` do Inngest chamam o mesmo `verifyClaim`. O Inngest é adaptador, não orquestrador.
+**Custo aceito:** uma transação escreve dois agregados (`Claim` + `CheckRun`), violando "uma transação por agregado". A invariante do D6 vale mais que a regra; a alternativa ortodoxa é event sourcing.
+
+## D23 — DDD e nomes
+
+**Decidido por:** Matheus
+**Decisão:** Core domain é **diagnóstico e recuperação**, não a prova. Contextos: `claims` e `dns` (core), `providers` e `attestation` (supporting), `identity`, `notifications`, `scheduling` (genéricos). `Domain` é shared kernel.
+**Por quê:** provar posse é quase commodity — gera token, escreve TXT, lê de volta. O enunciado pede entender a falha e recuperar do erro, e é aí que mora a diferenciação. Isso muda onde o esforço vai: modelo rico e teste exaustivo em `Diagnosis`, mínimo suficiente em CRUD de claim.
+**Relações:** `claims`→`dns` é Customer–Supplier com linguagem publicada (`DnsObservation`, `Diagnosis`); `dns`→`providers` é Open Host Service; `claims`→`identity` é Anticorruption Layer — nosso domínio nunca conhece o `User` do better-auth, porque a lib versiona o schema dela.
+**Nome:** `Domain`, não `DomainName`. Cheguei a defender `DomainName` pela colisão com o vocabulário de DDD, mas o enunciado diz "claim a domain" e "prove ownership of a domain" — o enunciado é a linguagem ubíqua. Quem cede é a pasta: `core/` em vez de `domain/`.
+**Casos de uso nomeados pelos verbos do enunciado:** `claimDomain`, `verifyClaim`, `diagnose`, `recoverClaim`. O último unifica D12 (hibernação) e D18 (arquivamento), que hoje são dois mecanismos com o mesmo desfecho.
+**Contexto que não virou contexto:** coexistência. É query atravessando contas, não agregado; fica como domain service dentro de `claims`.
+
+---
+
+# Premissas — decididas por Claude sem confirmação, reversão barata
+
+## D24 — "Witnesses"
+
+**Decisão:** três resolvers públicos independentes (Google, Cloudflare, Quad9) a partir de uma região. A copy dos wireframes ("resolvers em seis continentes") é reescrita e o mapa-múndi passa a ilustrar anycast, não geografia.
+**Por quê:** DoH a partir de um servidor não é multi-continente. Afirmar o que a arquitetura não entrega é o tipo de detalhe que um revisor técnico pega.
+**Reverter custa:** ~1 dia para fan-out real em 3 regiões com agregação.
+
+## D25 — Expiração
+
+**Decisão:** o relógio de graça de 72h existe e as telas "Record disappeared" e "Proof expired" ficam — mas o relógio só avança quando um recheck acontece de verdade (manual, ou disparado por alguém abrindo a prova pública). Nenhum cron sobre domínios verificados.
+**Por quê:** meio-termo entre o D13 original e a revisão que o suspendeu. Preserva as duas telas desenhadas e não traz o custo que a revisão queria evitar — cron sobre todos os verificados, retenção, máquina de restauração, teto anti-spam.
+**Reverter custa:** ~1 dia para o D13 original, mais dois e-mails novos e a classe de risco que o D6 existe para evitar.
+
+## D26 — Prova pública
+
+**Decisão:** como desenhada. Link criado sob demanda ("Create a public link"), slug próprio — **não** o token DNS —, expiração de 7 dias, recheck ao abrir com cache de 60s e rate limit.
+**Por quê:** é o clímax narrativo do produto e o que transforma a prova em artefato compartilhável. Slug separado do token porque são coisas diferentes: um identifica uma página, o outro é o segredo publicado na zona.
+**Reverter custa:** link permanente tira o relógio (~meio dia a menos); cortar tira o grupo `04 Public proof` inteiro.
+
+## D27 — Autenticação
+
+**Decisão:** magic link pela Resend **e** Google OAuth, better-auth self-hospedado.
+**Por quê:** o D5 fechou só magic link, mas o wireframe de sign-in mostra os dois, e o better-auth entrega ambos na mesma config. O Google tira o atrito do revisor que abre o link às 23h e não quer esperar e-mail.
+**Reverter custa:** só magic link tira as credenciais do Google Console (~1h a menos).
