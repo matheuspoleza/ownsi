@@ -59,30 +59,62 @@ async function errorOf(response: Response) {
   return body.error
 }
 
+type WireStep = { event: string; data: Record<string, unknown> }
+
+async function stepsOf(response: Response): Promise<WireStep[]> {
+  const reader = (response.body as ReadableStream<string | Uint8Array>).getReader()
+  const frames: string[] = []
+
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+    frames.push(typeof value === "string" ? value : new TextDecoder().decode(value))
+  }
+
+  return frames
+    .join("")
+    .split("\n\n")
+    .filter((frame) => frame.trim())
+    .map((frame) => {
+      const event = /^event: (.+)$/m.exec(frame)?.[1] ?? ""
+      const data = /^data: (.+)$/m.exec(frame)?.[1] ?? "{}"
+      return { event, data: JSON.parse(data) as Record<string, unknown> }
+    })
+}
+
 function get(app: ReturnType<typeof server>, path: string) {
   return app.handle(new Request(`http://localhost${path}`))
 }
 
 describe("GET /api/zones/:name", () => {
-  test("answers the reading the landing screen needs", async () => {
+  test("streams the delegation first, then the publishing estimate", async () => {
     const response = await get(server(), "/api/zones/acme.com")
     expect(response.status).toBe(200)
 
-    expect(await response.json()).toEqual({
-      name: "acme.com",
-      domain: {
-        ascii: "acme.com",
-        unicode: "acme.com",
-        normalisations: [],
-        isPublicSuffix: false,
+    expect(response.headers.get("content-type")).toContain("text/event-stream")
+    expect(await stepsOf(response)).toEqual([
+      {
+        event: "delegation",
+        data: {
+          step: "delegation",
+          name: "acme.com",
+          domain: {
+            ascii: "acme.com",
+            unicode: "acme.com",
+            normalisations: [],
+            isPublicSuffix: false,
+          },
+          nameservers: ["ns1.cloudflare.com"],
+          provider: "cloudflare",
+          observedAt: "2026-08-24T12:00:00.000Z",
+          cached: false,
+        },
       },
-      nameservers: ["ns1.cloudflare.com"],
-      provider: "cloudflare",
-      publishingMinutes: 5,
-      negativeCacheTtlSeconds: 300,
-      observedAt: "2026-08-24T12:00:00.000Z",
-      cached: false,
-    })
+      {
+        event: "publishing",
+        data: { step: "publishing", publishingMinutes: 5, negativeCacheTtlSeconds: 300 },
+      },
+    ])
   })
 
   test("returns 400 for something that is not a domain", async () => {
@@ -103,11 +135,17 @@ describe("GET /api/zones/:name", () => {
     expect((await errorOf(response)).code).toBe("unresolvable")
   })
 
+  test("keeps a failure a status, never a step in an already-open stream", async () => {
+    const response = await get(server([unreachableResolver("dead")]), "/api/zones/acme.com")
+    expect(response.headers.get("content-type")).toContain("application/json")
+    expect(await response.json()).toHaveProperty("error")
+  })
+
   test("serves the second reading from the cache", async () => {
     const app = server()
-    await get(app, "/api/zones/acme.com")
+    await stepsOf(await get(app, "/api/zones/acme.com"))
 
-    const response = await get(app, "/api/zones/acme.com")
-    expect(((await response.json()) as { cached: boolean }).cached).toBe(true)
+    const [delegation] = await stepsOf(await get(app, "/api/zones/acme.com"))
+    expect(delegation?.data.cached).toBe(true)
   })
 })

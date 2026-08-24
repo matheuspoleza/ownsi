@@ -13,30 +13,34 @@ import { useZoneState } from "./hooks/useZoneState.ts"
 
 export const ClaimPage = () => {
   const { domain } = useParams({ from: "/claim/$domain" })
-  const { zone, isReading, failure } = useZoneState({ domain })
+  const { delegation, publishing, isReading, isSlow, failure } = useZoneState({ domain })
   const magicLink = useMagicLinkSend({ domain })
 
   return (
     <Page logIn={false}>
       <Hero>
-        {zone ? (
+        {delegation ? (
           <Badge>
             <span className="flex size-[19px] shrink-0 items-center justify-center rounded-[5px] border border-border bg-card">
-              <ProviderGlyph provider={zone.provider} className="size-[11px]" />
+              <ProviderGlyph provider={delegation.provider} className="size-[11px]" />
             </span>
-            {providerName(zone.provider)}
+            {providerName(delegation.provider)}
           </Badge>
         ) : null}
 
         <HeroTitle>{domain}</HeroTitle>
 
         <HeroSubtitle>
-          {heroSubtitle({ failure, isReading, publishingMinutes: zone?.publishingMinutes })}
+          {heroSubtitle({
+            failure,
+            isReading,
+            publishingMinutes: publishing?.publishingMinutes,
+          })}
         </HeroSubtitle>
 
         {isReading ? (
           <div className="flex w-full flex-col items-center pt-4">
-            <ZoneReadout zone={zone} />
+            <ZoneReadout delegation={delegation} publishing={publishing} isSlow={isSlow} />
           </div>
         ) : null}
       </Hero>

@@ -26,7 +26,7 @@ export function createReadSoa(deps: {
     )
     if (authoritative) return authoritative
 
-    return deps.resolve(zoneName, "SOA", signal)
+    return deps.resolve(zoneName, "SOA", deadline)
   }
 }
 

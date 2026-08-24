@@ -5,7 +5,13 @@ const request = (name: string, signal?: AbortSignal) =>
 
 type ZoneRequest = Awaited<ReturnType<typeof request>>
 
-export type Zone = NonNullable<ZoneRequest["data"]>
+type ZoneFrame = NonNullable<ZoneRequest["data"]>
+
+export type ZoneStep = ZoneFrame["data"]
+
+export type ZoneDelegation = Extract<ZoneStep, { step: "delegation" }>
+
+export type ZonePublishing = Extract<ZoneStep, { step: "publishing" }>
 
 export type ZoneErrorCode = "invalid_domain" | "no_delegation" | "unresolvable" | "unreachable"
 
@@ -34,10 +40,18 @@ const asZoneFailure = (error: NonNullable<ZoneRequest["error"]>): ZoneFailure =>
   return zoneFailure("unreachable", UNREACHABLE_MESSAGE)
 }
 
-export const readZone = async (name: string, signal?: AbortSignal): Promise<Zone> => {
+export async function* readZone(name: string, signal?: AbortSignal): AsyncGenerator<ZoneStep> {
   const { data, error } = await request(name, signal)
   if (signal?.aborted) throw signal.reason
   if (error) throw asZoneFailure(error)
   if (!data) throw zoneFailure("unreachable", UNREACHABLE_MESSAGE)
-  return data
+
+  for await (const frame of framesOf(data)) yield frame.data
 }
+
+/**
+ * Eden collapses a streamed route to its declared 200 schema, losing the generator wrapper its
+ * own ReplaceGeneratorWithAsyncGenerator would otherwise apply.
+ */
+const framesOf = (data: ZoneFrame): AsyncIterable<ZoneFrame> =>
+  data as ZoneFrame & AsyncIterable<ZoneFrame>

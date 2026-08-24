@@ -17,23 +17,31 @@ export type Zone = {
 
 const MILLISECONDS_PER_SECOND = 1_000
 
-export function zoneFromAnswers(params: {
+export function zoneFromDelegation(params: {
   readonly name: string
   readonly delegation: AnsweredDns
-  readonly soa: AnsweredDns | null
   readonly observedAt: Date
 }): Zone {
   const nameservers = normalizeHostnameList(
     recordsOfType(params.delegation, "NS").map((record) => record.data),
   )
-  const soa = params.soa ? soaOf(params.soa) : null
 
   return {
     name: params.name,
     nameservers,
     provider: detectProvider(nameservers),
-    soa: soa ? { serial: soa.serial, negativeCacheTtlSeconds: soa.negativeCacheTtlSeconds } : null,
+    soa: null,
     observedAt: params.observedAt,
+  }
+}
+
+export function withSoa(zone: Zone, answer: AnsweredDns | null): Zone {
+  const soa = answer ? soaOf(answer) : null
+  if (!soa) return zone
+
+  return {
+    ...zone,
+    soa: { serial: soa.serial, negativeCacheTtlSeconds: soa.negativeCacheTtlSeconds },
   }
 }
 

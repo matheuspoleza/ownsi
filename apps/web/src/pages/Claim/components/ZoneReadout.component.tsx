@@ -1,7 +1,7 @@
 import { Card } from "@ownsi/ui"
 import { CircleCheck, CircleEllipsis } from "lucide-react"
 import type { ReactNode } from "react"
-import type { Zone } from "../../../api/zone.api.ts"
+import type { ZoneDelegation, ZonePublishing } from "../../../api/zone.api.ts"
 import { ProviderGlyph } from "../../../components/ProviderGlyph.component.tsx"
 import { providerName } from "../../../lib/providers.utils.ts"
 
@@ -35,38 +35,42 @@ const Row = ({ label, done, children }: RowProps) => (
 )
 
 export interface ZoneReadoutProps {
-  zone?: Zone
+  delegation?: ZoneDelegation
+  publishing?: ZonePublishing
+  isSlow: boolean
 }
 
-export const ZoneReadout = ({ zone }: ZoneReadoutProps) => (
+export const ZoneReadout = ({ delegation, publishing, isSlow }: ZoneReadoutProps) => (
   <Card className="w-full max-w-[470px] px-[18px] py-4 text-left">
     <dl className="flex flex-col gap-3">
-      <Row label="Nameservers" done={Boolean(zone)}>
-        {zone ? (
-          <span className="font-mono text-[12.5px] text-foreground">{zone.nameservers[0]}</span>
+      <Row label="Nameservers" done={Boolean(delegation)}>
+        {delegation ? (
+          <span className="font-mono text-[12.5px] text-foreground">
+            {delegation.nameservers[0]}
+          </span>
         ) : (
           <Pending>asking the registry</Pending>
         )}
       </Row>
 
-      <Row label="Provider" done={Boolean(zone)}>
-        {zone ? (
+      <Row label="Provider" done={Boolean(delegation)}>
+        {delegation ? (
           <span className="flex items-center gap-2">
             <span className="flex size-5 shrink-0 items-center justify-center rounded-[5px] border border-border bg-card">
-              <ProviderGlyph provider={zone.provider} className="size-[11px]" />
+              <ProviderGlyph provider={delegation.provider} className="size-[11px]" />
             </span>
-            <span className="text-[13px] text-foreground">{providerName(zone.provider)}</span>
+            <span className="text-[13px] text-foreground">{providerName(delegation.provider)}</span>
           </span>
         ) : (
           <Pending>matching the nameservers</Pending>
         )}
       </Row>
 
-      <Row label="Publishing speed" done={Boolean(zone)}>
-        {zone ? (
+      <Row label="Publishing speed" done={Boolean(publishing)}>
+        {publishing ? (
           <span className="text-[13px] text-foreground">
-            {zone.publishingMinutes != null
-              ? `about ${zone.publishingMinutes} minutes`
+            {publishing.publishingMinutes != null
+              ? `about ${publishing.publishingMinutes} minutes`
               : "could not read the SOA"}
           </span>
         ) : (
@@ -74,5 +78,11 @@ export const ZoneReadout = ({ zone }: ZoneReadoutProps) => (
         )}
       </Row>
     </dl>
+
+    {isSlow ? (
+      <p className="mt-4 border-border border-t pt-3 text-[12.5px] text-muted-foreground">
+        This zone's nameservers are slow to answer. We are still reading — it can take a minute.
+      </p>
+    ) : null}
   </Card>
 )
