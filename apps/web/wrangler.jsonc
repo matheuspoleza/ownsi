@@ -8,8 +8,13 @@
     "binding": "ASSETS",
     "not_found_handling": "single-page-application"
   },
+  "ratelimits": [
+    { "name": "RL_ZONES", "namespace_id": "1", "simple": { "limit": 12, "period": 60 } },
+    { "name": "RL_PROOF", "namespace_id": "2", "simple": { "limit": 30, "period": 60 } }
+  ],
   "vars": {
-    // Cloud Run origin; /api/* and /p/* are proxied here (PRD §3.1)
-    "API_ORIGIN": "https://ownsi-api-xxxxx.a.run.app"
+    // The Railway service. /api/* and /p/* are proxied here so the browser only ever
+    // talks to one origin and the session cookie stays first-party (PRD §3.7).
+    "API_ORIGIN": "https://ownsi-api-production.up.railway.app"
   }
 }
