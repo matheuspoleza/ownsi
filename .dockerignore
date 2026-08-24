@@ -1,0 +1,13 @@
+node_modules
+**/node_modules
+dist
+**/dist
+.turbo
+**/.turbo
+**/generated
+.git
+.env*
+**/*.test.ts
+apps/web/.wrangler
+docs
+prototype

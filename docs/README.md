@@ -1,12 +1,17 @@
 ---
 phase: prd
-updated: 2026-08-21
+updated: 2026-08-24
 ---
 
 # Docs
 
 Documentation is organised as `docs/{feature}/`. Each feature folder holds its own PRD and research;
 nothing in here assumes you were part of an earlier conversation.
+
+| File | What it is |
+|---|---|
+| [`backend-architecture.md`](backend-architecture.md) | How `apps/api` is put together, and why — layers, tagged unions, dependencies without a container, Elysia |
+| [`frontend-architecture.md`](frontend-architecture.md) | How `apps/web` is put together, and why — feature folders, file naming, hooks, why there is no `.css.ts` |
 
 | Folder | What is in it |
 |---|---|
@@ -30,3 +35,5 @@ nothing in here assumes you were part of an earlier conversation.
   architecture, infrastructure.
 - **Designing a screen?** `domain-ownership/references/README.md`, Section 1, gets you to the right
   screenshots in 30 seconds.
+- **Writing code?** `backend-architecture.md` or `frontend-architecture.md` for the reasoning;
+  `CLAUDE.md` at the repo root for the rules themselves.
