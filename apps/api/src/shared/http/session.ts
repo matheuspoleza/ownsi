@@ -13,6 +13,8 @@ export type SessionCheck =
 
 export type CheckSession = (headers: Headers) => Promise<SessionCheck>
 
+export type SessionPlugin = ReturnType<typeof sessionPlugin>
+
 export function sessionPlugin(checkSession: CheckSession) {
   return new Elysia({ name: "shared.session" }).macro({
     session: {

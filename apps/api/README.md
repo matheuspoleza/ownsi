@@ -22,12 +22,25 @@ src/
     api/               route factories and wire schemas
     infra/             adapters: DoH, UDP/53, Postgres, recorded fakes
 
+  claims/            a domain on an account: the token, the state, the lifecycle
+    claims.config.ts   the config this context reads
+    claims.module.ts   the object graph — use cases, no transport
+    claims.app.ts      the Elysia plugin
+    domain/            Claim, the challenge record, the lifecycle transitions
+    application/       use cases and queries
+    api/               route factories and wire schemas
+    infra/             adapters: the in-memory store, the demo catalogue, identifiers
+
   shared/            what more than one context needs
     http/              error shape, the health route, the session macro
     auth.ts            the configured better-auth instance; identity is cross-cutting
     mailer.ts          SendMagicLink, over Resend or stdout
     clock.ts           injected so tests state the time instead of waiting for it
     result.ts          Result, and the exhaustiveness guard for tagged unions
+    domain-name.ts     parse, normalise, punycode and the public suffix list
+    diagnosis.ts       the 12 codes, and the cause and fix each one reads as
+    claim-status.ts    the status a claim shows, and the three-valued check outcome
+    demo.ts            one domain per screen: the fake's seed, the docs, the video
 
 test/
   architecture.test.ts   layer boundaries; fails the build when one is crossed
@@ -49,7 +62,12 @@ test/
 | Something two contexts need | `shared/` |
 | Anything to do with identity or sessions | `shared/`, never a context |
 
-Contexts still to build: `claims`, `proof`, `verification`. What they owe is in
+`claims` answers the whole contract but keeps its claims in memory and seeds them from
+`shared/demo.ts`: one demo domain per screen, so the front end can be built and polished
+against real Eden types before a row is ever written. `ClaimsDriver` has one member on
+purpose — adding `"postgres"` breaks the build until the adapter exists.
+
+Contexts still to build: `proof`, `verification`. What they owe is in
 [the PRD](../../docs/domain-ownership/prd.md); commit `` has the pre-refactor sketch.
 
 Auth is not among them. Identity is cross-cutting, so better-auth is used directly from
@@ -101,6 +119,12 @@ setting `railway.json` can hold.
 | Route | Auth | Notes |
 | --- | --- | --- |
 | `GET /api/zones/:name` | none | Public zone read. Rate limited at the Cloudflare edge, cached in Postgres under the name that was asked for. |
+| `POST /api/domains` | session | Claims a domain: issues the token and returns the record to create. |
+| `GET /api/domains` | session | The domains on this account. |
+| `GET /api/domains/:id` | session | One claim, with its named diagnosis and wait estimate. |
+| `POST /api/domains/:id/verify` | session | Asks for a check. Resumes a dormant claim; the check itself is the verification context's, still to build. |
+| `POST /api/domains/:id/archive` | session | Leaves the list, keeps the token and the history. |
+| `POST /api/domains/:id/restore` | session | Reactivate and recheck, on the same token. |
 | `ALL /api/auth/*` | none | better-auth, mounted whole: magic link and Google. Not in OpenAPI — the front end reaches it through its own client, not Eden. |
 | `GET /api/health` | none | Pings the database. Hidden from OpenAPI. |
 
