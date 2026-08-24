@@ -8,7 +8,7 @@ updated: 2026-08-19
 
 What this file is: a survey of how 30 real products design domain verification, gathered to inform
 the product described in `docs/domain-ownership/prd.md` (ownership proof via a TXT record, with
-failure diagnosis, waiting, revocation, coexistence and recovery from mistakes).
+failure diagnosis, waiting, coexistence and recovery from mistakes).
 
 Source: the Mobbin library (screens + flows, web platform), consulted on 19 Aug 2026. All images
 live in `docs/domain-ownership/references/screenshots/`, named
@@ -54,7 +54,7 @@ Three details separate the good from the average:
 - **Name the trap before it happens.** Outseta (`05`) writes it into the body of the instruction:
   *"Many DNS providers will automatically add the `.website-nu-sand-53.vercel.app` domain name to
   the end of the Host field"*. That is the double append (`_x.acme.com.acme.com`) from the PRD's
-  probe catalogue ([ADR-0016](../decisions/0016-active-diagnosis-probe-catalogue.md)), warned about
+  probe catalogue, warned about
   **before** it becomes a support ticket. incident.io (`10`) does the equivalent for Cloudflare:
   *"be careful to create these records in 'DNS-only' mode, not proxy mode"*. **Copy this.** In our
   case the warning must be conditional on the detected provider, not a generic paragraph for
@@ -67,21 +67,19 @@ Three details separate the good from the average:
   actor who has no panel at all.
 - **Detect the provider and speak its language.** Resend (`06`) shows `PROVIDER: Cloudflare` as a
   first-class piece of metadata and writes *"Access the DNS settings page of Cloudflare and add all
-  the following DNS records"*. That is exactly
-  [ADR-0015](../decisions/0015-provider-specific-setup-instructions.md), already validated in
-  production by Resend itself.
+  the following DNS records"*. That is exactly what the PRD describes, already validated
+  in production by Resend itself.
 
 Smaller details worth stealing: Google Workspace (`01`) offers an **alternative method** (TXT or
 CNAME) collapsed inside the same card, plus a *"Come back here and confirm once you have updated the
 code"* checkbox that unlocks the Confirm button — the user declares they did it, the product
 verifies. Langdock (`03`) shows a **token expiry** ("expires on 29. Apr"); in our product the token
-is stable and never expires ([ADR-0004](../decisions/0004-txt-record-on-underscore-host.md)), so the
+is stable and never expires, so the
 honest equivalent is to say so: "this value never changes" — which removes the fear of missing a
 window.
 
 **Avoid:** the "Go to Cloudflare" of Google Workspace (`01`) is a deep link into the provider's
-panel; the PRD cuts that explicitly
-([ADR-0015](../decisions/0015-provider-specific-setup-instructions.md)) because the link breaks and
+panel; the PRD cuts that explicitly because the link breaks and
 ages silently.
 
 ### 2.2 Waiting — the worst-designed state in the market
@@ -140,15 +138,12 @@ The two best:
   "Try again". Best of the survey: it shows **where in the chain** it broke and what has not even
   started. Its defect is the "or": it merges "you did not create it" and "it has not propagated yet"
   into one sentence — two causes with opposite fixes (change DNS vs change nothing). That is exactly
-  the separation the PRD makes by querying the authoritative
-  ([ADR-0009](../decisions/0009-recursive-decides-authoritative-explains.md) /
-  [ADR-0012](../decisions/0012-pending-hibernates-never-expires.md)).
+  the separation the PRD makes by querying the authoritative.
 
 **The design rule that falls out of this:** error text lives in the body of the screen, next to the
 instruction; the cause is one sentence, the fix is another, and the two are never glued together
 with "or". What 12 of 12 references fail to do: distinguish "we did not find it" (the user's failure)
-from "we could not look" (ours — the PRD's `unresolvable`,
-[ADR-0006](../decisions/0006-events-checks-and-three-valued-outcome.md)). No product in the sample
+from "we could not look" (ours — the PRD's `unresolvable`). No product in the sample
 has that third state.
 
 ### 2.4 Partial state and per-record granularity
@@ -166,8 +161,7 @@ underneath" of Section 1 of the PRD, and these two screens show the layout alrea
 
 A congratulations modal, an illustration, implied confetti: Polywork (`26`), AutoSend (`25`), Google
 Workspace (`24`). All of them sell the next step (turn on Gmail, send a test email) because in those
-products ownership is a means to something else. **In our product ownership is the end**
-([ADR-0002](../decisions/0002-ownership-unlocks-nothing.md)) — there is no next step to push, so the
+products ownership is a means to something else. **In our product ownership is the end** — there is no next step to push, so the
 celebratory modal has no function.
 
 The two that do serve us:
@@ -179,8 +173,7 @@ The two that do serve us:
 
 A detail to steal from Polywork (`26`) and Savee (`20`): *"We will notify you when everything is
 working"* / *"You will receive an email when this process is complete"* — the explicit promise of an
-email is what authorises the user to close the tab. It pairs with the PRD's notification policy
-(email only on state change, [ADR-0019](../decisions/0019-notification-policy.md)).
+email is what authorises the user to close the tab. It pairs with the PRD's notification policy (email only on state change).
 
 ### 2.6 Domain list
 
@@ -205,8 +198,7 @@ showing the detected provider as metadata. The nearest pattern in spirit is Dub'
 Installation"** tile as the escape hatch. incident.io (`31`) repeats the structure with "Create teams
 manually" at the end of the list.
 
-Lesson for our generic fallback (~6 mapped providers + generic,
-[ADR-0015](../decisions/0015-provider-specific-setup-instructions.md)): the fallback is not an error
+Lesson for our generic fallback (~6 mapped providers + generic): the fallback is not an error
 state, it is **an item in the list, at the same visual weight as the others**. And Dub notes
 "Estimated time: 1 hour" at the top — declaring the cost before you start is honest and cheap.
 
@@ -222,7 +214,7 @@ state, it is **an item in the list, at the same visual weight as the others**. A
   **Absolute date + restoration window + what to do in it.**
 
 The PRD does not delete: it archives, preserves token and history, and hands everything back through
-the autocomplete ([ADR-0018](../decisions/0018-archive-and-reclaim.md)). That is gentler than any
+the autocomplete. That is gentler than any
 reference — so the friction should be proportional: `33`/`32` is the model for "delete permanently",
 not for "remove".
 
@@ -231,9 +223,7 @@ not for "remove".
 One direct find: **Vercel (`15`), "Claim Domain Ownership"** — *"This domain is registered with
 another Vercel account. Verify DNS ownership to claim it."* It acknowledges that another account
 already has the domain and resolves it at the same root of trust (prove it in DNS), with no human
-arbitration. Identical to the PRD's thesis
-([ADR-0007](../decisions/0007-coexistence-of-multiple-owners.md) /
-[ADR-0008](../decisions/0008-contest-by-eviction-instructions.md)). Useful detail: the amber note
+arbitration. Identical to the PRD's thesis. Useful detail: the amber note
 says you **may remove the record after verifying** — it gives the end of the story alongside the
 beginning.
 
@@ -243,14 +233,16 @@ Two adjacent patterns, since nobody designs "that wasn't me" for domains:
   exits labelled by their consequence** ("Run without RLS" / "Run and enable RLS"), not "OK/Cancel".
   That is the shape of our contestation dialog.
 - **OKX (`38`)** — before reporting, three numbered steps of **what will happen next** ("Make a report
-  → Answer follow-up questions → Receive investigation updates"). Our equivalent is shorter and
-  stronger because the resolution belongs to the user: "delete this TXT from your zone → we recheck →
-  the other account's proof falls".
+  → Answer follow-up questions → Receive investigation updates"). Our equivalent is shorter, because
+  there is no next step to promise: the product states what was observed and says the DNS zone is
+  where the problem lives.
 
-### 2.10 The grace window
+### 2.10 The grace window — a path not taken
 
-- **Cloaked (`39`)** — absolute date and explicit reversibility (see 2.8). It is the model for the
-  72-hour revocation grace ([ADR-0013](../decisions/0013-revocation-with-reversible-grace.md)):
+The product has no grace window: the proof is point in time and is never revoked. This section is
+kept as reference for the pattern, not as a design to build.
+
+- **Cloaked (`39`)** — absolute date and explicit reversibility (see 2.8):
   *"the record disappeared on 19 Aug 14:20; the proof stays valid until 22 Aug 14:20"*.
 - **ManyChat (`40`)** — after the deadline, a **persistent banner at the top** ("Your subscription has
   expired and your account is now on the Free plan") plus the state reflected in the object itself
@@ -346,5 +338,5 @@ where this product differentiates — and where there is no ready-made pattern t
 
 This document is input to Section 3 of the PRD (`docs/domain-ownership/prd.md`). The screens to
 design, in the order the PRD prioritises them: pending (2.2), diagnosed failure (2.3), per-provider
-instruction (2.1/2.7), coexistence and contestation (2.9), revocation with grace (2.10),
-reactivation through autocomplete (2.8).
+instruction (2.1/2.7), coexistence and the security advisory (2.9), reactivation through
+autocomplete (2.8).

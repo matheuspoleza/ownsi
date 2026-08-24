@@ -14,9 +14,7 @@ owner reacts**.
 The trigger was the screen `15-conflict-vercel-claim-domain-ownership.webp` — *"Claim Domain
 Ownership: This domain is registered with another Vercel account. Verify DNS ownership to claim
 it."* It is the only reference in the first round that treats an ownership conflict as a product flow
-rather than a support ticket, and it is the same thesis as the PRD
-([ADR-0007](../decisions/0007-coexistence-of-multiple-owners.md) /
-[ADR-0008](../decisions/0008-contest-by-eviction-instructions.md)): there is no arbiter; the dispute
+rather than a support ticket, and it is the same thesis as the PRD: there is no arbiter; the dispute
 resolves at the same root of trust as the proof.
 
 Screenshots `41` to `55` in `screenshots/`. `01`–`40` belong to the general research.
@@ -38,7 +36,7 @@ The resource exists, someone already holds it, and you prove that you also contr
   administers it**, unmasked: `Managed by jsmith@content-mobbin.com`. Note the asymmetry with our
   case: here the owner's email appears in full because both already share the domain; in ours,
   accounts on different domains can prove the same domain, which is why
-  [ADR-0017](../decisions/0017-masked-email-disclosure.md) masks the local part (`m•••@acme.com`)
+  the PRD masks the local part (`m•••@acme.com`)
   while keeping the domain visible.
 - **Hex (`47`)** — lists the workspaces the email reaches + *"If you don't see your workspace, try a
   different email"*. It names the most likely mistake (wrong account) instead of leaving the user
@@ -63,7 +61,7 @@ documents.
   other verified representatives of this establishment."* Two strong ideas: (1) the claim is **on the
   record**; (2) the product warns you, at the moment of claiming, that it **will tell the other
   verified representatives**. That is exactly the coexistence notification of
-  [ADR-0017](../decisions/0017-masked-email-disclosure.md) — except declared *beforehand*, to the
+  the PRD — except declared *beforehand*, to the
   person claiming, and not only *afterwards*, to the person who already proved. Worth adopting:
   whoever proves a domain that already has an owner should know, at claim time, that the other side
   will be told.
@@ -76,8 +74,7 @@ documents.
   hand?"* with four options, each explained in one line (permit, EIN, **domain registration**, a
   screenshot of the Instagram/Facebook admin), plus the note *"It's OK if you don't have all of this
   info right now. You can save your progress and complete the form later."* Asking "what do you have
-  on hand?" is a good way to offer alternative methods — but the PRD cuts weak methods
-  ([ADR-0003](../decisions/0003-dns-only-proof-method.md)) and stays on TXT alone. Kept as a
+  on hand?" is a good way to offer alternative methods — but the PRD cuts weak methods and stays on TXT alone. Kept as a
   reference to the path not taken.
 - **Mercury** (seen in search, not archived) — the opposite extreme: passport upload. It shows where
   the friction ladder ends when no technical proof exists.
@@ -87,7 +84,7 @@ documents.
 - **Pinterest (`42`)** — "Choose how you want to claim" with three columns side by side: *Add HTML
   tag*, *Upload HTML file*, *Add TXT record*, each with the artefact already generated and ready to
   copy. Excellent layout; a product our PRD **decided not to be**
-  ([ADR-0003](../decisions/0003-dns-only-proof-method.md) cuts the HTML file and role-address email,
+  (the PRD cuts the HTML file and role-address email,
   because they prove the web server or the MX, not the zone). Kept as the contrast that justifies the
   decision: with no capability unlocked by ownership, there is no reason to accept a weaker proof.
 - **Google Workspace (`45`)** — *"Verify that you own content-mobbin.com"* with two paths: **"Sign in
@@ -103,7 +100,7 @@ Approval and transfer appear a lot in the sample. They are useful for showing th
 - **Approval** — Asana (`52`): *"You've requested access to this project on Jan 6. We'll notify you
   when a project admin approves your request."* The claimant is left **idle, dependent on a human**,
   with nothing to do. Miro (`53`) shows the other side: a queue of requests with ✓/✗ and an expiry
-  ("Expires in 26d"). This is the design [ADR-0007](../decisions/0007-coexistence-of-multiple-owners.md)
+  ("Expires in 26d"). This is the design the PRD
   rejects: approval hands a veto to whoever proved first — an attacker who proved first included. A
   good Asana detail, reusable in any waiting state: *"You're currently signed in as …@gmail.com"*,
   which resolves the most common error without needing support.
@@ -139,18 +136,19 @@ references, and what they do well:
 - When claiming a domain that already has a proved owner:
   *"Another account has already proved ownership of `acme.com`. You can prove it too — both proofs
   coexist. Whoever proved it already will be told that you did, with your email partially masked."*
-  (the "will be told" comes from Tripadvisor `41`; the coexistence from Wix `49`; the masking from
-  [ADR-0017](../decisions/0017-masked-email-disclosure.md))
+  (the "will be told" comes from Tripadvisor `41`; the coexistence from Wix `49`; the masking from the PRD)
 - In the notification to the existing owner:
   *"`m•••@acme.com` proved ownership of `acme.com` on 19 Aug, by TXT record. If this wasn't you or
   someone on your team: [That wasn't me]."*
   (the event-row-plus-inline-action structure comes from Okta `54`)
-- In the "that wasn't me" flow, before any action — a "what will happen" list (Wise `55`):
-  1. *You delete this TXT record from your zone:* `_app-challenge.acme.com` → `<the other token>`
-  2. *We recheck immediately.*
-  3. *Without the record, the other account's proof stops counting.*
-  4. *If you cannot delete that record, someone else controls the DNS for `acme.com` — and that is
-     the urgent problem, not their proof.*
+- In the "that wasn't me" flow, the Wise `55` "what will happen" list becomes a "what this means"
+  list, because the product takes no action — the proof is point in time and is never taken back:
+  1. *On 19 Aug, someone able to write to `acme.com`'s zone published a token there.*
+  2. *That is a statement about that moment. Removing the record now does not undo it.*
+  3. *If it was not you or your team, treat the zone as compromised: audit who has access at your
+     DNS provider, and rotate their credentials.*
+  4. *Ownsi cannot tell you who they are, and cannot decide who the legitimate owner is — both
+     accounts demonstrated real control.*
 
 ---
 
@@ -180,7 +178,7 @@ enumerating what happens after reporting.
 Nothing in scope — three surface adjustments, all inside what is already decided:
 
 1. **Warn at claim time that the other side will be notified** (Tripadvisor `41`). Today
-   [ADR-0017](../decisions/0017-masked-email-disclosure.md) describes the notification to whoever
+   the PRD describes the notification to whoever
    already proved; the counterpart on the claimant's screen is missing. Cheap, and it avoids the
    feeling of being reported behind your back.
 2. **Contestation lives on the event row** (Okta `54`), not on a separate screen.

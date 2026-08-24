@@ -80,8 +80,8 @@ These SVGs wrap a high-resolution raster export, so they render cleanly at and b
 | White | `#FFFFFF` | Background, logo on a dark surface |
 
 The brand is strictly monochrome. Any state colour (success, error, pending) is a product UI
-decision and is not part of the brand palette — if you need one, add it as a product token and record
-it in `docs/domain-ownership/decisions/`.
+decision and is not part of the brand palette — if you need one, add it as a product token in
+`packages/ui`.
 
 ## Typography
 

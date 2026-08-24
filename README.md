@@ -1,14 +1,13 @@
 # ownsi
 
-Domain ownership proof. The spec lives in [`docs/domain-ownership/prd.md`](docs/domain-ownership/prd.md);
-the *why* behind every decision is in [`docs/domain-ownership/decisions.md`](docs/domain-ownership/decisions.md).
+Domain ownership proof. The spec lives in [`docs/domain-ownership/prd.md`](docs/domain-ownership/prd.md).
 
 ## Layout
 
 ```
 apps/
-  api/          Bun + Elysia · functional core, imperative shell (PRD §3.3)
-    src/core/     pure, no I/O — Domain, probes, diagnosis, state machine
+  api/          Bun + Elysia · functional core, imperative shell (PRD §3.6)
+    src/core/     pure, no I/O — DomainClaim, DomainName, Zone, probes, diagnosis, state machine
     src/app/      use cases; ports arrive as parameters
     src/infra/    DoH, authoritative DNS, Prisma, Resend, Inngest, better-auth
     src/http/     Elysia routes — validate, call the use case, map the response
@@ -34,7 +33,7 @@ bun run dev       # API on :3000, front end on :5173
 ```
 
 Open `http://localhost:5173`. Vite proxies `/api` and `/p` to the API, so dev runs on
-a single origin — the same shape the Worker gives us in production (PRD §3.1).
+a single origin — the same shape the Worker gives us in production (PRD §3.7).
 
 | Service | Where | What it is |
 |---|---|---|
