@@ -2,6 +2,7 @@
   "extends": "@ownsi/tsconfig/bun.json",
   "compilerOptions": {
     "baseUrl": ".",
+    "jsx": "react-jsx",
     "paths": { "@/*": ["./src/*"] }
   },
   "include": ["src", "test"],
