@@ -22,7 +22,7 @@
       "outputs": []
     },
     "typecheck": {
-      "dependsOn": ["^build", "^db:generate"],
+      "dependsOn": ["^build", "db:generate", "^db:generate"],
       "outputs": []
     },
     "db:generate": {
