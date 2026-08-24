@@ -1,7 +1,3 @@
-// ownsi schema. The full model lives in PRD §3.5 — this is only what the vertical
-// slice (front → API → database) needs to stand up.
-// Connection URLs live in prisma.config.ts (Prisma 7).
-
 generator client {
   provider = "prisma-client"
   output   = "../generated/prisma"
@@ -26,4 +22,75 @@ model Claim {
   createdAt   DateTime   @default(now())
 }
 
-// TODO(D3): CheckRun · ClaimEvent · ProofLink, and the rest of Claim's fields (§3.5)
+/// `requestedName` is what a caller asked about; `name` is the zone that answered, which
+/// may be a parent of it.
+model Zone {
+  requestedName           String   @id
+  name                    String
+  nameservers             String[]
+  provider                String
+  negativeCacheTtlSeconds Int?
+  serial                  BigInt?
+  observedAt              DateTime
+
+  @@index([name])
+  @@index([observedAt])
+}
+
+model User {
+  id            String    @id
+  name          String
+  email         String    @unique
+  emailVerified Boolean   @default(false)
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  sessions      Session[]
+  accounts      Account[]
+}
+
+model Session {
+  id        String   @id
+  token     String   @unique
+  expiresAt DateTime
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model Account {
+  id                    String    @id
+  issuer                String
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@unique([providerId, accountId])
+  @@index([userId])
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+}

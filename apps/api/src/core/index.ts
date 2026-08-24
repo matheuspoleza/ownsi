@@ -1,3 +1,0 @@
-// Pure core barrel
-
-export {}

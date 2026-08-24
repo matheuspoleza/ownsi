@@ -6,12 +6,7 @@ Domain ownership proof. The spec lives in [`docs/domain-ownership/prd.md`](docs/
 
 ```
 apps/
-  api/          Bun + Elysia · functional core, imperative shell (PRD §3.6)
-    src/core/     pure, no I/O — DomainClaim, DomainName, Zone, probes, diagnosis, state machine
-    src/app/      use cases; ports arrive as parameters
-    src/infra/    DoH, authoritative DNS, Prisma, Resend, Inngest, better-auth
-    src/http/     Elysia routes — validate, call the use case, map the response
-    src/inngest/  durable functions; they call the SAME use case
+  api/          Bun + Elysia · one folder per bounded context — see apps/api/README.md
   web/          Vite + React 19 + TanStack + Tailwind 4
     worker/       Cloudflare Worker: static assets + /api and /p proxy
 packages/
@@ -21,6 +16,10 @@ packages/
   tsconfig/     shared TypeScript configs
 ```
 
+Backend rules live in [`CLAUDE.md`](CLAUDE.md), their reasoning in
+[`docs/backend-architecture.md`](docs/backend-architecture.md), and the map of the API in
+[`apps/api/README.md`](apps/api/README.md).
+
 ## Running locally
 
 Needs [Bun](https://bun.sh) and a running Docker Desktop.
@@ -28,7 +27,7 @@ Needs [Bun](https://bun.sh) and a running Docker Desktop.
 ```sh
 cp .env.example .env
 bun install
-bun run setup     # brings up Postgres + Inngest, migrates and seeds the database
+bun run setup     # brings up Postgres, migrates and seeds the database
 bun run dev       # API on :3000, front end on :5173
 ```
 
@@ -40,7 +39,6 @@ a single origin — the same shape the Worker gives us in production (PRD §3.7)
 | Front end | http://localhost:5173 | Vite dev server |
 | API | http://localhost:3000/api/health | Elysia |
 | API docs | http://localhost:3000/openapi | generated from each route's `response` |
-| Inngest | http://localhost:8288 | Dev Server; discovers the app at `/api/inngest` |
 | Postgres | localhost:5432 | `ownsi` / `ownsi` / `ownsi` |
 
 ## Commands
@@ -61,7 +59,76 @@ packages. The `.env` sits at the root and reaches each app through `--env-file`.
 
 ## What already stands
 
-The vertical slice, and nothing more: the front end lists claims coming from Postgres
-through Eden Treaty (server types, no codegen), `/api/health` pings the database, and the
-*Check* button dispatches an event that Inngest runs in a durable function reading that
-same database. No domain logic yet — the pure core is D2 on the plan.
+**The claim flow, from the logged-out landing page to the magic link.** Five screens off
+`designs.pen` — landing, the work-email suggestion, reading the zone, sign in, check your
+email — on a design system in `packages/ui`: brand tokens lifted from the canvas, shadcn/ui
+primitives, and the meerkat and dot-grid world map as real assets.
+
+Reading the zone is wired to the real endpoint. Sending the magic link is still a
+front-end stand-in in `apps/web/src/api/auth.api.ts`, waiting on the `auth` context —
+better-auth's client with Resend behind it.
+
+`normalizeDomain` in `apps/web/src/lib/domain.utils.ts` is the field's own copy of the entry
+normalisation, so the input can answer before a round trip; the authoritative version —
+with the public-suffix warning — lives in `apps/api/src/dns/domain/domain-name.ts`.
+
+### `GET /api/zones/:name`
+
+The first real endpoint, and the only one with no account behind it.
+
+```sh
+curl -s localhost:3000/api/zones/app.staging.github.com
+```
+
+```json
+{
+  "name": "github.com",
+  "domain": { "ascii": "app.staging.github.com", "normalisations": [], "isPublicSuffix": false },
+  "nameservers": ["dns1.p08.nsone.net", "..."],
+  "provider": "other",
+  "publishingMinutes": 60,
+  "negativeCacheTtlSeconds": 3600,
+  "cached": false
+}
+```
+
+Three things it gets deliberately right:
+
+**A failure to reach DNS is never a statement about the domain.** `SERVFAIL` and a timeout
+answer `502 unresolvable`, not `404`. The type system enforces it rather than a reviewer:
+a lookup is `{ type: "answered", records }` or `{ type: "failed", reason }`, so no caller
+can read records off a lookup that failed.
+
+**A split delegation gets the generic instruction.** `github.com` runs four NS1 and four
+Route 53 nameservers; naming either panel sends half those people to the wrong screen, so
+provider detection needs a strict majority of the whole set or answers `other`.
+
+**A slow zone costs the estimate, not the reading.** The publishing estimate comes from the
+zone's own nameservers over UDP/53, raced in parallel under `SOA_BUDGET_MS`. Past the
+budget `publishingMinutes` is simply absent and everything else still lands.
+
+The Postgres cache is keyed on the name that was asked for, not the zone that answered, so
+a repeat of the same request costs no DNS query at all. That is what stops the endpoint
+being an open resolver; the Cloudflare rate limiting rules in `apps/web/worker` are the
+boundary in front of it.
+
+### How the front end talks to it
+
+`apps/web/src/api` is the only place that knows a server exists. `eden.client.ts` builds an
+Eden Treaty client from the API's exported `App` type:
+
+```ts
+export const api = treaty<App>(window.location.origin).api
+```
+
+That is the whole SDK. No codegen, no generated client to regenerate — the route tree *is*
+the type, so `api.zones({ name }).get()` returns `{ data, error }` where `data` is the 200
+body and `error` is the union of the documented 400, 404 and 502 shapes. Renaming a route or
+changing a response breaks `bun run typecheck` in `apps/web`. The import is type-only, so
+nothing of the server reaches the bundle.
+
+`zone.api.ts` turns that into one promise and keeps the API's own error copy, so the browser
+repeats the distinction the endpoint makes rather than flattening it into "something went
+wrong". `/openapi/json` still serves the document, for anything outside this repo.
+
+Also standing: `/api/health` pings the database.

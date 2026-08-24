@@ -1,1 +1,6 @@
 @import "@ownsi/ui/styles.css";
+
+/* The design system lives in another workspace package, so both trees have to
+   be declared for Tailwind to see the classes they use. */
+@source "./";
+@source "../../../packages/ui/src";

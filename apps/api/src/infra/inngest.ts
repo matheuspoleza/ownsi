@@ -1,3 +1,0 @@
-// Inngest client wiring
-
-export {}
