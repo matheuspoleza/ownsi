@@ -23,7 +23,9 @@ src/
     infra/             adapters: DoH, UDP/53, Postgres, recorded fakes
 
   shared/            what more than one context needs
-    http/              error shape and the health route
+    http/              error shape, the health route, the session macro
+    auth.ts            the configured better-auth instance; identity is cross-cutting
+    mailer.ts          SendMagicLink, over Resend or stdout
     clock.ts           injected so tests state the time instead of waiting for it
     result.ts          Result, and the exhaustiveness guard for tagged unions
 
@@ -45,9 +47,14 @@ test/
 | Wiring a context together | `<context>/<context>.module.ts` |
 | Mounting a context's routes | `<context>/<context>.app.ts` |
 | Something two contexts need | `shared/` |
+| Anything to do with identity or sessions | `shared/`, never a context |
 
-Contexts still to build: `auth`, `claims`, `proof`, `verification`. What they owe is in
+Contexts still to build: `claims`, `proof`, `verification`. What they owe is in
 [the PRD](../../docs/domain-ownership/prd.md); commit `` has the pre-refactor sketch.
+
+Auth is not among them. Identity is cross-cutting, so better-auth is used directly from
+`shared/` and there is no `auth/` folder — the reasoning is in
+[`CLAUDE.md`](../../CLAUDE.md#auth-is-not-a-bounded-context).
 
 A context never imports another context. `domain/` imports nothing that reaches the world.
 `test/architecture.test.ts` enforces both.
@@ -94,4 +101,8 @@ setting `railway.json` can hold.
 | Route | Auth | Notes |
 | --- | --- | --- |
 | `GET /api/zones/:name` | none | Public zone read. Rate limited at the Cloudflare edge, cached in Postgres under the name that was asked for. |
+| `ALL /api/auth/*` | none | better-auth, mounted whole: magic link and Google. Not in OpenAPI — the front end reaches it through its own client, not Eden. |
 | `GET /api/health` | none | Pings the database. Hidden from OpenAPI. |
+
+A route asks for a session with `session: true`, which resolves `user` or answers 401 in the
+shared error shape. It is opt-in precisely so the public zone read stays public.

@@ -54,6 +54,28 @@ and fails the build on a violation.
 
 Bounded contexts never import each other. Anything two of them need lives in `shared/`.
 
+### Auth is not a bounded context
+
+Identity is cross-cutting, not a domain: every other context asks "who is this", and none of
+them owns the answer. So better-auth is used directly, from `shared/`, and there is no `auth/`
+folder:
+
+| file | holds |
+| --- | --- |
+| `shared/auth.ts` | `createAuth` — the configured better-auth instance, and `createCheckSession` |
+| `shared/http/session.ts` | `SessionCheck`, and the Elysia macro a route opts into with `session: true` |
+| `shared/mailer.ts` | `SendMagicLink`, with the Resend and `log` drivers |
+
+Two rules survive that shortcut, and they are the point of it:
+
+- Nothing outside `shared/` imports `better-auth`. Contexts read `SessionCheck`, a tagged
+  union, so no handler can reach a user off a check that came back anonymous.
+- The macro is opt-in per route. `GET /api/zones/:name` is a logged-out visitor's first
+  impression and must stay that way (PRD §3.7).
+
+Wrapping better-auth's own API buys nothing and is not done. The day a second runtime needs
+the instance — Inngest out of process — `shared/auth.ts` moves to a package unchanged.
+
 ### Functional and typed first
 
 Data is plain `readonly` types, never classes. Behaviour is pure functions that take the
@@ -184,7 +206,7 @@ cd apps/web && bun test
 cd packages/db && bun run db:migrate
 ```
 
-The contexts still to build are `auth`, `claims`, `proof` and `verification`. What they
+The contexts still to build are `claims`, `proof` and `verification`. What they
 owe is in the PRD, not in the codebase — the pre-refactor slice that sketched them, including
 the working Inngest wiring, is at commit ``. Read it for reference, never as a template:
 it predates this architecture and its folder layout no longer exists.

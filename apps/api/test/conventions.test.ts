@@ -68,6 +68,14 @@ const CONFIG: AppConfig = {
   port: 0,
   appUrl: "http://localhost:5173",
   databaseUrl: "postgresql://unused",
+  auth: {
+    secret: "conventions-test-secret",
+    baseUrl: "http://localhost:5173",
+    basePath: "/api/auth",
+    magicLinkTtlSeconds: 600,
+    google: null,
+  },
+  mailer: { driver: "log", apiKey: "", from: "ownsi <no-reply@ownsi.dev>" },
   dns: {
     driver: "fake",
     recursiveResolvers: [],
