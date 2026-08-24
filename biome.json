@@ -55,5 +55,29 @@
     "parser": {
       "tailwindDirectives": true
     }
-  }
+  },
+  "overrides": [
+    {
+      "includes": [
+        "apps/api/**"
+      ],
+      "linter": {
+        "rules": {
+          "style": {
+            "noNonNullAssertion": "error",
+            "useConst": "error"
+          },
+          "suspicious": {
+            "noExplicitAny": "error"
+          },
+          "complexity": {
+            "noExcessiveCognitiveComplexity": "error"
+          },
+          "performance": {
+            "noBarrelFile": "error"
+          }
+        }
+      }
+    }
+  ]
 }

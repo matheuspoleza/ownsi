@@ -1,4 +1,4 @@
-# Single container for Cloud Run. Build from the MONOREPO ROOT:
+# Build from the MONOREPO ROOT:
 #   docker build -f apps/api/Dockerfile .
 FROM oven/bun:1.4 AS base
 WORKDIR /app
@@ -18,5 +18,6 @@ RUN cd packages/db && bunx prisma generate
 FROM base AS runtime
 ENV NODE_ENV=production
 COPY --from=build /app /app
-EXPOSE 8080
+# Railway injects PORT; 3000 is only the local default.
+EXPOSE 3000
 CMD ["bun", "apps/api/src/index.ts"]

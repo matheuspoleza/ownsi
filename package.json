@@ -27,6 +27,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.0",
+    "agentation-mcp": "^1.2.0",
     "turbo": "^2.5.0",
     "typescript": "^5.9.0"
   },
