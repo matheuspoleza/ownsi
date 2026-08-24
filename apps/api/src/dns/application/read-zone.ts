@@ -1,6 +1,6 @@
 import type { Clock } from "../../shared/clock.ts"
+import { type DomainName, type DomainNameError, parseDomainName } from "../../shared/domain-name.ts"
 import type { FindDelegation } from "../domain/delegation.ts"
-import { type DomainName, type DomainNameError, parseDomainName } from "../domain/domain-name.ts"
 import type { ZoneRepository } from "../domain/ports.ts"
 import type { PublishingEstimate } from "../domain/publishing.ts"
 import type { ReadSoa } from "../domain/soa-lookup.ts"

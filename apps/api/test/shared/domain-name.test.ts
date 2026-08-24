@@ -4,7 +4,7 @@ import {
   type DomainName,
   parseDomainName,
   zoneCandidates,
-} from "../../src/dns/domain/domain-name.ts"
+} from "../../src/shared/domain-name.ts"
 
 function parse(raw: string): DomainName {
   const result = parseDomainName(raw)
