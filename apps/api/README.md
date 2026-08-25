@@ -13,20 +13,20 @@ src/
   app.ts             mounts every context onto one server; the only place that does
   config.ts          environment in, typed config out
 
-  dns/               reading a zone: nameservers, provider, publishing estimate
-    dns.config.ts      the config this context reads
-    dns.module.ts      the object graph — use cases, no transport
-    dns.app.ts         the Elysia plugin
+  zones/             reading a zone: nameservers, provider, publishing estimate
+    zones.config.ts    the config this context reads
+    zones.module.ts    the object graph — use cases, no transport
+    zones.app.ts       the Elysia plugin
     domain/            types, pure functions, port definitions
     application/       use cases and queries
     api/               route factories and wire schemas
     infra/             adapters: DoH, UDP/53, Postgres, recorded fakes
 
-  claims/            a domain on an account: the token, the state, the lifecycle
-    claims.config.ts   the config this context reads
-    claims.module.ts   the object graph — use cases, no transport
-    claims.app.ts      the Elysia plugin
-    domain/            Claim, the challenge record, the lifecycle transitions
+  domains/           a domain on an account: the token, the state, the lifecycle
+    domains.config.ts  the config this context reads
+    domains.module.ts  the object graph — use cases, no transport
+    domains.app.ts     the Elysia plugin
+    domain/            Domain, Claim, and the one-way lifecycle between them
     application/       use cases and queries
     api/               route factories and wire schemas
     infra/             adapters: the in-memory store, the demo catalogue, identifiers
@@ -38,8 +38,8 @@ src/
     clock.ts           injected so tests state the time instead of waiting for it
     result.ts          Result, and the exhaustiveness guard for tagged unions
     domain-name.ts     parse, normalise, punycode and the public suffix list
-    diagnosis.ts       the 12 codes, and the cause and fix each one reads as
-    claim-status.ts    the status a claim shows, and the three-valued check outcome
+    diagnosis.ts       the 13 codes, and the cause and fix each one reads as
+    claim-lifecycle.ts the four states, the status derived from them, the check outcome
     demo.ts            one domain per screen: the fake's seed, the docs, the video
 
 scripts/
@@ -49,7 +49,7 @@ test/
   architecture.test.ts   layer boundaries; fails the build when one is crossed
   conventions.test.ts    comments, classes, throwing, response schemas
   docs.test.ts           the emitted documentation still matches the code
-  dns/                   the context's own tests
+  zones/, domains/       each context's own tests
 ```
 
 ## Where does it go
@@ -66,9 +66,9 @@ test/
 | Something two contexts need | `shared/` |
 | Anything to do with identity or sessions | `shared/`, never a context |
 
-`claims` answers the whole contract but keeps its claims in memory and seeds them from
+`domains` answers the whole contract but keeps its records in memory and seeds them from
 `shared/demo.ts`: one demo domain per screen, so the front end can be built and polished
-against real Eden types before a row is ever written. `ClaimsDriver` has one member on
+against real Eden types before a row is ever written. `DomainsDriver` has one member on
 purpose — adding `"postgres"` breaks the build until the adapter exists.
 
 Contexts still to build: `proof`, `verification`. What they owe is in
@@ -135,11 +135,11 @@ setting `railway.json` can hold.
 | --- | --- | --- |
 | `GET /api/zones/:name` | none | Public zone read. Rate limited at the Cloudflare edge, cached in Postgres under the name that was asked for. |
 | `POST /api/domains` | session | Claims a domain: issues the token and returns the record to create. |
-| `GET /api/domains` | session | The domains on this account. |
-| `GET /api/domains/:id` | session | One claim, with its named diagnosis and wait estimate. |
-| `POST /api/domains/:id/verify` | session | Asks for a check. Resumes a dormant claim; the check itself is the verification context's, still to build. |
-| `POST /api/domains/:id/archive` | session | Leaves the list, keeps the token and the history. |
-| `POST /api/domains/:id/restore` | session | Reactivate and recheck, on the same token. |
+| `GET /api/domains` | session | The domains on this account, archived ones left out. |
+| `GET /api/domains/:id` | session | The open claim, every claim before it, and the named diagnosis. |
+| `POST /api/domains/:id/verify` | session | Asks for a check on the open claim; the check itself is the verification context's, still to build. 409 once the claim has ended. |
+| `POST /api/domains/:id/cancel` | session | Ends the open claim. The token stops being accepted. |
+| `POST /api/domains/:id/archive` | session | Leaves the list and ends any open claim. Retracts no proof. |
 | `ALL /api/auth/*` | none | better-auth, mounted whole: magic link and Google. Not in OpenAPI — the front end reaches it through its own client, not Eden. |
 | `GET /api/health` | none | Pings the database. Hidden from OpenAPI. |
 

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { DEMO_CLAIMS, DEMO_TOKEN, type DemoClaim } from "../../src/shared/demo.ts"
+import { DEMO_DOMAINS, DEMO_TOKEN } from "../../src/shared/demo.ts"
 import {
   type Challenge,
   DIAGNOSIS_CODES,
@@ -8,15 +8,22 @@ import {
   formatDuration,
 } from "../../src/shared/diagnosis.ts"
 
-type Diagnosed = DemoClaim & { readonly diagnosis: Diagnosis }
+type Diagnosed = {
+  readonly domain: string
+  readonly diagnosis: Diagnosis
+}
 
-const diagnosed: readonly Diagnosed[] = DEMO_CLAIMS.filter(
-  (claim): claim is Diagnosed => claim.diagnosis !== null,
+const diagnosed: readonly Diagnosed[] = DEMO_DOMAINS.flatMap((entry) =>
+  [entry.claim, ...entry.history].flatMap((claim) =>
+    claim.check?.outcome === "absent"
+      ? [{ domain: entry.domain, diagnosis: claim.check.diagnosis }]
+      : [],
+  ),
 )
 
 const SENTENCE_CEILING = 220
 
-const challengeFor = (claim: DemoClaim): Challenge => ({
+const challengeFor = (claim: Diagnosed): Challenge => ({
   domain: claim.domain,
   token: DEMO_TOKEN,
 })
@@ -54,12 +61,17 @@ describe("the diagnostics catalogue", () => {
   })
 
   test("no two codes explain themselves the same way", () => {
-    const causes = diagnosed.map((claim) => explanationOf(claim).cause)
+    const causes = DIAGNOSIS_CODES.map((code) => explanationOf(findByCode(code)).cause)
     expect(new Set(causes).size).toBe(causes.length)
   })
 
   test("the fix carries the token whenever the token is what to write", () => {
-    for (const code of ["foreign_token", "value_formatted", "record_absent"] as const) {
+    for (const code of [
+      "foreign_token",
+      "expired_token",
+      "value_formatted",
+      "record_absent",
+    ] as const) {
       expect(explanationOf(findByCode(code)).fix).toContain(DEMO_TOKEN)
     }
   })

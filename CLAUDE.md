@@ -240,7 +240,7 @@ cd apps/web && bun test
 cd packages/db && bun run db:migrate
 ```
 
-The contexts still to build are `claims`, `proof` and `verification`. What they
+The contexts still to build are `proof` and `verification`. What they
 owe is in the PRD, not in the codebase — the pre-refactor slice that sketched them, including
 the working Inngest wiring, is at commit ``. Read it for reference, never as a template:
 it predates this architecture and its folder layout no longer exists.

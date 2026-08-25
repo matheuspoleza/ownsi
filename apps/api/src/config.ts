@@ -1,7 +1,7 @@
-import type { ClaimsConfig } from "./claims/claims.config.ts"
-import type { DnsConfig } from "./dns/dns.config.ts"
+import type { DomainsConfig } from "./domains/domains.config.ts"
 import type { AuthConfig, GoogleCredentials } from "./shared/auth.ts"
 import type { MailerConfig } from "./shared/mailer.ts"
+import type { ZonesConfig } from "./zones/zones.config.ts"
 
 export type AppConfig = {
   readonly port: number
@@ -9,8 +9,8 @@ export type AppConfig = {
   readonly databaseUrl: string
   readonly auth: AuthConfig
   readonly mailer: MailerConfig
-  readonly dns: DnsConfig
-  readonly claims: ClaimsConfig
+  readonly zones: ZonesConfig
+  readonly domains: DomainsConfig
 }
 
 type Environment = Record<string, string | undefined>
@@ -35,14 +35,14 @@ export function loadConfig(source: Environment = process.env): AppConfig {
       google: googleCredentials(source),
     },
     mailer: mailerConfig(source),
-    dns: {
+    zones: {
       driver: source.DNS_DRIVER === "fake" ? "fake" : "doh",
       recursiveResolvers: ["cloudflare", "google", "quad9"],
       resolverTimeoutMs: integer(source.DNS_RESOLVER_TIMEOUT_MS, 4_000),
       zoneCacheTtlSeconds: integer(source.ZONE_CACHE_TTL_SECONDS, 300),
       soaBudgetMs: integer(source.SOA_BUDGET_MS, 2_500),
     },
-    claims: { driver: "demo" },
+    domains: { driver: "demo" },
   }
 }
 

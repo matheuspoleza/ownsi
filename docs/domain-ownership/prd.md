@@ -306,8 +306,9 @@ domain_archives        user_id, domain_id, archived_at
 claims                 id, user_id FK, domain_id FK, token,
                        state, expires_at, next_check_at, consecutive_failures,
                        last_diagnosis_code,
-                       first_verified_at, last_confirmed_at,
                        ended_at, created_at
+                                                     -- a proved claim's ended_at
+                                                     -- is the date of its proof
                        UNIQUE (user_id, domain_id) WHERE state = 'pending'
                        INDEX (domain_id)             -- coexistence
                        INDEX (state, next_check_at)  -- the queue
@@ -331,7 +332,7 @@ says is derived, so a new rule never becomes a migration:
 | `pending` | `pending` |
 | `pending`, authoritative has the record | `propagating` |
 | `pending`, diagnosis is a user error | `needs_attention` |
-| `proved` | `proved` (with `firstVerifiedAt`, `lastConfirmedAt`) |
+| `proved` | `proved`, dated by `ended_at` |
 | `expired` | `expired` |
 | `canceled` | `canceled` |
 
@@ -350,9 +351,11 @@ no DNS query.
 3. `outcome` has three values, and `unresolvable` changes no state and sends no email.
 4. Archiving cancels an open claim and stops coexistence notifications, and retracts no proof: a
    granted proof keeps its dates and its links resolve.
-5. `first_verified_at` and `last_confirmed_at` are written once, when the proof is granted, and
-   never again. A newer proof is a newer claim.
-6. No path sets `first_verified_at` without a `verification_attempts` row in the same transaction.
+5. A proof is dated once, by the `ended_at` of the claim that earned it, and that date never
+   moves. A newer proof is a newer claim, so a domain's *first verified* is the earliest proof
+   across its claims and its *last confirmed* is the most recent — both derived, neither stored.
+   Nothing re-dates a claim, because nothing re-checks one.
+6. No path ends a claim as `proved` without a `verification_attempts` row in the same transaction.
 7. At most one email per claim per event type every 24h.
 
 **Semantic events:** `DomainClaimed` · `RecordFound` · `ProofGranted` · `CheckFailed(code)` ·

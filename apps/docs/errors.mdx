@@ -54,17 +54,25 @@ Retrying the same request does not help. Sign in and retry.
 
 ## already_claimed
 
-**409.** The domain is already on your list, with the token it was issued. This is not a conflict
-with another account — [that is coexistence](/concepts/claim-lifecycle#coexistence) and it is not an
-error.
+**409.** The domain already has a claim open on your account, with the token it was issued. This is
+not a conflict with another account — [that is coexistence](/concepts/claim-lifecycle#coexistence)
+and it is not an error.
 
 Use the claim you already have. The token on it is the one that will verify.
 
-## claim_not_found
+## claim_ended
 
-**404.** No claim with that id belongs to your account. The same code is returned whether the claim
-does not exist or belongs to someone else, deliberately — an id lookup should not confirm that
-someone else's claim exists.
+**409.** The claim has ended — proved, expired or canceled — and an ended claim takes no action.
+Its token is no longer accepted, so there is nothing to re-check.
+
+Claim the domain again. That opens a new claim with a new token, and the ended one stays as
+history.
+
+## domain_not_found
+
+**404.** No domain with that id belongs to your account. The same code is returned whether the
+domain does not exist or belongs to someone else, deliberately — an id lookup should not confirm
+that someone else's domain exists.
 
 ## rate_limited
 
@@ -83,6 +91,7 @@ Enforced per IP on the public surfaces — reading a zone, and public proof page
 | `no_delegation` | 404 | No — the domain is not delegated. |
 | `unresolvable` | 502 | Yes, with backoff. |
 | `unauthenticated` | 401 | No — sign in first. |
-| `already_claimed` | 409 | No — use the existing claim. |
-| `claim_not_found` | 404 | No. |
+| `already_claimed` | 409 | No — use the open claim. |
+| `claim_ended` | 409 | No — claim the domain again. |
+| `domain_not_found` | 404 | No. |
 | `rate_limited` | 429 | Yes, after `Retry-After`. |
