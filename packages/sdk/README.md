@@ -34,7 +34,7 @@ Every read answers with a handle: the fields the API sent, plus the acts reachab
 | | |
 | --- | --- |
 | `ownsi.domains` | `findOrCreate(name)` · `get(id)` · `list()` |
-| a `Domain` | `.claim()` · `.claims()` · `.archive()` · `.delete()` · `.refresh()` |
+| a `Domain` | `.claim()` · `.claims()` · `.proof()` · `.archive()` · `.delete()` · `.refresh()` |
 | `ownsi.claims` | `create(domainId)` · `get(id)` · `list({ domainId? })` |
 | a `Claim` | `.record` · `.verification()` · `.recheck()` · `.cancel()` · `.refresh()` |
 | `ownsi.verifications` | `get(id)` |
@@ -46,6 +46,24 @@ Every read answers with a handle: the fields the API sent, plus the acts reachab
 `claim.record` is singular because there is one record to write, and it is `null` once the claim
 has ended — there is nothing left to put in a panel. It comes from the claim alone, so the
 *write this TXT record* screen renders with no verification loaded.
+
+## The two dates a proof states
+
+```ts
+await domain.proof()   // { firstVerifiedAt, lastConfirmedAt } — or null
+```
+
+Derived across the domain's claims and never stored, so neither date can disagree with the claims
+it is read from. That is the PRD's own rule, and after the split there is no single response that
+could carry them: they cross two resources, which is precisely what this package is for.
+`proofOf(claims)` is the same function if you already hold the list.
+
+## Dates are strings
+
+Eden turns anything that looks like an ISO date into a `Date`. The routes declare `t.String()`, so
+that would make every timestamp on this API a `Date` wearing a `string` type — and
+`claim.expiresAt.slice(0, 10)` would compile and throw. `parseDate: false` is set on the client so
+what comes back is what the type promises.
 
 ## Errors
 

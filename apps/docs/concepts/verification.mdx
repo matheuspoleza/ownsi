@@ -96,6 +96,6 @@ for any pending claim.
 
 ## Reconfirmation
 
-Proved claims are not swept on a schedule, but an attempt that runs against one can only move
-`lastConfirmedAt` forward — it can never un-prove a domain by accident. `firstVerifiedAt` is written
-once and never again.
+Proved claims are not swept on a schedule. A later claim on the same name proves on its own date,
+so `lastConfirmedAt` only ever moves forward — nothing can un-prove a domain by accident, and
+`firstVerifiedAt` is the earliest claim's date whatever happens after it.

@@ -15,10 +15,17 @@ export type Treaty = ReturnType<typeof treaty<App>>["api"]
 
 const NO_ANSWER = "The API answered with nothing where a body was expected."
 
+/**
+ * `parseDate: false` matters. Eden turns anything that looks like an ISO date into a `Date`,
+ * which would make every timestamp on this API a `Date` wearing a `string` type — and
+ * `expiresAt.slice(0, 10)` would compile and throw. The routes declare `t.String()`, so the
+ * client hands back strings.
+ */
 export function createTreaty(config: OwnsiConfig): Treaty {
   return treaty<App>(config.baseUrl, {
     fetcher: config.fetch as typeof fetch | undefined,
     fetch: { credentials: "include" },
+    parseDate: false,
   }).api
 }
 

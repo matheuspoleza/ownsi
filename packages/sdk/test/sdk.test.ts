@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { createOwnsi, isOwnsiError, type OwnsiError } from "../src/index.ts"
+import { createOwnsi, isOwnsiError, type OwnsiError, proofOf } from "../src/index.ts"
 import { CLAIM, DOMAIN, errorBody, fakeApi, RECORD, VERIFICATION } from "./fake-api.ts"
 
 function client() {
@@ -113,6 +113,41 @@ describe("one sentence, three calls underneath", () => {
     await (await ownsi.domains.get("dom_1")).delete()
 
     expect(api.calls.at(-1)).toEqual({ method: "DELETE", path: "/api/domains/dom_1", body: null })
+  })
+})
+
+describe("the two dates a proof page states", () => {
+  test("are derived across the domain's claims, earliest and most recent", async () => {
+    const { ownsi, api } = client()
+    api.answer("GET /api/domains/dom_1", { body: DOMAIN })
+    api.answer("GET /api/claims", {
+      body: {
+        claims: [
+          { ...CLAIM, id: "clm_3", state: "proved", endedAt: "2026-08-24T12:00:00.000Z" },
+          { ...CLAIM, id: "clm_2", state: "expired", endedAt: "2026-05-01T12:00:00.000Z" },
+          { ...CLAIM, id: "clm_1", state: "proved", endedAt: "2026-01-09T12:00:00.000Z" },
+        ],
+      },
+    })
+
+    expect(await (await ownsi.domains.get("dom_1")).proof()).toEqual({
+      firstVerifiedAt: "2026-01-09T12:00:00.000Z",
+      lastConfirmedAt: "2026-08-24T12:00:00.000Z",
+    })
+  })
+
+  test("a domain nothing has proved has no proof, not a pair of nulls", async () => {
+    const { ownsi, api } = client()
+    api.answer("GET /api/domains/dom_1", { body: DOMAIN })
+    api.answer("GET /api/claims", { body: { claims: [CLAIM] } })
+
+    expect(await (await ownsi.domains.get("dom_1")).proof()).toBeNull()
+  })
+
+  test("only a proved claim carries a date a proof can be dated by", () => {
+    expect(
+      proofOf([{ ...CLAIM, state: "canceled", endedAt: "2026-08-24T12:00:00.000Z" }]),
+    ).toBeNull()
   })
 })
 

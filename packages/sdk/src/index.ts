@@ -15,7 +15,8 @@ export type {
   Coexistence,
 } from "./claims.ts"
 export type { FetchLike, OwnsiConfig } from "./client.ts"
-export type { Domain, DomainData, Domains } from "./domains.ts"
+export type { Domain, DomainData, Domains, Proof } from "./domains.ts"
+export { proofOf } from "./domains.ts"
 export type { OwnsiError, OwnsiErrorCode } from "./error.ts"
 export { isOwnsiError, OWNSI_ERROR_CODES, RETRYABLE } from "./error.ts"
 export type {
