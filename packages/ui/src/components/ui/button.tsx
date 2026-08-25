@@ -1,5 +1,6 @@
 import { Slot } from "@radix-ui/react-slot"
 import { cva, type VariantProps } from "class-variance-authority"
+import { LoaderCircle } from "lucide-react"
 import type * as React from "react"
 import { cn } from "../../lib/utils.ts"
 
@@ -33,20 +34,48 @@ const buttonVariants = cva(
   },
 )
 
+type ButtonProps = React.ComponentProps<"button"> &
+  VariantProps<typeof buttonVariants> & {
+    asChild?: boolean
+    /** The button's own glyph. Swapped for the spinner while `pending`. */
+    icon?: React.ReactNode
+    iconPosition?: "leading" | "trailing"
+    /** Waiting on something: the label stays, the glyph spins, the button is disabled. */
+    pending?: boolean
+  }
+
 function Button({
   className,
   variant,
   size,
   asChild = false,
+  icon,
+  iconPosition = "trailing",
+  pending = false,
+  disabled,
+  children,
   ...props
-}: React.ComponentProps<"button"> & VariantProps<typeof buttonVariants> & { asChild?: boolean }) {
+}: ButtonProps) {
   const Comp = asChild ? Slot : "button"
+  const glyph = pending ? <LoaderCircle className="animate-spin" /> : icon
+
   return (
     <Comp
       data-slot="button"
+      disabled={disabled || pending}
       className={cn(buttonVariants({ variant, size }), className)}
       {...props}
-    />
+    >
+      {asChild ? (
+        children
+      ) : (
+        <>
+          {iconPosition === "leading" ? glyph : null}
+          {children}
+          {iconPosition === "trailing" ? glyph : null}
+        </>
+      )}
+    </Comp>
   )
 }
 

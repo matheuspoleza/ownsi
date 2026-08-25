@@ -1,17 +1,19 @@
 import { ArrowRightIcon, Button, Input } from "@ownsi/ui"
-import { CornerDownLeft, LoaderCircle, Plus } from "lucide-react"
+import { CornerDownLeft, Plus } from "lucide-react"
 import { useId, useState } from "react"
-import { ProviderGlyph } from "../../../components/ProviderGlyph.component.tsx"
-import { useAutoFocus } from "../../../hooks/useAutoFocus.ts"
-import { parseClaimInput } from "../../../lib/domain.utils.ts"
+import { useAutoFocus } from "../hooks/useAutoFocus.ts"
+import { parseClaimInput } from "../lib/domain.utils.ts"
+import { ProviderGlyph } from "./ProviderGlyph.component.tsx"
 
 const SUBMIT_BEAT_MS = 1000
 
 export interface DomainFieldProps {
   onSubmit: (domain: string) => void
+  /** Whatever the caller does with the name, while it is still doing it. */
+  pending?: boolean
 }
 
-export const DomainField = ({ onSubmit }: DomainFieldProps) => {
+export const DomainField = ({ onSubmit, pending = false }: DomainFieldProps) => {
   const [value, setValue] = useState("")
   const [dismissed, setDismissed] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -30,7 +32,10 @@ export const DomainField = ({ onSubmit }: DomainFieldProps) => {
         if (!domain || submitting) return
 
         setSubmitting(true)
-        setTimeout(() => onSubmit(domain), SUBMIT_BEAT_MS)
+        setTimeout(() => {
+          setSubmitting(false)
+          onSubmit(domain)
+        }, SUBMIT_BEAT_MS)
       }}
     >
       <div className="relative flex-1">
@@ -47,7 +52,7 @@ export const DomainField = ({ onSubmit }: DomainFieldProps) => {
               setDismissed(true)
             }
           }}
-          placeholder="acme.com"
+          placeholder="yourcompany.com"
           aria-label="Domain or work email"
           aria-describedby={suggesting ? listId : undefined}
           autoComplete="off"
@@ -88,9 +93,13 @@ export const DomainField = ({ onSubmit }: DomainFieldProps) => {
         ) : null}
       </div>
 
-      <Button type="submit" disabled={!parsed.domain || submitting}>
+      <Button
+        type="submit"
+        disabled={!parsed.domain}
+        pending={submitting || pending}
+        icon={<ArrowRightIcon />}
+      >
         Claim
-        {submitting ? <LoaderCircle className="animate-spin" /> : <ArrowRightIcon />}
       </Button>
     </form>
   )

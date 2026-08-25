@@ -1,10 +1,18 @@
 import { createRouter } from "@tanstack/react-router"
 import { claimRoute } from "./pages/Claim/Claim.route.tsx"
+import { domainDetailRoute } from "./pages/DomainDetail/DomainDetail.route.tsx"
+import { domainsRoute } from "./pages/Domains/Domains.route.tsx"
 import { landingRoute } from "./pages/Landing/Landing.route.tsx"
 import { logInRoute } from "./pages/LogIn/LogIn.route.tsx"
 import { rootRoute } from "./Root.route.tsx"
 
-const routeTree = rootRoute.addChildren([landingRoute, claimRoute, logInRoute])
+const routeTree = rootRoute.addChildren([
+  landingRoute,
+  claimRoute,
+  domainsRoute,
+  domainDetailRoute,
+  logInRoute,
+])
 
 export const router = createRouter({ routeTree, defaultPreload: "intent" })
 
