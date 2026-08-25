@@ -425,7 +425,7 @@ Three resources, one per context, and they stay separate because the backend sta
 seams. `POST /api/verifications/:id/runs` **creates an attempt**, which is what it actually does —
 and it hands back a `202` and an attempt id for free the day a run stops being synchronous.
 
-The ergonomics of one call — `domain.claim()` — are recomposed client-side in a `packages/sdk` over
+The ergonomics of one call — `domain.claim()` — are recomposed client-side in `packages/sdk` over
 the Eden client, where they cost the backend nothing. `restore` is gone with the backwards
 transition it served; claiming a name again is `POST /api/claims`, and that is the only way forward
 there has ever needed to be.

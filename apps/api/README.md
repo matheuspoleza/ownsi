@@ -214,11 +214,11 @@ catalogue rendered from `explain()`. Both are committed, because Mintlify deploy
 `test/docs.test.ts` fails when either drifts, so the published reference cannot describe a
 version of this API that no longer exists.
 
-The front end does not read that document. It imports the `App` type from `src/index.ts`
-and hands it to Eden Treaty, which turns the route tree into a typed client with no codegen
-and no generated files to keep in sync — a renamed route or a changed response is a type
-error in `apps/web`, not a runtime surprise. `verbatimModuleSyntax` erases the import, so
-none of this reaches the browser bundle.
+The front end does not read that document. `packages/sdk` imports the `App` type from
+`src/index.ts` and hands it to Eden Treaty, which turns the route tree into a typed client with
+no codegen and no generated files to keep in sync — a renamed route or a changed response is a
+type error in the SDK, and through it in `apps/web`, not a runtime surprise.
+`verbatimModuleSyntax` erases the import, so none of this reaches the browser bundle.
 
 ## Deploying
 
@@ -257,6 +257,6 @@ setting `railway.json` can hold.
 A route asks for a session with `session: true`, which resolves `user` or answers 401 in the
 shared error shape. It is opt-in precisely so the public zone read stays public.
 
-The three resources stay separate on the wire because the backend stays split along its seams. A
-`packages/sdk` recomposing them into `domain.claim()` is the next thing worth building, and it is
-a client-side concern that costs the backend nothing.
+The three resources stay separate on the wire because the backend stays split along its seams.
+[`packages/sdk`](../../packages/sdk/README.md) recomposes them into `domain.claim()` client-side,
+where it costs the backend nothing.

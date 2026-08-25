@@ -10,13 +10,17 @@ This guide builds one that says something true at every moment.
 ## Claim, and show the record
 
 ```ts
-const { data: claim, error } = await api.domains.post({ domain })
-
-if (error?.status === 409) return useExistingClaim()
-if (error) return showError(error.value.error.message)
+try {
+  const domain = await ownsi.domains.findOrCreate(name)
+  return await domain.claim()
+} catch (error) {
+  if (isOwnsiError(error) && error.code === "already_claimed") return useExistingClaim()
+  throw error
+}
 ```
 
-The `record` block is what to render — `host`, `name`, `type` and `value`.
+The `record` on the claim is what to render — `host`, `name`, `type` and `value`. It is `null`
+once the claim has ended, because there is nothing left to write.
 
 ```tsx
 <Field label="Type" value={claim.record.type} />
@@ -31,19 +35,26 @@ The `record` block is what to render — `host`, `name`, `type` and `value`.
   "fully qualified" affordance for the panels that want it.
 </Warning>
 
-## Poll the claim
+## Poll the verification, not the claim
 
-```ts hooks/useClaimState.ts
-export const useClaimState = (id: string) =>
+The claim only moves once, at the end. What changes while someone waits is the process behind it,
+and the claim knows which one that is.
+
+```ts hooks/useVerificationState.ts
+export const useVerificationState = (claimId: string) =>
   useQuery({
-    queryKey: ["claim", id],
-    queryFn: () => readClaim(id),
+    queryKey: ["verification", claimId],
+    queryFn: async () => (await ownsi.claims.get(claimId)).verification(),
     refetchInterval: (query) => nextPoll(query.state.data),
   })
 
-const nextPoll = (claim?: Claim) => {
-  if (!claim || claim.status === "proved" || claim.status === "archived") return false
-  if (claim.waitEstimate) return Math.min(claim.waitEstimate.secondsRemaining, 30) * 1_000
+const RUNNING = new Set(["checking", "propagating", "needs_attention"])
+
+const nextPoll = (verification?: Verification) => {
+  if (!verification || !RUNNING.has(verification.status)) return false
+  if (verification.waitEstimate) {
+    return Math.min(verification.waitEstimate.secondsRemaining, 30) * 1_000
+  }
   return 5_000
 }
 ```
@@ -59,26 +70,26 @@ is something new to hear, instead of every five seconds forever.
 
 ## One message, from two fields
 
-A claim that is not proved always carries exactly one of `diagnosis` or `waitEstimate`, and they
-mean opposite things.
+A verification that has not proved always carries exactly one of `diagnosis` or `waitEstimate`,
+and they mean opposite things.
 
 ```ts
-export const whatNow = (claim: Claim) => {
-  if (claim.status === "proved") return { kind: "done" as const }
+export const whatNow = (verification: Verification) => {
+  if (verification.status === "proved") return { kind: "done" as const }
 
-  if (claim.diagnosis) {
+  if (verification.diagnosis) {
     return {
       kind: "fix" as const,
-      title: claim.diagnosis.cause,
-      action: claim.diagnosis.fix,
-      code: claim.diagnosis.code,
+      title: verification.diagnosis.cause,
+      action: verification.diagnosis.fix,
+      code: verification.diagnosis.code,
     }
   }
 
   return {
     kind: "wait" as const,
-    title: waitTitle(claim.waitEstimate),
-    seconds: claim.waitEstimate?.secondsRemaining ?? null,
+    title: waitTitle(verification.waitEstimate),
+    seconds: verification.waitEstimate?.secondsRemaining ?? null,
   }
 }
 ```
@@ -112,21 +123,21 @@ Not every diagnosis is your reader's fault, and treating them alike is the mista
 
 ## Status drives the frame around it
 
-| `status` | Frame |
+| `verification.status` | Frame |
 |---|---|
-| `pending` | The record, and the first-check countdown. |
+| `checking` | The record, and the first-run countdown. |
 | `propagating` | "Your nameservers have it." Wait, not a fix. |
 | `needs_attention` | The diagnosis, front and centre. |
-| `proved` | The date on `claim.endedAt`, and the domain's `firstVerifiedAt` if it proved before. |
-| `expired` | The window closed. One button to claim again — a new token, one edit in the panel. |
-| `canceled` | History. No action; an ended claim takes none. |
+| `proved` | The date on `claim.endedAt`, and `domain.proof()` if the name proved before. |
+| `exhausted` | The window closed. One button to claim again — a new token, one edit in the panel. |
+| `stopped` | The claim was canceled, or its domain archived. No action. |
 
 `propagating` versus `needs_attention` is the split that earns the product its keep — both are "not
 verified", but only one is your reader's problem.
 
 ## Do not tell people to delete the record
 
-Leaving it in place is the supported state. `lastConfirmedAt` keeps moving because the record keeps
-being found, and [the token survives archiving and
+Leaving it in place is the supported state. A later claim on the same name proves in one run
+because the record is already there, which is what keeps `lastConfirmedAt` moving, and [the token survives archiving and
 reactivation](/concepts/claim-lifecycle#archiving-is-not-deleting) — a domain reactivated a year
 later verifies without anyone opening a DNS panel.

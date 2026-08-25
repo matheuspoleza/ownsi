@@ -4,7 +4,7 @@ The reasoning behind the API rules below is in
 [`docs/backend-architecture.md`](docs/backend-architecture.md). Read it before changing one.
 
 Bun workspaces + Turborepo. `apps/api` (Elysia), `apps/web` (React + Vite on Cloudflare),
-`apps/docs` (Mintlify), `packages/{db,emails,ui,tsconfig}`. The product spec is
+`apps/docs` (Mintlify), `packages/{db,emails,sdk,ui,tsconfig}`. The product spec is
 `docs/domain-ownership/prd.md`.
 
 ## Comments
@@ -255,8 +255,10 @@ Styling is Tailwind utilities on the element, over the tokens in
 gets `cva`, in `packages/ui`. `packages/ui` keeps shadcn's kebab-case layout so the CLI
 keeps working — the naming rules above are for application code.
 
-`api/` is the only place that knows a server exists. The Eden client is typed off the API's
-exported `App` type, so a changed route is a type error here.
+`api/` is the only place that knows a server exists, and what it holds is one line:
+`createOwnsi({ baseUrl: window.location.origin })` from `@ownsi/sdk`. The SDK is typed off the
+API's exported `App` type, so a changed route is a type error here rather than a runtime
+surprise. A `*.api.ts` binds the SDK to what a page needs; a page never builds a client.
 
 The rules above are read, not asserted — the `web-conventions` skill is the pass to run over
 a diff. Biome and `tsc` still fail the build on `any`, `!`, unused code, barrel files and a
@@ -317,6 +319,8 @@ and they need no DOM — adding the first one is what puts `test` back in its `p
 | Web naming, colocation, arrow components, named props, no comments | the rules above, and the `web-conventions` skill |
 | No `any`, no `!`, unused code, no barrel files, hook dependencies | Biome, on `apps/web/**` |
 | The published docs match the code they document | `apps/api/test/docs.test.ts` |
+| Every route written in prose is one the API still serves | `apps/docs/test/routes.test.ts` |
+| Every route the API publishes is reached by the SDK, or waived | `packages/sdk/test/coverage.test.ts` |
 | Every docs page is navigated, has frontmatter and links somewhere real | `apps/docs/test/conventions.test.ts` |
 | All of the above, on every edit | `.claude/hooks/check-api.sh`, `.claude/hooks/check-web.sh` |
 

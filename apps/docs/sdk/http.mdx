@@ -60,7 +60,7 @@ The whole API is JSON over HTTP with a cookie. There is nothing to install.
 curl -N https://ownsi.dev/api/zones/acme.com
 ```
 
-```bash Claim a domain
+```bash Add the name
 curl -X POST https://ownsi.dev/api/domains \
   -H "content-type: application/json" \
   -H "Idempotency-Key: $(uuidgen)" \
@@ -68,12 +68,19 @@ curl -X POST https://ownsi.dev/api/domains \
   -d '{"domain":"acme.com"}'
 ```
 
-```bash Read a claim
-curl https://ownsi.dev/api/domains/$CLAIM_ID -b "$SESSION_COOKIE"
+```bash Claim it
+curl -X POST https://ownsi.dev/api/claims \
+  -H "content-type: application/json" \
+  -b "$SESSION_COOKIE" \
+  -d "{\"domainId\":\"$DOMAIN_ID\"}"
 ```
 
-```bash Force a check
-curl -X POST https://ownsi.dev/api/domains/$CLAIM_ID/verify -b "$SESSION_COOKIE"
+```bash Read the claim
+curl https://ownsi.dev/api/claims/$CLAIM_ID -b "$SESSION_COOKIE"
+```
+
+```bash Force a run
+curl -X POST https://ownsi.dev/api/verifications/$VERIFICATION_ID/runs -b "$SESSION_COOKIE"
 ```
 </CodeGroup>
 
@@ -102,7 +109,7 @@ curl -X POST https://ownsi.dev/api/domains/$CLAIM_ID/verify -b "$SESSION_COOKIE"
     `unresolvable` (502) and `rate_limited` (429) are worth a backoff. Nothing else is — see
     [the table](/errors#which-ones-are-worth-retrying).
 
-    On 429, honour `Retry-After`. Polling `verify` in a loop does not make DNS answer faster; the
-    claim's own `waitEstimate.secondsRemaining` is the honest interval.
+    On 429, honour `Retry-After`. Forcing runs in a loop does not make DNS answer faster; the
+    verification's own `waitEstimate.secondsRemaining` is the honest interval.
   </Accordion>
 </AccordionGroup>

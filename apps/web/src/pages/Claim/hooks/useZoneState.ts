@@ -1,10 +1,10 @@
 import { experimental_streamedQuery as streamedQuery, useQuery } from "@tanstack/react-query"
 import { useEffect, useState } from "react"
 import {
-  RETRYABLE_ZONE_ERRORS,
+  type OwnsiError,
+  RETRYABLE,
   readZone,
   type ZoneDelegation,
-  type ZoneFailure,
   type ZonePublishing,
   type ZoneStep,
 } from "../../../api/zone.api.ts"
@@ -18,7 +18,7 @@ export interface UseZoneStateResult {
   publishing?: ZonePublishing
   isReading: boolean
   isSlow: boolean
-  failure: ZoneFailure | null
+  failure: OwnsiError | null
 }
 
 interface ZoneReading {
@@ -49,7 +49,7 @@ const useElapsed = (ms: number, key: string) => {
 }
 
 export const useZoneState = ({ domain }: UseZoneStateOptions): UseZoneStateResult => {
-  const query = useQuery<ZoneReading, ZoneFailure>({
+  const query = useQuery<ZoneReading, OwnsiError>({
     queryKey: ["zone", domain],
     queryFn: streamedQuery({
       streamFn: ({ signal }) => readZone(domain, signal),
@@ -58,7 +58,7 @@ export const useZoneState = ({ domain }: UseZoneStateOptions): UseZoneStateResul
       refetchMode: "replace",
     }),
     staleTime: ZONE_STALE_TIME,
-    retry: (attempt, error) => attempt < RETRIES && RETRYABLE_ZONE_ERRORS.has(error.code),
+    retry: (attempt, error) => attempt < RETRIES && RETRYABLE.has(error.code),
   })
 
   const floorElapsed = useElapsed(READING_FLOOR_MS, domain)

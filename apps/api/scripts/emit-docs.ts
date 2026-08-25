@@ -53,7 +53,26 @@ const DOCUMENTED: AppConfig = {
 export async function openApiDocument(): Promise<string> {
   const app = createApp(DOCUMENTED, { database: {} as Database })
   const response = await app.handle(new Request("https://ownsi.dev/openapi/json"))
-  return `${JSON.stringify(await response.json(), null, 2)}\n`
+
+  return `${JSON.stringify(declared(await response.json()), null, 2)}\n`
+}
+
+/**
+ * Elysia stamps `additionalProperties` onto a schema object when it compiles a validator for
+ * it, and the schemas are module-level singletons shared across routes — so whether the key is
+ * there depends on what has been compiled by the time the document is serialised, which
+ * differs between machines. The published reference is the contract as declared, never as
+ * compiled, so the key is dropped on the way out.
+ */
+function declared(document: unknown): unknown {
+  if (Array.isArray(document)) return document.map(declared)
+  if (document === null || typeof document !== "object") return document
+
+  return Object.fromEntries(
+    Object.entries(document)
+      .filter(([key]) => key !== "additionalProperties")
+      .map(([key, value]) => [key, declared(value)]),
+  )
 }
 
 export const CHALLENGE: Challenge = {

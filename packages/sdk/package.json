@@ -1,0 +1,23 @@
+{
+  "name": "@ownsi/sdk",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check ."
+  },
+  "dependencies": {
+    "@elysiajs/eden": "^1.4.0"
+  },
+  "devDependencies": {
+    "@ownsi/api": "workspace:*",
+    "@ownsi/tsconfig": "workspace:*",
+    "typescript": "^5.9.0",
+    "@types/bun": "latest"
+  }
+}

@@ -7,6 +7,10 @@ icon: "rocket"
 Four calls, in the order the product makes them. Everything runs against the same origin as the
 app, so a browser session is all the credentials you need.
 
+The TypeScript side uses [`@ownsi/sdk`](/api-reference/introduction), which is typed off the
+server's own routes — a renamed route is a compile error, not a runtime surprise. The `curl`
+side shows what it does underneath.
+
 <Steps>
   <Step title="Read the zone before you sign anyone in">
     This is the only public endpoint. It streams, so the provider lands on screen before the
@@ -14,15 +18,12 @@ app, so a browser session is all the credentials you need.
 
     <CodeGroup>
     ```ts TypeScript
-    import { treaty } from "@elysiajs/eden"
-    import type { App } from "@ownsi/api"
+    import { createOwnsi } from "@ownsi/sdk"
 
-    const api = treaty<App>("https://ownsi.dev").api
+    const ownsi = createOwnsi({ baseUrl: "https://ownsi.dev" })
 
-    const { data } = await api.zones({ name: "acme.com" }).get()
-
-    for await (const frame of data ?? []) {
-      console.log(frame.event, frame.data)
+    for await (const step of ownsi.zones.read("acme.com")) {
+      console.log(step.step, step)
     }
     ```
 
@@ -48,10 +49,10 @@ app, so a browser session is all the credentials you need.
 
     <CodeGroup>
     ```ts TypeScript
-    const { data: domain } = await api.domains.post({ domain: "acme.com" })
-    const { data: claim } = await api.claims.post({ domainId: domain.id })
+    const domain = await ownsi.domains.findOrCreate("acme.com")
+    const claim = await domain.claim()
 
-    console.log(claim?.records[0])
+    console.log(claim.record)
     // { host: "_ownsi-challenge", name: "_ownsi-challenge.acme.com",
     //   type: "TXT", value: "ownsi_v1_9f3a2c8d1e4b7a6053c21f8e4d7b0a95" }
     ```
@@ -70,9 +71,9 @@ app, so a browser session is all the credentials you need.
     </CodeGroup>
 
     <Note>
-      Two calls, not one: a domain is a name on your account, and a claim is one attempt at
-      proving it. The claim comes back with `verificationId` — the process that will do the
-      reading.
+      Two resources, not one: a domain is a name on your account, and a claim is one attempt at
+      proving it. `@ownsi/sdk` recomposes them into a sentence; over HTTP it is two calls, and
+      the claim comes back with a `verificationId` — the process that will do the reading.
     </Note>
 
     <Warning>
@@ -87,7 +88,7 @@ app, so a browser session is all the credentials you need.
     |---|---|
     | Type | `TXT` |
     | Host / Name | `_ownsi-challenge` |
-    | Value | the `records[0].value` from the previous step, verbatim |
+    | Value | the `record.value` from the previous step, verbatim |
     | TTL | whatever your panel defaults to |
 
     No quotes, no trailing spaces. If your panel adds quotes on save, that is
@@ -100,10 +101,10 @@ app, so a browser session is all the credentials you need.
 
     <CodeGroup>
     ```ts TypeScript
-    const { data: checked } = await api.verifications({ id: claim.verificationId }).get()
+    const checked = await claim.verification()   // or claim.recheck() to run one now
 
-    if (checked?.status === "proved") console.log("proved at", checked.lastRunAt)
-    else console.log(checked?.diagnosis?.fix ?? checked?.waitEstimate)
+    if (checked.status === "proved") console.log("proved at", checked.lastRunAt)
+    else console.log(checked.diagnosis?.fix ?? checked.waitEstimate)
     ```
 
     ```bash curl

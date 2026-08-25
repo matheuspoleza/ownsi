@@ -128,8 +128,10 @@ claim you already have rather than issue a second token.
 | `claim.createdAt` | claim | When this claim opened. |
 | `claim.expiresAt` | open claim | When the window closes. |
 | `claim.endedAt` | ended claim | When it ended. On a `proved` claim, this is the date of the proof. |
-| `firstVerifiedAt` | domain | The earliest proof across its claims. Derived. |
-| `lastConfirmedAt` | domain | The most recent one. Derived. |
+| `firstVerifiedAt` | derived | The earliest proof across a domain's claims. |
+| `lastConfirmedAt` | derived | The most recent one. |
 
 The two domain-level dates are what a proof page states: proved on the first date, most recently on
-the second. Neither is stored, because neither can disagree with the claims it is read from.
+the second. Neither is stored and neither is a field on any response — they are read across the
+domain's claims, which is why neither can disagree with them. `domain.proof()` in
+[the SDK](/sdk/typescript#the-two-dates-a-proof-states) is that read.

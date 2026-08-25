@@ -1,110 +1,170 @@
 ---
 title: "TypeScript"
-description: "Eden Treaty — the client types are the server's types, so a changed route is a compile error."
+description: "@ownsi/sdk — one object over the API's own types, so a changed route is a compile error."
 icon: "js"
 ---
 
-There is no generated SDK and no code-generation step. The TypeScript client is
-[Eden Treaty](https://elysiajs.com/eden/treaty/overview), which infers the whole surface from the
-API's exported `App` type.
+`@ownsi/sdk` is a thin layer over [Eden Treaty](https://elysiajs.com/eden/treaty/overview), which
+infers the whole surface from the API's exported `App` type. There is no code-generation step and
+nothing to keep in sync.
 
 <Check>
-  A route that changes shape becomes a **type error at the call site**, in the same commit. Nothing
-  to regenerate, nothing to fall out of date.
+  A route that changes shape becomes a **type error at the call site**, in the same commit.
 </Check>
 
 ## Install
 
 ```bash
-bun add @elysiajs/eden
+bun add @ownsi/sdk
 ```
 
-Inside this repo, `@ownsi/api` is a workspace dependency and the types come from source. Outside it,
-you would install the published types package — that does not exist yet, because
+Inside this repo it is a workspace dependency and the types come from source. Outside it, the
+package is not published yet, because
 [the API is still internal](/api-reference/authentication#when-the-api-opens).
 
 ## Create the client
 
-```ts api/eden.client.ts
-import { treaty } from "@elysiajs/eden"
-import type { App } from "@ownsi/api"
+```ts api/ownsi.client.ts
+import { createOwnsi } from "@ownsi/sdk"
 
-export const api = treaty<App>(window.location.origin).api
+export const ownsi = createOwnsi({ baseUrl: window.location.origin })
 ```
 
-Same origin, so the session cookie rides along with no extra configuration. `.api` at the end
-matches the server's `/api` prefix, so paths read the way the URL does.
+Same origin, so the session cookie rides along with no extra configuration. Pass a `fetch` if you
+need to route the calls somewhere else — a test, a worker, a proxy.
+
+## Claim a domain
+
+Three resources — a domain is a name, a claim is an episode, a verification is a process — and one
+sentence over them.
+
+```ts
+const domain = await ownsi.domains.findOrCreate("acme.com")
+const claim = await domain.claim()
+
+claim.record   // { host, name, type, value } — what to put in the DNS panel
+claim.token    // immutable for the life of the claim
+```
+
+`findOrCreate` is idempotent on the name: asking twice returns the same domain. `domain.claim()`
+answers `already_claimed` while one is still open — use the one you have, its token is the one
+that will verify.
+
+<Warning>
+  Render `record.host`, not `record.name`. Almost every panel appends the zone to what you type,
+  and a copy button that hands over the fully qualified name is how people end up with
+  [`domain_appended`](/diagnostics/catalogue#domain_appended).
+</Warning>
+
+`claim.record` is singular because there is one record to write. It comes from the claim alone —
+so the *write this record* screen renders with no verification loaded — and it is `null` once the
+claim has ended, because there is nothing left to put in a panel.
+
+## Follow the verification
+
+The claim knows which process is running against it, so you never carry the id yourself.
+
+```ts
+const verification = await claim.verification()
+
+if (verification.status === "proved") done()
+else show(verification.diagnosis?.fix ?? verification.waitEstimate)
+
+await claim.recheck()   // reads DNS now instead of waiting for the schedule
+```
+
+Exactly one of `diagnosis` and `waitEstimate` is set while a verification is still running. One is
+your reader's problem and one is not, which is
+[the split the product exists for](/concepts/verification).
+
+`verification.attempts()` is every read it has made, newest first — the evidence a proof rests on.
+
+## Every act, in one table
+
+| | |
+| --- | --- |
+| `ownsi.domains` | `findOrCreate(name)` · `get(id)` · `list()` |
+| a `Domain` | `.claim()` · `.claims()` · `.proof()` · `.archive()` · `.delete()` · `.refresh()` |
+| `ownsi.claims` | `create(domainId)` · `get(id)` · `list({ domainId? })` |
+| a `Claim` | `.record` · `.verification()` · `.recheck()` · `.cancel()` · `.refresh()` |
+| `ownsi.verifications` | `get(id)` |
+| a `Verification` | `.run()` · `.attempts()` · `.refresh()` |
+| `ownsi.zones` | `read(name, signal?)` |
+
+Every read answers with a handle: the fields the API sent, plus the acts reachable from them.
+`ownsi.api` is the Eden client underneath, for a route the package does not cover yet.
+
+`list()` answers with `Claim`; `get()` and `create()` answer with `ClaimDetail`, which adds
+`coexistence`. The list does not carry a field it did not fetch.
+
+## The two dates a proof states
+
+```ts
+const proof = await domain.proof()
+// { firstVerifiedAt, lastConfirmedAt } — or null, if nothing has proved it
+```
+
+Derived across the domain's claims, never stored, so neither date can disagree with the claims it
+is read from. `proofOf(claims)` is the same function if you already hold the list.
 
 ## Reading a zone
 
-The zone read streams, so `data` is an async iterable of frames rather than a value.
+The public read streams, so it is a generator rather than a value.
 
 ```ts
-const { data, error } = await api.zones({ name: "acme.com" }).get()
-
-if (error) {
-  switch (error.status) {
-    case 400: return invalid(error.value.error.message)
-    case 404: return notDelegated()
-    case 502: return retryLater()
-  }
-}
-
-for await (const frame of data) {
-  if (frame.event === "delegation") setProvider(frame.data.provider)
-  if (frame.event === "publishing") setWait(frame.data.negativeCacheTtlSeconds)
+for await (const step of ownsi.zones.read("acme.com", signal)) {
+  if (step.step === "delegation") setProvider(step.provider)
+  if (step.step === "publishing") setWait(step.negativeCacheTtlSeconds)
 }
 ```
 
-`error.status` is narrowed to the statuses that route actually declares — `400 | 404 | 502` here —
-so a `case 500` is a compile error rather than dead code.
+`Extract` on the discriminant narrows any of the tagged unions in this API — zone steps on `step`,
+diagnoses on `code`, wait estimates on `reason`. `ZoneDelegation` and `ZonePublishing` are exported
+already narrowed.
 
-### Cancelling
+## Errors
 
-```ts
-const controller = new AbortController()
-
-await api.zones({ name }).get({ fetch: { signal: controller.signal } })
-
-controller.abort()
-```
-
-## Claims
+Everything throws an `OwnsiError`, carrying the API's own `code` and `docsUrl` untouched.
 
 ```ts
-const { data: claim } = await api.domains.post({ domain: "acme.com" })
+import { isOwnsiError, RETRYABLE } from "@ownsi/sdk"
 
-const { data: list } = await api.domains.get()
-
-const { data: one } = await api.domains({ id }).get()
-
-await api.domains({ id }).verify.post()
-await api.domains({ id }).cancel.post()
-await api.domains({ id }).archive.post()
+try {
+  await domain.claim()
+} catch (error) {
+  if (isOwnsiError(error) && error.code === "already_claimed") useTheOpenOne()
+  else throw error
+}
 ```
 
-## Deriving your own types from the client
+`RETRYABLE` is the set worth trying again. `unreachable` is in it, and it is the one code the API
+never sends: it means no answer arrived, or the answer was not ours. A request that never arrived
+and a request that failed are both our side of the line, so both read as `unreachable` rather than
+as something about somebody's domain.
 
-Rather than redeclaring response shapes, pull them off the call. They stay correct by construction.
+## With TanStack Query
 
-```ts api/zone.api.ts
-const request = (name: string, signal?: AbortSignal) =>
-  api.zones({ name }).get({ fetch: { signal } })
+Keep the call in a hook rather than in a component, and let the error's `code` drive the retry.
 
-type ZoneRequest = Awaited<ReturnType<typeof request>>
-type ZoneFrame = NonNullable<ZoneRequest["data"]>
-
-export type ZoneStep = ZoneFrame["data"]
-export type ZoneDelegation = Extract<ZoneStep, { step: "delegation" }>
-export type ZonePublishing = Extract<ZoneStep, { step: "publishing" }>
+```ts hooks/useVerificationState.ts
+export const useVerificationState = (claimId: string) =>
+  useQuery({
+    queryKey: ["verification", claimId],
+    queryFn: async () => (await ownsi.claims.get(claimId)).verification(),
+    retry: (attempt, error) => attempt < 2 && RETRYABLE.has(error.code),
+    refetchInterval: (query) =>
+      query.state.data?.status === "proved" ? false : 5_000,
+  })
 ```
 
-`Extract` on the discriminant is how you narrow any of the tagged unions in this API — zone frames
-on `step`, diagnoses on `code`, wait estimates on `reason`.
+Stop polling on `proved`; keep polling while a `waitEstimate` says the wait is real. Forcing runs
+in a loop does not make DNS answer faster — the verification's own `secondsRemaining` is the
+honest interval.
 
 ## Authentication
 
-Sessions are better-auth, not Eden:
+Sessions are better-auth, not the SDK. It publishes its own typed client, and wrapping it would
+buy a second name for every method and nothing else.
 
 ```ts api/auth.client.ts
 import type { Auth } from "@ownsi/api"
@@ -120,24 +180,3 @@ export const authClient = createAuthClient({
 
 `inferAdditionalFields<Auth>()` types the session off the server's configured instance, the same
 way Treaty types the routes.
-
-## With TanStack Query
-
-Eden returns a promise, so it drops straight into a query function. Keep the call in a hook rather
-than in a component.
-
-```ts hooks/useClaimState.ts
-export const useClaimState = (id: string) =>
-  useQuery({
-    queryKey: ["claim", id],
-    queryFn: async () => {
-      const { data, error } = await api.domains({ id }).get()
-      if (error) throw error
-      return data
-    },
-    refetchInterval: (query) =>
-      query.state.data?.status === "proved" ? false : 5_000,
-  })
-```
-
-Stop polling on `proved`; keep polling while a `waitEstimate` says the wait is real.
