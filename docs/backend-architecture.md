@@ -43,10 +43,12 @@ So the rule is not "no arrows". It is "declared arrows, through a published surf
 
 ```ts
 const CONTEXT_MAP: Record<string, readonly string[]> = {
+  auth: [],
   zones: [],
+  domains: [],
   verification: ["zones"],
-  domains: ["verification"],
-  proof: ["domains"],
+  claims: ["domains", "verification"],
+  proof: ["claims"],
 }
 ```
 
@@ -76,6 +78,124 @@ host was absent or merely typeless, a CNAME target, two small enums and two numb
 foreign vocabulary at all. Even the negative-cache seconds arrive as a number through the
 port, so `verification` never parses an SOA record. Nothing needed sharing; one side needed
 to publish.
+
+## Calls down, events up
+
+`claims` depends on `verification`; nothing depends on `claims`. That one fact decides how the
+two talk, and it decides it differently in each direction.
+
+**Down the arrow, call a port.** `claims` holds `StartVerifying` in its own words, and
+`src/app.ts` binds it to `verification.createVerification`. `tsc` checks the wiring, and — this is
+the part that matters to a person — the `verificationId` comes back in the same breath, so
+`POST /api/claims` can answer with it. There is no window in which the screen someone just landed
+on has a claim and no process behind it.
+
+**Up the arrow, publish an event.** `verification` cannot name `claims`, so it cannot hold a
+handler for it. It publishes; `claims` subscribes. That is the only place the bus is load-bearing,
+and it is load-bearing for a structural reason rather than a stylistic one.
+
+The reason the arrow points one way at all is a naming decision: **verification never says the
+word *claim*.** It verifies a `subjectId` against a challenge until a deadline. The column in
+Postgres is `claimId`, because there is one database and `delete permanently` needs a real foreign
+key; the type says `subjectId` and the repository translates in one line. The code is what
+separates. The schema is honest that it does not, yet.
+
+### The third outcome has no topic
+
+`unresolvable` — our failure to reach DNS — records an attempt, widens the backoff and publishes
+nothing at all. PRD §2's promise that our outage counts against nobody used to be a `case` branch
+a reader had to trust. Now there is no topic to subscribe to, so no future policy can react to it
+by accident. Same move as the tagged union above: make the illegal thing unconstructible rather
+than forbidden.
+
+### One clock, and it belongs to the process
+
+The seven-day window is juridical and the retry cadence is technical, and they used to live in one
+file. Now the claim computes `expiresAt` and hands it over as a `deadline`; `verification` runs the
+only clock in the product. When the next backoff would land past the deadline it stops instead and
+says so.
+
+`verify-until-deadline.schedule.ts` reads as a use case because it is one — the cadence and the
+deadline check are business rules. Only `step` is infrastructure, and it arrives as a port:
+
+```ts
+export type Step = {
+  readonly run: <T>(id: string, body: () => Promise<T>) => Promise<T>
+  readonly sleepUntil: (id: string, at: Date) => Promise<void>
+}
+```
+
+Which is what makes seven days of expiry testable in a millisecond, against a fake `Step` that
+returns at once and a fake clock that jumps forward. `verification/infra/inngest-step.service.ts`
+is the whole production adapter, and it is six lines.
+
+It is not a daily sweep, and that is deliberate: one `step.sleepUntil` per running verification
+gives second-level granularity with no cron tick as a floor. The first run lands at +30s; a cron
+would make it up to a day late.
+
+## Naming is the architecture
+
+The layer rules say where code goes. They say nothing about whether you can find it, and a
+context whose use cases are called `createRequestCheck`, `createRunAttempt` and `applyAttempt`
+is not navigable no matter how clean its boundaries are. Three decisions do most of the work.
+
+### The verbs are a closed set
+
+`claimDomain`, `requestCheck`, `runAttempt`, `announceOncePerDay`, `applyAttempt` — five acts,
+five verbs invented at the moment of writing. Nothing is wrong with any of them in isolation, and
+together they are a dialect only their author speaks. A closed set — `get`/`list`/`findOrCreate`
+for reads, ten imperatives for writes — costs a small amount of expressiveness and buys the
+property that a name is guessable before it is read.
+
+The real payoff is diagnostic. When an act genuinely wants a verb outside the set, that is
+almost always because it is two acts. `runAttempt` read DNS, moved the claim's state and sent
+email; there is no single verb for that because there is no single act.
+
+### The factory is a pattern, not a noun
+
+Use cases were named `createRunAttempt`, `createReadZone`, `createCheckWhenDue` — the `create`
+announcing that the function returns a closure over its dependencies. That is the pattern used
+by every use case in the codebase, which is exactly why it carries no information.
+
+It also collides. Once `create` is the business verb for making something, the factory for
+`createClaim` would be `createCreateClaim`. Prefixing it differently (`makeCreateClaim`) only
+moves the noise. Dropping it is the answer, and `infra/` had already found it:
+`postgresDomainRepository` and `dohTxtLookup` are closures over dependencies too, and neither
+announces it.
+
+So the file, the type, the function and the module property carry one word, and `create` means
+creating — a claim, a database handle, a better-auth instance — and nothing else.
+
+### One file, one unit
+
+`claim-action.ts` held three use cases: cancel, verify and archive. They shared a file because
+they shared a shape — `(input) => Promise<Result<DomainView, ...>>` — and to name that shape the
+code invented `ClaimAction`, a type that says the three are alike and nothing about what any of
+them does. Cancelling a claim, forcing a DNS read and leaving a domain are three unrelated acts
+wearing one signature.
+
+That is the general failure mode, and it is why the rule is one unit per file rather than a
+size limit. Two things in one file need a word that covers both; if no honest word exists, one
+gets invented, and the invented word is what the next reader has to decode.
+
+### A subscriber is not a concept
+
+An event handler that does nothing but call one use case is wiring, and wiring between contexts
+already has a home in `src/app.ts`. Naming it `onAttemptSucceeded` and giving it a file makes the
+reaction harder to test, not easier — a test now needs the event shape to exercise a rule that
+was always just "prove the claim".
+
+So the reactions are use cases with business names, and the whole reaction surface of the
+system is four lines at the composition root:
+
+```ts
+bus.on("verification/attempt.succeeded", (e) => claims.proveClaim({ claimId: e.subjectId }))
+```
+
+Event storming's word for "whenever X, do Y" is a *policy*, and it is a real concept — the day
+proving requires two consecutive successes, that rule needs somewhere to live. A `.policy.ts` is
+what it gets then. Until a reaction carries a condition of its own, giving it a file names an
+indirection rather than a rule.
 
 ## Functional and typed first
 
@@ -189,9 +309,9 @@ Prose does not enforce anything. This is what actually bites:
 
 | Rule | Enforced by |
 | --- | --- |
-| Layer boundaries, module/app split, contexts not importing each other | `test/architecture.test.ts` |
-| No explanatory comments, no classes, no throwing in domain/application | `test/conventions.test.ts` |
-| Every route documents a response schema per status | `test/conventions.test.ts` |
+| Layer boundaries, module/app split, declared arrows between contexts | `test/architecture.test.ts` |
+| The published docs match the code they document | `test/docs.test.ts` |
+| Comments, classes, throwing, the verb set, one unit per file, the suffixes | `CLAUDE.md`, and the `api-conventions` skill |
 | No `any`, no `!`, bounded complexity, no barrel files | Biome override on `apps/api/**` |
 | All of the above, on every edit | `.claude/hooks/check-api.sh` |
 | Everything else | `CLAUDE.md`, and review |

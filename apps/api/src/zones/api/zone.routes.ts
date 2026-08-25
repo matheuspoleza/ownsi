@@ -1,13 +1,13 @@
 import { Elysia, sse, t } from "elysia"
 import { ErrorResponse } from "../../shared/http/error-response.ts"
 import { unreachable } from "../../shared/result.ts"
-import type { ReadZone } from "../application/read-zone.ts"
+import type { GetZone } from "../application/get-zone.query.ts"
 import { toZoneError } from "./zone.errors.ts"
 import { toDelegationStep, toPublishingStep, ZoneStepResponse } from "./zone.response.ts"
 
 const MAX_DOMAIN_LENGTH = 253
 
-export function zoneRoutes(readZone: ReadZone) {
+export function zoneRoutes(readZone: GetZone) {
   return new Elysia({ name: "zones.routes", prefix: "/zones" }).get(
     "/:name",
     async function* ({ params, request, status }) {

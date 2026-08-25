@@ -2,12 +2,12 @@ import type { Database } from "../shared/database.ts"
 import type { CheckSession } from "../shared/http/session.ts"
 import type { AuthConfig } from "./auth.config.ts"
 import type { SendMagicLink } from "./domain/ports.ts"
-import { type Auth, createAuth, createCheckSession } from "./infra/better-auth.ts"
+import { type Auth, createAuth, createCheckSession } from "./infra/better-auth.service.ts"
 
-export type { Auth } from "./infra/better-auth.ts"
+export type { Auth } from "./infra/better-auth.service.ts"
 
 import type { SendEmail } from "../shared/email.ts"
-import { createSendMagicLink } from "./infra/mailer.ts"
+import { createSendMagicLink } from "./infra/magic-link.service.ts"
 
 export type AuthModuleDeps = {
   readonly config: AuthConfig
@@ -17,6 +17,7 @@ export type AuthModuleDeps = {
 
 export type AuthModuleOverrides = {
   readonly sendMagicLink?: SendMagicLink
+  readonly checkSession?: CheckSession
 }
 
 export type AuthModule = {
@@ -31,5 +32,5 @@ export function createAuthModule(
   const sendMagicLink = overrides.sendMagicLink ?? createSendMagicLink(deps.sendEmail)
   const auth = createAuth({ config: deps.config, database: deps.database, sendMagicLink })
 
-  return { handler: auth.handler, checkSession: createCheckSession(auth) }
+  return { handler: auth.handler, checkSession: overrides.checkSession ?? createCheckSession(auth) }
 }

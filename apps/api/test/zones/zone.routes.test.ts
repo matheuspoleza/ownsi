@@ -8,7 +8,7 @@ import {
   fakeNameserver,
   fakeResolver,
   unreachableResolver,
-} from "../../src/zones/infra/fake-resolver.ts"
+} from "../../src/zones/infra/fake-resolver.service.ts"
 import { inMemoryZoneRepository } from "./in-memory-zone-repository.ts"
 
 const CONFIG: AppConfig = {
@@ -44,7 +44,6 @@ const CONFIG: AppConfig = {
     resolverTimeoutMs: 4_000,
     authoritativeBudgetMs: 2_500,
   },
-  domains: { driver: "demo", appUrl: "https://ownsi.dev" },
 }
 
 const FIXTURES: DnsFixtures = {

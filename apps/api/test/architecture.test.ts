@@ -27,9 +27,10 @@ const REACHES_THE_WORLD = [
 const CONTEXT_MAP: Record<string, readonly string[]> = {
   auth: [],
   zones: [],
+  domains: [],
   verification: ["zones"],
-  domains: ["verification"],
-  proof: ["domains"],
+  claims: ["domains", "verification"],
+  proof: ["claims"],
 }
 
 const RULES: readonly Rule[] = [
@@ -66,7 +67,7 @@ const RULES: readonly Rule[] = [
   {
     name: "shared/ depends on no bounded context",
     appliesTo: (path) => path.startsWith("shared/"),
-    forbids: [/\.\.\/(zones|domains|proof|verification)\//],
+    forbids: [/\.\.\/(auth|zones|domains|claims|proof|verification)\//],
   },
 ]
 

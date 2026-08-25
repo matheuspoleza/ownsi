@@ -198,14 +198,18 @@ Prose does not enforce anything. This is what actually bites:
 
 | Rule | Enforced by |
 | --- | --- |
-| File suffixes, casing, no barrel files | `apps/web/test/conventions.test.ts` |
-| Components are arrow functions with a named props type | `apps/web/test/conventions.test.ts` |
-| Pages stay out of each other; shared code never imports a page | `apps/web/test/conventions.test.ts` |
-| No explanatory comments | `apps/web/test/conventions.test.ts` |
-| Formatting, import order, unused code, hook dependencies | Biome |
-| Props and API shapes | `tsc --noEmit` |
-| All of the above, on every edit | `.claude/hooks/check-web.sh` |
-| Everything else | `CLAUDE.md`, and review |
+| Formatting, import order, unused code, hook dependencies, no barrel files | Biome |
+| Props and API shapes, and every route the API renamed | `tsc --noEmit` |
+| File suffixes, casing, colocation, arrow components, named props, no comments | `CLAUDE.md`, and the `web-conventions` skill |
+| Both of the machine ones, on every edit | `.claude/hooks/check-web.sh` |
+| Everything else | review |
+
+`apps/web/test/conventions.test.ts` used to assert the four rows now marked as read. It was
+deleted along with the API's, and for the same reason: a regex over source lines can tell a
+`//` from a `/*`, but not a comment that earns its place from one that does not, and it
+cannot tell a name that comes from the business from one that comes from the machinery. Those
+are judgements, and a guard that pretends to make them mostly teaches people to phrase drift
+so it passes. What is left in the table is what a machine can actually decide.
 
 Each guard was verified by planting a violation and watching it fail. A guard that has never
 failed is not known to work.

@@ -1,4 +1,4 @@
-import type { DohResolverId } from "./infra/doh-resolver.ts"
+import type { DohResolverId } from "./infra/doh-resolver.service.ts"
 
 export type ZonesDriver = "doh" | "fake"
 

@@ -58,8 +58,8 @@ Enforced at the edge, per IP, on the two public surfaces:
 Over the limit you get `429` with [`rate_limited`](/errors#rate_limited) and a `Retry-After`
 header in seconds.
 
-`POST /api/domains/:id/verify` is limited per claim as well as per account, because forcing checks
-in a loop does not make DNS answer faster.
+`POST /api/verifications/:id/runs` is limited per verification as well as per account, because
+forcing runs in a loop does not make DNS answer faster.
 
 ## Stability
 
@@ -71,7 +71,7 @@ in a loop does not make DNS answer faster.
 What is safe to depend on:
 
 - Error `code` values, and diagnosis `code` values. These are identifiers and will not be reworded.
-- The `record` block on a claim, and the immutability of `token` across the lifecycle.
+- The `records` block on a claim, and the immutability of `token` across the lifecycle.
 - The event names on the zone stream (`delegation`, `publishing`).
 
 What is not:

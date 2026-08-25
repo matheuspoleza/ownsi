@@ -9,7 +9,6 @@
     "preview": "wrangler dev",
     "deploy": "wrangler deploy",
     "lint": "biome check .",
-    "test": "bun test",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

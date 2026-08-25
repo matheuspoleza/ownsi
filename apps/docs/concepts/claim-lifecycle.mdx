@@ -8,44 +8,57 @@ A domain on an account has one claim open at a time and as many behind it as you
 is an episode: it opens `pending`, it ends `proved`, `expired` or `canceled`, and an ended claim
 never moves again.
 
-`status` is what the API reports. It is derived from the state and the last check, so a new rule
-about when a claim counts as stuck never becomes a database migration.
+The claim answers *what* — the token, the window, the outcome. Its **verification** answers *how it
+is going* — the runs, the diagnosis, the wait. They are two resources, and a claim carries the
+`verificationId` of its own.
 
-## The six statuses
+## The claim's four states
+
+| `state` | What it means | What you should show |
+|---|---|---|
+| `pending` | Open. The window is running and so is a verification. | The record to create, and the verification's own status. |
+| `proved` | Verified, and dated by the run that verified it. | The proof and its date. |
+| `expired` | The seven-day window closed without a proof. | The record it was waiting for, and one button to claim again. |
+| `canceled` | Stopped on purpose, or by archiving the domain. | History. |
+
+`pending` carries `records` and `expiresAt`. The other three carry `endedAt` and no records — there
+is nothing left to write in a DNS panel.
+
+## The verification's six
 
 | `status` | What it means | What you should show |
 |---|---|---|
-| `pending` | Claimed, not checked yet, or checked and simply not there yet. | The record to create. |
+| `checking` | Running, and nothing has been read yet — or the last read reached nobody. | The record to create. |
 | `propagating` | Your own nameservers have the record; resolvers do not yet. | A wait, with `waitEstimate`. |
-| `needs_attention` | A check found something wrong that only you can fix. | `diagnosis.fix`. |
-| `proved` | Verified, and dated by the moment it was verified. | The proof and its date. |
-| `expired` | The seven-day window closed without a proof. | The record it was waiting for, and one button to claim again. |
-| `canceled` | Stopped on purpose, or by archiving the domain. | History. |
+| `needs_attention` | A run found something wrong that only you can fix. | `diagnosis.fix`. |
+| `proved` | The record was there. The claim ends with it. | The proof and its date. |
+| `exhausted` | The deadline passed. The claim expires with it. | One button to claim again. |
+| `stopped` | The claim was canceled or its domain archived. | Nothing. |
 
 `propagating` and `needs_attention` are the split that matters. Both are "not verified"; one is your
 problem and one is not, and telling someone to fix a record that is already correct is the failure
 mode this product exists to avoid.
 
-The first three carry `records` and `expiresAt`. The last three carry `endedAt` and no records —
-there is nothing left to write in a DNS panel.
-
 ## What moves a claim
 
 <Steps>
-  <Step title="POST /api/domains — claim">
-    Issues the token. Status `pending`, `waitEstimate` set to `first_check`, `expiresAt` seven days
-    out. On a domain whose last claim has ended, this is also how you start again: a new token, and
-    the old claim moves to `history`.
+  <Step title="POST /api/claims — open one">
+    Issues the token and starts a verification, whose id comes back on the claim. `state` is
+    `pending`, `expiresAt` is seven days out. On a domain whose last claim has ended, this is also
+    how you start again: a new claim, a new token, and the old one stays as history.
   </Step>
-  <Step title="POST /api/domains/:id/verify — ask for a check now">
-    Forces an attempt instead of waiting for the schedule. Rate limited per claim. Answers
-    [`claim_ended`](/errors#claim_ended) once the claim is over.
+  <Step title="POST /api/verifications/:id/runs — ask for a run now">
+    Reads DNS instead of waiting for the schedule. Rate limited per verification. Answers
+    [`verification_not_running`](/errors#verification_not_running) once the process is over.
   </Step>
-  <Step title="POST /api/domains/:id/cancel">
-    Ends the open claim. The token stops being accepted from that moment.
+  <Step title="POST /api/claims/:id/cancel">
+    Ends the claim and stops its verification. The token stops being accepted from that moment.
   </Step>
   <Step title="POST /api/domains/:id/archive">
-    Leaves the list and ends any open claim. **Retracts nothing.**
+    Leaves the list and ends any claim open on the name. **Retracts nothing.**
+  </Step>
+  <Step title="DELETE /api/domains/:id">
+    The only eraser. Claims, verifications and proof links go with it.
   </Step>
 </Steps>
 

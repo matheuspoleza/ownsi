@@ -1,4 +1,4 @@
-import type { TxtResolverId } from "./infra/doh-txt.ts"
+import type { TxtResolverId } from "./infra/doh-txt-lookup.service.ts"
 
 export type VerificationDriver = "doh" | "fake"
 
