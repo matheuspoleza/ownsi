@@ -1,10 +1,14 @@
 ---
 title: "The claim lifecycle"
-description: "Six statuses, what moves between them, and what archiving does and does not destroy."
+description: "A claim runs forwards, ends once, and becomes history. What that buys, and what archiving does and does not destroy."
 icon: "arrows-rotate"
 ---
 
-A claim is one domain on one account. `status` is what the API reports; it is derived, so a new rule
+A domain on an account has one claim open at a time and as many behind it as you have made. A claim
+is an episode: it opens `pending`, it ends `proved`, `expired` or `canceled`, and an ended claim
+never moves again.
+
+`status` is what the API reports. It is derived from the state and the last check, so a new rule
 about when a claim counts as stuck never becomes a database migration.
 
 ## The six statuses
@@ -14,51 +18,78 @@ about when a claim counts as stuck never becomes a database migration.
 | `pending` | Claimed, not checked yet, or checked and simply not there yet. | The record to create. |
 | `propagating` | Your own nameservers have the record; resolvers do not yet. | A wait, with `waitEstimate`. |
 | `needs_attention` | A check found something wrong that only you can fix. | `diagnosis.fix`. |
-| `paused` | Nothing has changed for long enough that ownsi stopped checking. | A "check again" action. |
-| `proved` | Verified. `firstVerifiedAt` is set and never moves. | The proof, and `lastConfirmedAt`. |
-| `archived` | Off the main list by your choice. Not checked, not counted. | A "reactivate" action. |
+| `proved` | Verified, and dated by the moment it was verified. | The proof and its date. |
+| `expired` | The seven-day window closed without a proof. | The record it was waiting for, and one button to claim again. |
+| `canceled` | Stopped on purpose, or by archiving the domain. | History. |
 
 `propagating` and `needs_attention` are the split that matters. Both are "not verified"; one is your
 problem and one is not, and telling someone to fix a record that is already correct is the failure
 mode this product exists to avoid.
 
+The first three carry `records` and `expiresAt`. The last three carry `endedAt` and no records —
+there is nothing left to write in a DNS panel.
+
 ## What moves a claim
 
 <Steps>
   <Step title="POST /api/domains — claim">
-    Issues the token. Status `pending`, `waitEstimate` set to `first_check`.
+    Issues the token. Status `pending`, `waitEstimate` set to `first_check`, `expiresAt` seven days
+    out. On a domain whose last claim has ended, this is also how you start again: a new token, and
+    the old claim moves to `history`.
   </Step>
   <Step title="POST /api/domains/:id/verify — ask for a check now">
-    Forces an attempt instead of waiting for the schedule, and resumes a `paused` claim. Rate
-    limited per claim.
+    Forces an attempt instead of waiting for the schedule. Rate limited per claim. Answers
+    [`claim_ended`](/errors#claim_ended) once the claim is over.
+  </Step>
+  <Step title="POST /api/domains/:id/cancel">
+    Ends the open claim. The token stops being accepted from that moment.
   </Step>
   <Step title="POST /api/domains/:id/archive">
-    Leaves the main list and stops being checked. **The token and the history are preserved.**
-  </Step>
-  <Step title="POST /api/domains/:id/restore — reactivate and recheck">
-    Back to `pending` with the same token. A TXT record still sitting in the zone verifies without
-    the owner opening their DNS panel.
+    Leaves the list and ends any open claim. **Retracts nothing.**
   </Step>
 </Steps>
+
+## Why a claim expires
+
+The proof reads *"on 15 June, this account demonstrated control"*, and that sentence is only true if
+the demonstration was recent. A token accepted forever breaks it: a record written in January and
+never cleaned up would keep minting fresh proofs long after control had passed to someone else.
+
+Everything follows from that:
+
+- An ended claim's token stops being accepted. The record left in the zone is inert.
+- There is no *check again*. A new date needs a new demonstration, which means a new claim, a new
+  token, and one edit in the DNS panel.
+- Seven days is chosen so nobody who did the work correctly loses it. Negative caching rarely
+  exceeds a day; provider publishing is minutes to hours.
+- When the next claim finds the previous claim's token still on the challenge host, that is not
+  "nothing found" — it is [`expired_token`](/diagnostics/catalogue#expired_token), and it turns
+  starting over into a one-line edit.
+
+<Note>
+  Expiring is not an accusation. Not proving is never evidence against the person: it can be a
+  holiday, a broken provider, or our own failure.
+</Note>
 
 ## Archiving is not deleting
 
 <Check>
-  Archiving preserves the token, the timeline and the verification history. It stops the claim being
-  scheduled, and it stops it counting towards coexistence.
+  Archiving ends the open claim and takes the domain off the list. Every proof keeps its date and
+  every proof link still resolves.
 </Check>
 
-That last part is the reason archiving exists as a distinct action. If a team stops using a domain
-but the claim keeps counting, a second team claiming the same domain sees a conflict with a claim
-nobody is maintaining. Archiving clears the way without destroying the evidence that the domain was
-once proved.
+Archiving is a fact about the pair — this account, this name — rather than a state a claim is in.
+That is why it can sit next to a proof without retracting it, and why it survives every claim you
+make afterwards. It also stops the domain counting towards coexistence, which is the reason it
+exists as a distinct action: if a team stops using a domain but its claim keeps counting, a second
+team claiming the same name is told about a claim nobody is maintaining.
 
 ## Coexistence
 
 Two accounts can each prove the same domain. That is not a bug and not a race — both created the
 record, both were verified, and neither has more right to the name than the other.
 
-When it happens, the claim carries:
+When it happens, the domain carries:
 
 ```json
 {
@@ -72,17 +103,20 @@ When it happens, the claim carries:
 The local part is masked and the domain is not, which is enough for someone to recognise a
 colleague and not enough to harvest an address.
 
-Claiming a domain that is **already on your own list** is a different thing entirely — that is
-[`already_claimed`](/errors#already_claimed), a 409, and the fix is to use the claim you already
-have rather than issue a second token.
+Claiming a domain that **already has a claim open on your own account** is a different thing
+entirely — that is [`already_claimed`](/errors#already_claimed), a 409, and the fix is to use the
+claim you already have rather than issue a second token.
 
 ## Dates
 
-| Field | Written | Meaning |
+| Field | Where | Meaning |
 |---|---|---|
-| `createdAt` | On claim | When you added the domain. |
-| `firstVerifiedAt` | Once, ever | The first time the token was found. Never rewritten. |
-| `lastConfirmedAt` | Every confirming check | The last time it was still there. Only moves forward. |
+| `createdAt` | domain | When you first added the name. |
+| `claim.createdAt` | claim | When this claim opened. |
+| `claim.expiresAt` | open claim | When the window closes. |
+| `claim.endedAt` | ended claim | When it ended. On a `proved` claim, this is the date of the proof. |
+| `firstVerifiedAt` | domain | The earliest proof across its claims. Derived. |
+| `lastConfirmedAt` | domain | The most recent one. Derived. |
 
-The proof is these two dates on the claim, not a separate object. "Proved on the 1st, still true as
-of this morning" is the whole statement.
+The two domain-level dates are what a proof page states: proved on the first date, most recently on
+the second. Neither is stored, because neither can disagree with the claims it is read from.

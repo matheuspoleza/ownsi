@@ -79,8 +79,8 @@ const { data: list } = await api.domains.get()
 const { data: one } = await api.domains({ id }).get()
 
 await api.domains({ id }).verify.post()
+await api.domains({ id }).cancel.post()
 await api.domains({ id }).archive.post()
-await api.domains({ id }).restore.post()
 ```
 
 ## Deriving your own types from the client

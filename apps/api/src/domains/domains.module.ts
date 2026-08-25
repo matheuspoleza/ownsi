@@ -1,18 +1,25 @@
 import type { Clock } from "../shared/clock.ts"
-import { type ClaimDomain, createClaimDomain } from "./application/claim-domain.ts"
-import { createListClaims, type ListClaims } from "./application/list-claims.ts"
-import { createReadClaim, type ReadClaim } from "./application/read-claim.ts"
 import {
-  createArchiveClaim,
+  type ClaimAction,
+  createArchiveDomain,
+  createCancelClaim,
   createRequestCheck,
-  createRestoreClaim,
-  type TransitionClaim,
-} from "./application/transition-claim.ts"
-import type { ClaimRepository, GenerateId, GenerateToken, StartClaim } from "./domain/ports.ts"
+} from "./application/claim-action.ts"
+import { type ClaimDomain, createClaimDomain } from "./application/claim-domain.ts"
+import { createViewDomain } from "./application/domain-view.ts"
+import { createListDomains, type ListDomains } from "./application/list-domains.ts"
+import { createReadDomain, type ReadDomain } from "./application/read-domain.ts"
+import type {
+  AccountDomainRepository,
+  FindCoexistence,
+  GenerateId,
+  GenerateToken,
+  StartDomain,
+} from "./domain/ports.ts"
 import type { DomainsConfig } from "./domains.config.ts"
-import { startFromCatalogue } from "./infra/demo-claims.ts"
+import { coexistenceFromCatalogue, startFromCatalogue } from "./infra/demo-domains.ts"
 import { randomId, randomToken } from "./infra/identifiers.ts"
-import { inMemoryClaimRepository } from "./infra/in-memory-claim-repository.ts"
+import { inMemoryDomainRepository } from "./infra/in-memory-domain-repository.ts"
 
 export type DomainsModuleDeps = {
   readonly config: DomainsConfig
@@ -20,47 +27,57 @@ export type DomainsModuleDeps = {
 }
 
 export type DomainsModuleOverrides = {
-  readonly claims?: ClaimRepository
+  readonly domains?: AccountDomainRepository
+  readonly findCoexistence?: FindCoexistence
   readonly generateId?: GenerateId
   readonly generateToken?: GenerateToken
-  readonly startClaim?: StartClaim
+  readonly startDomain?: StartDomain
 }
 
 export type DomainsModule = {
   readonly claimDomain: ClaimDomain
-  readonly listClaims: ListClaims
-  readonly readClaim: ReadClaim
-  readonly requestCheck: TransitionClaim
-  readonly archiveClaim: TransitionClaim
-  readonly restoreClaim: TransitionClaim
+  readonly listDomains: ListDomains
+  readonly readDomain: ReadDomain
+  readonly requestCheck: ClaimAction
+  readonly cancelClaim: ClaimAction
+  readonly archiveDomain: ClaimAction
 }
 
 export function createDomainsModule(
   deps: DomainsModuleDeps,
   overrides: DomainsModuleOverrides = {},
 ): DomainsModule {
-  const claims = overrides.claims ?? inMemoryClaimRepository()
-  const startClaim = overrides.startClaim ?? startClaimFor(deps.config)
+  const domains = overrides.domains ?? inMemoryDomainRepository()
+  const view = createViewDomain(overrides.findCoexistence ?? coexistenceFor(deps.config))
+  const action = { domains, view, clock: deps.clock }
 
   return {
     claimDomain: createClaimDomain({
-      claims,
+      domains,
       generateId: overrides.generateId ?? randomId,
       generateToken: overrides.generateToken ?? randomToken,
-      startClaim,
+      startDomain: overrides.startDomain ?? startDomainFor(deps.config),
+      view,
       clock: deps.clock,
     }),
-    listClaims: createListClaims({ claims }),
-    readClaim: createReadClaim({ claims }),
-    requestCheck: createRequestCheck({ claims }),
-    archiveClaim: createArchiveClaim({ claims }),
-    restoreClaim: createRestoreClaim({ claims }),
+    listDomains: createListDomains({ domains, view }),
+    readDomain: createReadDomain({ domains, view }),
+    requestCheck: createRequestCheck(action),
+    cancelClaim: createCancelClaim(action),
+    archiveDomain: createArchiveDomain(action),
   }
 }
 
-function startClaimFor(config: DomainsConfig): StartClaim {
+function startDomainFor(config: DomainsConfig): StartDomain {
   switch (config.driver) {
     case "demo":
       return startFromCatalogue
+  }
+}
+
+function coexistenceFor(config: DomainsConfig): FindCoexistence {
+  switch (config.driver) {
+    case "demo":
+      return coexistenceFromCatalogue
   }
 }

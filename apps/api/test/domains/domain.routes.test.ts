@@ -1,10 +1,11 @@
 import { describe, expect, test } from "bun:test"
 import { Elysia, type Static } from "elysia"
-import type { ClaimListResponse, ClaimResponse } from "../../src/domains/api/domain.response.ts"
+import type { DomainListResponse, DomainResponse } from "../../src/domains/api/domain.response.ts"
 import { domainRoutes } from "../../src/domains/api/domain.routes.ts"
 import { createDomainsModule } from "../../src/domains/domains.module.ts"
+import { statusWhilePending } from "../../src/shared/claim-lifecycle.ts"
 import { fixedClock } from "../../src/shared/clock.ts"
-import { DEMO_CLAIMS } from "../../src/shared/demo.ts"
+import { DEMO_DOMAINS, type DemoClaim } from "../../src/shared/demo.ts"
 import {
   type CheckSession,
   type SessionUser,
@@ -26,12 +27,13 @@ const signedInAs =
 const signedOut: CheckSession = async () => ({ type: "anonymous" })
 
 function server(check: CheckSession = signedInAs(ADA)) {
-  let issued = 0
+  let ids = 0
+  let tokens = 0
   const module = createDomainsModule(
     { config: { driver: "demo" }, clock: fixedClock(NOW) },
     {
-      generateId: () => `clm_${++issued}`,
-      generateToken: () => `ownsi_v1_token_${issued}`,
+      generateId: (prefix) => `${prefix}_${++ids}`,
+      generateToken: () => `ownsi_v1_token_${++tokens}`,
     },
   )
 
@@ -50,15 +52,24 @@ const post = (app: ReturnType<typeof server>, path: string, body?: unknown) =>
 const get = (app: ReturnType<typeof server>, path: string) =>
   app.handle(new Request(`http://localhost${path}`))
 
-type ClaimBody = Static<typeof ClaimResponse>
-type ClaimListBody = Static<typeof ClaimListResponse>
+type DomainBody = Static<typeof DomainResponse>
+type DomainListBody = Static<typeof DomainListResponse>
 type ErrorBody = { error: { code: string } }
 
 const bodyOf = async <Shape>(response: Response) => (await response.json()) as Shape
 
 const claim = async (app: ReturnType<typeof server>, domain: string) => {
   const response = await post(app, "/domains", { domain })
-  return { status: response.status, body: await bodyOf<ClaimBody>(response) }
+  return { status: response.status, body: await bodyOf<DomainBody>(response) }
+}
+
+const openRecords = (body: DomainBody) =>
+  "records" in body.claim ? body.claim.records : ([] as const)
+
+const statusOf = (demo: DemoClaim) => {
+  if (demo.state !== "pending") return demo.state
+  if (demo.check?.outcome !== "absent") return "pending"
+  return statusWhilePending(demo.check.diagnosis.code)
 }
 
 describe("claiming a domain", () => {
@@ -66,30 +77,34 @@ describe("claiming a domain", () => {
     const { status, body } = await claim(server(), "acme.com")
 
     expect(status).toBe(201)
-    expect(body.status).toBe("pending")
-    expect(body.record).toEqual({
-      host: "_ownsi-challenge",
-      name: "_ownsi-challenge.acme.com",
-      type: "TXT",
-      value: "ownsi_v1_token_1",
-    })
+    expect(body.claim.status).toBe("pending")
+    expect(openRecords(body)).toEqual([
+      {
+        host: "_ownsi-challenge",
+        name: "_ownsi-challenge.acme.com",
+        type: "TXT",
+        value: "ownsi_v1_token_1",
+      },
+    ])
   })
 
   test("normalises what was typed before anything is issued", async () => {
     const { body } = await claim(server(), "HTTP://WWW.Acme.com/path")
 
-    expect(body.domain).toBe("acme.com")
-    expect(body.record.name).toBe("_ownsi-challenge.acme.com")
+    expect(body.name).toBe("acme.com")
+    expect(openRecords(body)[0]?.name).toBe("_ownsi-challenge.acme.com")
   })
 
-  test("refuses a second claim on the same domain and keeps the first token", async () => {
+  test("refuses a second claim while one is open, and keeps the first token", async () => {
     const app = server()
     const first = await claim(app, "acme.com")
     const second = await post(app, "/domains", { domain: "acme.com" })
 
     expect(second.status).toBe(409)
-    const reread = await bodyOf<ClaimBody>(await get(app, `/domains/${first.body.id}`))
-    expect(reread.record.value).toBe(first.body.record.value)
+    expect((await bodyOf<ErrorBody>(second)).error.code).toBe("already_claimed")
+
+    const reread = await bodyOf<DomainBody>(await get(app, `/domains/${first.body.id}`))
+    expect(reread.claim.token).toBe(first.body.claim.token)
   })
 
   test("answers 400 on something that is not a domain", async () => {
@@ -116,7 +131,7 @@ describe("the session", () => {
     expect((await get(app, "/domains")).status).toBe(401)
   })
 
-  test("a claim belongs to the account that made it", async () => {
+  test("a domain belongs to the account that claimed it", async () => {
     const app = server(signedInAs(ADA))
     const mine = await claim(app, "acme.com")
 
@@ -131,51 +146,79 @@ describe("the session", () => {
   })
 })
 
-describe("the lifecycle", () => {
-  test("archiving and reactivating preserves the token", async () => {
+describe("a claim only runs forwards", () => {
+  test("cancelling ends the claim and leaves it as history", async () => {
     const app = server()
     const { body } = await claim(app, "acme.com")
 
-    const archived = await bodyOf<ClaimBody>(await post(app, `/domains/${body.id}/archive`))
-    expect(archived.status).toBe("archived")
+    const canceled = await bodyOf<DomainBody>(await post(app, `/domains/${body.id}/cancel`))
 
-    const restored = await bodyOf<ClaimBody>(await post(app, `/domains/${body.id}/restore`))
-    expect(restored.status).toBe("pending")
-    expect(restored.record.value).toBe(body.record.value)
+    expect(canceled.claim.status).toBe("canceled")
+    expect(openRecords(canceled)).toEqual([])
   })
 
-  test("asking for a check revives a dormant claim", async () => {
+  test("an ended claim takes no action at all", async () => {
     const app = server()
-    const { body } = await claim(app, "dormant.ownsi.dev")
-    expect(body.status).toBe("paused")
+    const { body } = await claim(app, "acme.com")
+    await post(app, `/domains/${body.id}/cancel`)
 
-    const resumed = await bodyOf<ClaimBody>(await post(app, `/domains/${body.id}/verify`))
-    expect(resumed.status).toBe("pending")
-    expect(resumed.record.value).toBe(body.record.value)
+    for (const action of ["verify", "cancel"]) {
+      const response = await post(app, `/domains/${body.id}/${action}`)
+      expect(response.status).toBe(409)
+      expect((await bodyOf<ErrorBody>(response)).error.code).toBe("claim_ended")
+    }
   })
 
-  test("a claim that is not yours cannot be moved", async () => {
-    const response = await post(server(), "/domains/clm_nobody/archive")
+  test("claiming again issues a new token and keeps the old claim as history", async () => {
+    const app = server()
+    const { body } = await claim(app, "acme.com")
+    await post(app, `/domains/${body.id}/cancel`)
+
+    const again = await claim(app, "acme.com")
+
+    expect(again.body.id).toBe(body.id)
+    expect(again.body.claim.status).toBe("pending")
+    expect(again.body.claim.token).not.toBe(body.claim.token)
+    expect(again.body.history.map((entry) => entry.status)).toEqual(["canceled"])
+  })
+
+  test("archiving ends the open claim and leaves the list", async () => {
+    const app = server()
+    const { body } = await claim(app, "acme.com")
+
+    const archived = await bodyOf<DomainBody>(await post(app, `/domains/${body.id}/archive`))
+    expect(archived.archived).toBe(true)
+    expect(archived.claim.status).toBe("canceled")
+
+    const { domains } = await bodyOf<DomainListBody>(await get(app, "/domains"))
+    expect(domains.map((entry) => entry.name)).toEqual([])
+
+    expect((await get(app, `/domains/${body.id}`)).status).toBe(200)
+  })
+
+  test("a domain that is not yours cannot be moved", async () => {
+    const response = await post(server(), "/domains/dom_nobody/archive")
     expect(response.status).toBe(404)
   })
 })
 
 describe("the demo catalogue over the wire", () => {
-  test.each(DEMO_CLAIMS.map((demo) => [demo.domain, demo] as const))(
+  test.each(DEMO_DOMAINS.map((demo) => [demo.domain, demo] as const))(
     "%s renders its screen",
     async (domain, demo) => {
       const { status, body } = await claim(server(), domain)
 
       expect(status).toBe(201)
-      expect(body.status).toBe(demo.status)
-      expect(body.lastOutcome).toBe(demo.lastOutcome)
-      expect(body.diagnosis?.code ?? null).toBe(demo.diagnosis?.code ?? null)
+      expect(body.claim.status).toBe(statusOf(demo.claim))
+      expect(body.claim.lastOutcome).toBe(demo.claim.check?.outcome ?? null)
+      expect(body.history).toHaveLength(demo.history.length)
+      expect(body.archived).toBe(demo.archivedDaysAgo !== null)
     },
   )
 
   test("a diagnosis arrives with its cause and its fix already written", async () => {
     const { body } = await claim(server(), "record-at-apex.ownsi.dev")
-    const diagnosis = body.diagnosis
+    const diagnosis = body.claim.diagnosis
 
     if (diagnosis?.code !== "record_at_apex") throw new Error("the fixture stopped reproducing it")
 
@@ -187,13 +230,24 @@ describe("the demo catalogue over the wire", () => {
     })
   })
 
-  test("the list carries every claim on the account", async () => {
+  test("a second proof dates itself without moving the first", async () => {
+    const { body } = await claim(server(), "reproved.ownsi.dev")
+
+    expect(body.claim.status).toBe("proved")
+    expect(body.firstVerifiedAt).not.toBeNull()
+    expect(body.lastConfirmedAt).not.toBeNull()
+    expect(Date.parse(body.lastConfirmedAt ?? "")).toBeGreaterThan(
+      Date.parse(body.firstVerifiedAt ?? ""),
+    )
+  })
+
+  test("the list carries every domain on the account", async () => {
     const app = server()
     await claim(app, "proved.ownsi.dev")
     await claim(app, "negative-cache.ownsi.dev")
 
-    const { claims } = await bodyOf<ClaimListBody>(await get(app, "/domains"))
-    expect(claims.map((entry) => entry.domain).sort()).toEqual([
+    const { domains } = await bodyOf<DomainListBody>(await get(app, "/domains"))
+    expect(domains.map((entry) => entry.name).sort()).toEqual([
       "negative-cache.ownsi.dev",
       "proved.ownsi.dev",
     ])

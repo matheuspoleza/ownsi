@@ -1,7 +1,10 @@
 import { type Static, type TSchema, t } from "elysia"
 import { type Challenge, type Diagnosis, explain } from "../../shared/diagnosis.ts"
 import { unreachable } from "../../shared/result.ts"
-import { type Claim, challengeRecord } from "../domain/claim.ts"
+import type { DomainView } from "../application/domain-view.ts"
+import { firstVerifiedAt, lastConfirmedAt } from "../domain/account-domain.ts"
+import { type Claim, challengeRecords, isOpen, pendingStatus } from "../domain/claim.ts"
+import type { Domain } from "../domain/domain.ts"
 
 const diagnosisOf = <Code extends Diagnosis["code"], Observed extends TSchema>(
   code: Code,
@@ -33,56 +36,105 @@ const WaitEstimateResponse = t.Object({
   secondsRemaining: t.Number(),
 })
 
-export const ClaimResponse = t.Object({
+const ChallengeRecordResponse = t.Object({
+  host: t.String(),
+  name: t.String(),
+  type: t.Literal("TXT"),
+  value: t.String(),
+})
+
+const LastOutcome = t.Union([t.UnionEnum(["found", "absent", "unresolvable"]), t.Null()])
+
+const OpenClaimResponse = t.Object({
   id: t.String(),
-  domain: t.String(),
-  status: t.UnionEnum([
-    "pending",
-    "propagating",
-    "needs_attention",
-    "paused",
-    "proved",
-    "archived",
-  ]),
-  record: t.Object({
-    host: t.String(),
-    name: t.String(),
-    type: t.Literal("TXT"),
-    value: t.String(),
-  }),
-  lastOutcome: t.Union([t.UnionEnum(["found", "absent", "unresolvable"]), t.Null()]),
+  status: t.UnionEnum(["pending", "propagating", "needs_attention"]),
+  token: t.String(),
+  records: t.Array(ChallengeRecordResponse),
+  lastOutcome: LastOutcome,
   diagnosis: t.Union([DiagnosisResponse, t.Null()]),
   waitEstimate: t.Union([WaitEstimateResponse, t.Null()]),
+  expiresAt: t.String(),
+  createdAt: t.String(),
+})
+
+const EndedClaimResponse = t.Object({
+  id: t.String(),
+  status: t.UnionEnum(["proved", "expired", "canceled"]),
+  token: t.String(),
+  lastOutcome: LastOutcome,
+  diagnosis: t.Union([DiagnosisResponse, t.Null()]),
+  endedAt: t.String(),
+  createdAt: t.String(),
+})
+
+export const ClaimResponse = t.Union([OpenClaimResponse, EndedClaimResponse])
+
+export const DomainResponse = t.Object({
+  id: t.String(),
+  name: t.String(),
+  unicodeName: t.String(),
+  archived: t.Boolean(),
+  claim: ClaimResponse,
+  history: t.Array(ClaimResponse),
   firstVerifiedAt: t.Union([t.String(), t.Null()]),
   lastConfirmedAt: t.Union([t.String(), t.Null()]),
   coexistence: t.Union([t.Object({ maskedEmail: t.String(), provedAt: t.String() }), t.Null()]),
   createdAt: t.String(),
 })
 
-export const ClaimListResponse = t.Object({ claims: t.Array(ClaimResponse) })
+export const DomainListResponse = t.Object({ domains: t.Array(DomainResponse) })
 
 const instant = (value: Date | null) => (value === null ? null : value.toISOString())
 
-export function toClaimResponse(claim: Claim): Static<typeof ClaimResponse> {
-  const challenge: Challenge = { domain: claim.domain, token: claim.token }
+export function toDomainResponse({
+  record,
+  coexistence,
+}: DomainView): Static<typeof DomainResponse> {
+  const { domain } = record
 
   return {
-    id: claim.id,
-    domain: claim.domain,
-    status: claim.status,
-    record: challengeRecord(claim),
-    lastOutcome: claim.lastOutcome,
-    diagnosis: claim.diagnosis === null ? null : toDiagnosisResponse(claim.diagnosis, challenge),
-    waitEstimate: claim.waitEstimate,
-    firstVerifiedAt: instant(claim.firstVerifiedAt),
-    lastConfirmedAt: instant(claim.lastConfirmedAt),
-    coexistence: claim.coexistence,
-    createdAt: claim.createdAt.toISOString(),
+    id: domain.id,
+    name: domain.nameAscii,
+    unicodeName: domain.nameUnicode,
+    archived: record.archivedAt !== null,
+    claim: toClaimResponse(record.claim, domain),
+    history: record.history.map((claim) => toClaimResponse(claim, domain)),
+    firstVerifiedAt: instant(firstVerifiedAt(record)),
+    lastConfirmedAt: instant(lastConfirmedAt(record)),
+    coexistence,
+    createdAt: domain.createdAt.toISOString(),
   }
 }
 
-export function toClaimListResponse(claims: readonly Claim[]): Static<typeof ClaimListResponse> {
-  return { claims: claims.map(toClaimResponse) }
+export function toDomainListResponse(
+  views: readonly DomainView[],
+): Static<typeof DomainListResponse> {
+  return { domains: views.map(toDomainResponse) }
+}
+
+export function toClaimResponse(claim: Claim, domain: Domain): Static<typeof ClaimResponse> {
+  const challenge: Challenge = { domain: domain.nameAscii, token: claim.token }
+  const diagnosis = claim.lastCheck?.outcome === "absent" ? claim.lastCheck.diagnosis : null
+
+  const shared = {
+    id: claim.id,
+    token: claim.token,
+    lastOutcome: claim.lastCheck?.outcome ?? null,
+    diagnosis: diagnosis === null ? null : toDiagnosisResponse(diagnosis, challenge),
+    createdAt: claim.createdAt.toISOString(),
+  }
+
+  if (isOpen(claim)) {
+    return {
+      ...shared,
+      status: pendingStatus(claim),
+      records: [...challengeRecords(claim, domain)],
+      waitEstimate: claim.waitEstimate,
+      expiresAt: claim.expiresAt.toISOString(),
+    }
+  }
+
+  return { ...shared, status: claim.state, endedAt: claim.endedAt.toISOString() }
 }
 
 export function toDiagnosisResponse(

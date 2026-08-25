@@ -1,14 +1,26 @@
-import type { Claim, NewClaim } from "./claim.ts"
+import type { Coexistence } from "../../shared/claim-lifecycle.ts"
+import type { AccountDomain } from "./account-domain.ts"
+import type { Domain } from "./domain.ts"
 
-export type ClaimRepository = {
-  readonly findById: (userId: string, id: string) => Promise<Claim | null>
-  readonly findByDomain: (userId: string, domain: string) => Promise<Claim | null>
-  readonly listByUser: (userId: string) => Promise<readonly Claim[]>
-  readonly save: (claim: Claim) => Promise<void>
+export type AccountDomainRepository = {
+  readonly findByName: (userId: string, nameAscii: string) => Promise<AccountDomain | null>
+  readonly findById: (userId: string, domainId: string) => Promise<AccountDomain | null>
+  readonly listByUser: (userId: string) => Promise<readonly AccountDomain[]>
+  readonly save: (record: AccountDomain) => Promise<void>
 }
+
+export type FindCoexistence = (domain: Domain, userId: string) => Promise<Coexistence | null>
 
 export type GenerateToken = () => string
 
-export type GenerateId = () => string
+export type GenerateId = (prefix: string) => string
 
-export type StartClaim = (params: NewClaim) => Claim
+export type StartDomain = (params: NewAccountDomain) => AccountDomain
+
+export type NewAccountDomain = {
+  readonly userId: string
+  readonly domain: Domain
+  readonly claimId: string
+  readonly token: string
+  readonly now: Date
+}

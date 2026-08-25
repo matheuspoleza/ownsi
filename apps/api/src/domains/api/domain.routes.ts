@@ -1,35 +1,40 @@
 import { Elysia, t } from "elysia"
 import { ErrorResponse } from "../../shared/http/error-response.ts"
 import type { SessionPlugin } from "../../shared/http/session.ts"
+import type { ClaimAction } from "../application/claim-action.ts"
 import type { ClaimDomain } from "../application/claim-domain.ts"
-import type { ListClaims } from "../application/list-claims.ts"
-import type { ReadClaim } from "../application/read-claim.ts"
-import type { TransitionClaim } from "../application/transition-claim.ts"
-import { notFound, toClaimDomainError } from "./domain.errors.ts"
+import type { ListDomains } from "../application/list-domains.ts"
+import type { ReadDomain } from "../application/read-domain.ts"
+import { notFound, toClaimActionError, toClaimDomainError } from "./domain.errors.ts"
 import {
-  ClaimListResponse,
-  ClaimResponse,
-  toClaimListResponse,
-  toClaimResponse,
+  DomainListResponse,
+  DomainResponse,
+  toDomainListResponse,
+  toDomainResponse,
 } from "./domain.response.ts"
 
 const MAX_DOMAIN_LENGTH = 253
 
 export type DomainHandlers = {
   readonly claimDomain: ClaimDomain
-  readonly listClaims: ListClaims
-  readonly readClaim: ReadClaim
-  readonly requestCheck: TransitionClaim
-  readonly archiveClaim: TransitionClaim
-  readonly restoreClaim: TransitionClaim
+  readonly listDomains: ListDomains
+  readonly readDomain: ReadDomain
+  readonly requestCheck: ClaimAction
+  readonly cancelClaim: ClaimAction
+  readonly archiveDomain: ClaimAction
 }
 
 const Identifier = t.Object({ id: t.String({ minLength: 1 }) })
 
-const transitionSchema = {
+const actionSchema = {
   params: Identifier,
   session: true,
-  response: { 200: ClaimResponse, 401: ErrorResponse, 404: ErrorResponse },
+  response: {
+    200: DomainResponse,
+    401: ErrorResponse,
+    404: ErrorResponse,
+    409: ErrorResponse,
+  },
 } as const
 
 export function domainRoutes(handlers: DomainHandlers, session: SessionPlugin) {
@@ -43,13 +48,13 @@ export function domainRoutes(handlers: DomainHandlers, session: SessionPlugin) {
           const failure = toClaimDomainError(claimed.error)
           return status(failure.status, failure.body)
         }
-        return status(201, toClaimResponse(claimed.value))
+        return status(201, toDomainResponse(claimed.value))
       },
       {
         body: t.Object({ domain: t.String({ minLength: 1, maxLength: MAX_DOMAIN_LENGTH }) }),
         session: true,
         response: {
-          201: ClaimResponse,
+          201: DomainResponse,
           400: ErrorResponse,
           401: ErrorResponse,
           409: ErrorResponse,
@@ -58,37 +63,41 @@ export function domainRoutes(handlers: DomainHandlers, session: SessionPlugin) {
           tags: ["Domains"],
           summary: "Claim a domain",
           description:
-            "Issues the token for this account and returns the record to create. The token " +
-            "is stable for the life of the claim: recheck, archive and reactivation preserve it.",
+            "Opens a claim and returns the record to create. A name already claimed on this " +
+            "account opens a new claim with a new token, and the previous one becomes history.",
         },
       },
     )
     .get(
       "/",
-      async ({ user }) => toClaimListResponse(await handlers.listClaims({ userId: user.id })),
+      async ({ user }) => toDomainListResponse(await handlers.listDomains({ userId: user.id })),
       {
         session: true,
-        response: { 200: ClaimListResponse, 401: ErrorResponse },
-        detail: { tags: ["Domains"], summary: "List the domains on this account" },
+        response: { 200: DomainListResponse, 401: ErrorResponse },
+        detail: {
+          tags: ["Domains"],
+          summary: "List the domains on this account",
+          description: "Archived domains are left out; they are still readable by id.",
+        },
       },
     )
     .get(
       "/:id",
       async ({ params, user, status }) => {
-        const found = await handlers.readClaim({ userId: user.id, id: params.id })
+        const found = await handlers.readDomain({ userId: user.id, id: params.id })
         if (!found.ok) return status(notFound.status, notFound.body)
-        return toClaimResponse(found.value)
+        return toDomainResponse(found.value)
       },
       {
         params: Identifier,
         session: true,
-        response: { 200: ClaimResponse, 401: ErrorResponse, 404: ErrorResponse },
+        response: { 200: DomainResponse, 401: ErrorResponse, 404: ErrorResponse },
         detail: {
           tags: ["Domains"],
-          summary: "Read one claim",
+          summary: "Read one domain",
           description:
-            "Carries the named diagnosis and the wait estimate, so the screen says which of " +
-            "the failures is yours without running a DNS query of its own.",
+            "The open claim, every claim before it, and the named diagnosis — so the screen " +
+            "says which of the failures is yours without running a DNS query of its own.",
         },
       },
     )
@@ -96,53 +105,62 @@ export function domainRoutes(handlers: DomainHandlers, session: SessionPlugin) {
       "/:id/verify",
       async ({ params, user, status }) => {
         const checked = await handlers.requestCheck({ userId: user.id, id: params.id })
-        if (!checked.ok) return status(notFound.status, notFound.body)
-        return toClaimResponse(checked.value)
+        if (!checked.ok) {
+          const failure = toClaimActionError(checked.error)
+          return status(failure.status, failure.body)
+        }
+        return toDomainResponse(checked.value)
       },
       {
-        ...transitionSchema,
+        ...actionSchema,
         detail: {
           tags: ["Domains"],
           summary: "Ask for a check now",
           description:
-            "Resumes a dormant claim and returns the claim as it stands. The check itself " +
-            "belongs to the verification context, which is not wired yet.",
+            "Runs against the open claim. The check itself belongs to the verification " +
+            "context, which is not wired yet.",
+        },
+      },
+    )
+    .post(
+      "/:id/cancel",
+      async ({ params, user, status }) => {
+        const canceled = await handlers.cancelClaim({ userId: user.id, id: params.id })
+        if (!canceled.ok) {
+          const failure = toClaimActionError(canceled.error)
+          return status(failure.status, failure.body)
+        }
+        return toDomainResponse(canceled.value)
+      },
+      {
+        ...actionSchema,
+        detail: {
+          tags: ["Domains"],
+          summary: "End the open claim",
+          description:
+            "The token stops being accepted from here on, and the claim becomes history. " +
+            "Claiming the name again issues a new one.",
         },
       },
     )
     .post(
       "/:id/archive",
       async ({ params, user, status }) => {
-        const archived = await handlers.archiveClaim({ userId: user.id, id: params.id })
-        if (!archived.ok) return status(notFound.status, notFound.body)
-        return toClaimResponse(archived.value)
+        const archived = await handlers.archiveDomain({ userId: user.id, id: params.id })
+        if (!archived.ok) {
+          const failure = toClaimActionError(archived.error)
+          return status(failure.status, failure.body)
+        }
+        return toDomainResponse(archived.value)
       },
       {
-        ...transitionSchema,
+        ...actionSchema,
         detail: {
           tags: ["Domains"],
-          summary: "Archive a domain",
+          summary: "Stop involving me with this name",
           description:
-            "Leaves the main list and stops being checked. Token and history are preserved, " +
-            "and it stops counting towards coexistence.",
-        },
-      },
-    )
-    .post(
-      "/:id/restore",
-      async ({ params, user, status }) => {
-        const restored = await handlers.restoreClaim({ userId: user.id, id: params.id })
-        if (!restored.ok) return status(notFound.status, notFound.body)
-        return toClaimResponse(restored.value)
-      },
-      {
-        ...transitionSchema,
-        detail: {
-          tags: ["Domains"],
-          summary: "Reactivate and recheck",
-          description:
-            "Same token as before, so a TXT record still in the zone verifies without the " +
-            "owner opening their DNS panel.",
+            "Leaves the list and ends any open claim. Nothing is retracted: a proof keeps " +
+            "its dates and its links resolve.",
         },
       },
     )

@@ -117,9 +117,9 @@ Not every diagnosis is your reader's fault, and treating them alike is the mista
 | `pending` | The record, and the first-check countdown. |
 | `propagating` | "Your nameservers have it." Wait, not a fix. |
 | `needs_attention` | The diagnosis, front and centre. |
-| `paused` | A "check again" button. Nothing is being checked right now. |
-| `proved` | `firstVerifiedAt`, and `lastConfirmedAt` as "still true as of". |
-| `archived` | A "reactivate" button. Mention that the token is unchanged. |
+| `proved` | The date on `claim.endedAt`, and the domain's `firstVerifiedAt` if it proved before. |
+| `expired` | The window closed. One button to claim again — a new token, one edit in the panel. |
+| `canceled` | History. No action; an ended claim takes none. |
 
 `propagating` versus `needs_attention` is the split that earns the product its keep — both are "not
 verified", but only one is your reader's problem.

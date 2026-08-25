@@ -54,8 +54,12 @@ stay in the zone forever without getting in the way of anything.
 
 Two consequences worth designing around:
 
-- Leaving the record in place is the supported state, not an oversight. Continuous reconfirmation
-  is what keeps `lastConfirmedAt` moving.
+- Removing the record after the proof takes nothing away. The proof is dated, and its date does not
+  depend on the record still being there.
+- Leaving it in place costs nothing either — until you claim the same name again, when the token
+  from the ended claim is what the next check finds
+  ([`expired_token`](/diagnostics/catalogue#expired_token)). That is a one-line edit, not a new
+  record.
 - Finding a token at `_ownsi-challenge` that is *not* yours is a real, named case
   ([`foreign_token`](/diagnostics/catalogue#foreign_token)) — another account claimed the domain
   and got a different token. It is not a corrupted record.
