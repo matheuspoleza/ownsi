@@ -319,6 +319,8 @@ and they need no DOM — adding the first one is what puts `test` back in its `p
 | Web naming, colocation, arrow components, named props, no comments | the rules above, and the `web-conventions` skill |
 | No `any`, no `!`, unused code, no barrel files, hook dependencies | Biome, on `apps/web/**` |
 | The published docs match the code they document | `apps/api/test/docs.test.ts` |
+| Every route written in prose is one the API still serves | `apps/docs/test/routes.test.ts` |
+| Every route the API publishes is reached by the SDK, or waived | `packages/sdk/test/coverage.test.ts` |
 | Every docs page is navigated, has frontmatter and links somewhere real | `apps/docs/test/conventions.test.ts` |
 | All of the above, on every edit | `.claude/hooks/check-api.sh`, `.claude/hooks/check-web.sh` |
 

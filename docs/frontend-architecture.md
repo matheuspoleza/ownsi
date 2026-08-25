@@ -207,6 +207,25 @@ the API's own `code`, which is what lets a `retry` predicate read as
 Auth stays out of it. better-auth publishes its own typed client, and `auth.client.ts` builds
 it directly; wrapping it would buy a second name for every method and nothing else.
 
+### How it stays current
+
+The payload types need no maintenance — they come from the server's exported `App`, so a new
+field appears on its own and a renamed route is a type error. Two things that cannot catch, and
+a guard for each:
+
+| Drift | Caught by |
+| --- | --- |
+| The API grows a route and the SDK never wraps it | `packages/sdk/test/coverage.test.ts` |
+| A route name goes stale in a hand-written docs page | `apps/docs/test/routes.test.ts` |
+
+Both read the committed OpenAPI document, which `apps/api/test/docs.test.ts` keeps current, and
+both assert a **fact** — does this operation exist — rather than a judgement about a name. That
+is the line that decided which guards survived and which were deleted.
+
+Neither covers a stale TypeScript sample in the prose: `api.domains({ id }).verify.post()` is an
+expression, not a path, and catching it means compiling the samples against the SDK. Worth doing
+once the SDK page stops moving weekly.
+
 ## What enforces what
 
 Prose does not enforce anything. This is what actually bites:

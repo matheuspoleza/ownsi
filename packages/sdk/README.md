@@ -90,6 +90,18 @@ better-auth publishes its own typed client, and wrapping it would buy a second n
 method and nothing else. `apps/web` builds it directly in `src/api/auth.client.ts`. The same
 argument the API makes for not wrapping better-auth's server API applies on this side.
 
+## Staying current
+
+The payload types need no maintenance: they are derived from the server's exported `App`, so a
+new field appears on its own and a renamed route is a type error here. What that cannot catch is
+a route the API grows and this package never wraps — an unused route is legal TypeScript.
+
+`test/coverage.test.ts` closes that. It reads the committed OpenAPI document, which
+`apps/api/test/docs.test.ts` guarantees is current, and asserts that every operation the API
+publishes is either reached by a call here or **written down as deliberately not**, with the
+reason. Adding a route becomes a decision rather than an omission. It fails the other way too:
+claiming to reach an operation the API no longer publishes.
+
 ## Tests
 
 ```sh
