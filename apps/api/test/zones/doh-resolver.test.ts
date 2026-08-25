@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test"
-import { dohResolver } from "../../src/dns/infra/doh-resolver.ts"
+import { dohResolver } from "../../src/zones/infra/doh-resolver.ts"
 
 const originalFetch = globalThis.fetch
 

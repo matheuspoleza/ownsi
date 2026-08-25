@@ -1,7 +1,6 @@
 import type { Clock } from "../shared/clock.ts"
 import type { Database } from "../shared/database.ts"
 import { createReadZone, type ReadZone } from "./application/read-zone.ts"
-import type { DnsConfig } from "./dns.config.ts"
 import { createFindDelegation, withFailover } from "./domain/delegation.ts"
 import type { AskNameserver, DnsResolver, ZoneRepository } from "./domain/ports.ts"
 import { createReadSoa } from "./domain/soa-lookup.ts"
@@ -10,27 +9,28 @@ import { fakeNameserver, fakeResolver } from "./infra/fake-resolver.ts"
 import { DEMO_FIXTURES } from "./infra/fixtures.ts"
 import { nodeNameserver } from "./infra/nameserver.ts"
 import { inMemoryZoneRepository, postgresZoneRepository } from "./infra/zone-repository.ts"
+import type { ZonesConfig } from "./zones.config.ts"
 
-export type DnsModuleDeps = {
-  readonly config: DnsConfig
+export type ZonesModuleDeps = {
+  readonly config: ZonesConfig
   readonly database: Database
   readonly clock: Clock
 }
 
-export type DnsModuleOverrides = {
+export type ZonesModuleOverrides = {
   readonly resolvers?: readonly DnsResolver[]
   readonly askNameserver?: AskNameserver
   readonly zones?: ZoneRepository
 }
 
-export type DnsModule = {
+export type ZonesModule = {
   readonly readZone: ReadZone
 }
 
-export function createDnsModule(
-  deps: DnsModuleDeps,
-  overrides: DnsModuleOverrides = {},
-): DnsModule {
+export function createZonesModule(
+  deps: ZonesModuleDeps,
+  overrides: ZonesModuleOverrides = {},
+): ZonesModule {
   const { config } = deps
   const faked = config.driver === "fake"
 

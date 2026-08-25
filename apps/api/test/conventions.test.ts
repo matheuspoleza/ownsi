@@ -76,14 +76,14 @@ const CONFIG: AppConfig = {
     google: null,
   },
   mailer: { driver: "log", apiKey: "", from: "ownsi <no-reply@ownsi.dev>" },
-  dns: {
+  zones: {
     driver: "fake",
     recursiveResolvers: [],
     resolverTimeoutMs: 4_000,
     zoneCacheTtlSeconds: 300,
     soaBudgetMs: 2_500,
   },
-  claims: { driver: "demo" },
+  domains: { driver: "demo" },
 }
 
 describe("the README map", () => {

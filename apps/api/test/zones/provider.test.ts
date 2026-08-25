@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
-import { parseSoaRecord } from "../../src/dns/domain/dns.ts"
-import { detectProvider } from "../../src/dns/domain/provider.ts"
-import { estimatePublishing } from "../../src/dns/domain/publishing.ts"
+import { parseSoaRecord } from "../../src/zones/domain/dns.ts"
+import { detectProvider } from "../../src/zones/domain/provider.ts"
+import { estimatePublishing } from "../../src/zones/domain/publishing.ts"
 
 describe("detectProvider", () => {
   test.each([

@@ -1,22 +1,22 @@
 import { describe, expect, test } from "bun:test"
+import { fixedClock } from "../../src/shared/clock.ts"
 import {
   createReadZone,
   type ReadZone,
   type ReadZoneDeps,
   type ZoneStep,
-} from "../../src/dns/application/read-zone.ts"
-import { createFindDelegation, withFailover } from "../../src/dns/domain/delegation.ts"
-import type { DnsResolver, ZoneRepository } from "../../src/dns/domain/ports.ts"
-import { createReadSoa, type ReadSoa } from "../../src/dns/domain/soa-lookup.ts"
-import type { Zone } from "../../src/dns/domain/zone.ts"
+} from "../../src/zones/application/read-zone.ts"
+import { createFindDelegation, withFailover } from "../../src/zones/domain/delegation.ts"
+import type { DnsResolver, ZoneRepository } from "../../src/zones/domain/ports.ts"
+import { createReadSoa, type ReadSoa } from "../../src/zones/domain/soa-lookup.ts"
+import type { Zone } from "../../src/zones/domain/zone.ts"
 import {
   type DnsFixtures,
   fakeNameserver,
   fakeResolver,
   unreachableResolver,
-} from "../../src/dns/infra/fake-resolver.ts"
-import { inMemoryZoneRepository } from "../../src/dns/infra/zone-repository.ts"
-import { fixedClock } from "../../src/shared/clock.ts"
+} from "../../src/zones/infra/fake-resolver.ts"
+import { inMemoryZoneRepository } from "../../src/zones/infra/zone-repository.ts"
 
 const NOW = new Date("2026-08-24T12:00:00Z")
 

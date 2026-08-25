@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test"
 import { Elysia, type Static } from "elysia"
-import type { ClaimListResponse, ClaimResponse } from "../../src/claims/api/claim.response.ts"
-import { claimRoutes } from "../../src/claims/api/claim.routes.ts"
-import { createClaimsModule } from "../../src/claims/claims.module.ts"
+import type { ClaimListResponse, ClaimResponse } from "../../src/domains/api/domain.response.ts"
+import { domainRoutes } from "../../src/domains/api/domain.routes.ts"
+import { createDomainsModule } from "../../src/domains/domains.module.ts"
 import { fixedClock } from "../../src/shared/clock.ts"
 import { DEMO_CLAIMS } from "../../src/shared/demo.ts"
 import {
@@ -27,7 +27,7 @@ const signedOut: CheckSession = async () => ({ type: "anonymous" })
 
 function server(check: CheckSession = signedInAs(ADA)) {
   let issued = 0
-  const module = createClaimsModule(
+  const module = createDomainsModule(
     { config: { driver: "demo" }, clock: fixedClock(NOW) },
     {
       generateId: () => `clm_${++issued}`,
@@ -35,7 +35,7 @@ function server(check: CheckSession = signedInAs(ADA)) {
     },
   )
 
-  return new Elysia().use(claimRoutes(module, sessionPlugin(check)))
+  return new Elysia().use(domainRoutes(module, sessionPlugin(check)))
 }
 
 const post = (app: ReturnType<typeof server>, path: string, body?: unknown) =>
@@ -121,8 +121,8 @@ describe("the session", () => {
     const mine = await claim(app, "acme.com")
 
     const asGrace = new Elysia().use(
-      claimRoutes(
-        createClaimsModule({ config: { driver: "demo" }, clock: fixedClock(NOW) }),
+      domainRoutes(
+        createDomainsModule({ config: { driver: "demo" }, clock: fixedClock(NOW) }),
         sessionPlugin(signedInAs(GRACE)),
       ),
     )

@@ -1,15 +1,15 @@
 import { describe, expect, test } from "bun:test"
 import { createApp } from "../../src/app.ts"
 import type { AppConfig } from "../../src/config.ts"
+import { fixedClock } from "../../src/shared/clock.ts"
+import type { Database } from "../../src/shared/database.ts"
 import {
   type DnsFixtures,
   fakeNameserver,
   fakeResolver,
   unreachableResolver,
-} from "../../src/dns/infra/fake-resolver.ts"
-import { inMemoryZoneRepository } from "../../src/dns/infra/zone-repository.ts"
-import { fixedClock } from "../../src/shared/clock.ts"
-import type { Database } from "../../src/shared/database.ts"
+} from "../../src/zones/infra/fake-resolver.ts"
+import { inMemoryZoneRepository } from "../../src/zones/infra/zone-repository.ts"
 
 const CONFIG: AppConfig = {
   port: 0,
@@ -23,14 +23,14 @@ const CONFIG: AppConfig = {
     google: null,
   },
   mailer: { driver: "log", apiKey: "", from: "ownsi <no-reply@ownsi.dev>" },
-  dns: {
+  zones: {
     driver: "fake",
     recursiveResolvers: [],
     resolverTimeoutMs: 4_000,
     zoneCacheTtlSeconds: 300,
     soaBudgetMs: 2_500,
   },
-  claims: { driver: "demo" },
+  domains: { driver: "demo" },
 }
 
 const FIXTURES: DnsFixtures = {
@@ -55,7 +55,7 @@ function server(resolvers = [fakeResolver(FIXTURES)]) {
   return createApp(CONFIG, {
     database: unusedDatabase,
     clock: fixedClock(new Date("2026-08-24T12:00:00Z")),
-    dns: {
+    zones: {
       resolvers,
       askNameserver: fakeNameserver(FIXTURES),
       zones: inMemoryZoneRepository(),

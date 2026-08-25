@@ -8,25 +8,25 @@ import {
   createRestoreClaim,
   type TransitionClaim,
 } from "./application/transition-claim.ts"
-import type { ClaimsConfig } from "./claims.config.ts"
 import type { ClaimRepository, GenerateId, GenerateToken, StartClaim } from "./domain/ports.ts"
+import type { DomainsConfig } from "./domains.config.ts"
 import { startFromCatalogue } from "./infra/demo-claims.ts"
 import { randomId, randomToken } from "./infra/identifiers.ts"
 import { inMemoryClaimRepository } from "./infra/in-memory-claim-repository.ts"
 
-export type ClaimsModuleDeps = {
-  readonly config: ClaimsConfig
+export type DomainsModuleDeps = {
+  readonly config: DomainsConfig
   readonly clock: Clock
 }
 
-export type ClaimsModuleOverrides = {
+export type DomainsModuleOverrides = {
   readonly claims?: ClaimRepository
   readonly generateId?: GenerateId
   readonly generateToken?: GenerateToken
   readonly startClaim?: StartClaim
 }
 
-export type ClaimsModule = {
+export type DomainsModule = {
   readonly claimDomain: ClaimDomain
   readonly listClaims: ListClaims
   readonly readClaim: ReadClaim
@@ -35,10 +35,10 @@ export type ClaimsModule = {
   readonly restoreClaim: TransitionClaim
 }
 
-export function createClaimsModule(
-  deps: ClaimsModuleDeps,
-  overrides: ClaimsModuleOverrides = {},
-): ClaimsModule {
+export function createDomainsModule(
+  deps: DomainsModuleDeps,
+  overrides: DomainsModuleOverrides = {},
+): DomainsModule {
   const claims = overrides.claims ?? inMemoryClaimRepository()
   const startClaim = overrides.startClaim ?? startClaimFor(deps.config)
 
@@ -58,7 +58,7 @@ export function createClaimsModule(
   }
 }
 
-function startClaimFor(config: ClaimsConfig): StartClaim {
+function startClaimFor(config: DomainsConfig): StartClaim {
   switch (config.driver) {
     case "demo":
       return startFromCatalogue

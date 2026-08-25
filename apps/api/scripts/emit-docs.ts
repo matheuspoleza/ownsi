@@ -1,8 +1,8 @@
 import { writeFile } from "node:fs/promises"
 import { join } from "node:path"
 import { createApp } from "../src/app.ts"
-import { toDiagnosisResponse } from "../src/claims/api/claim.response.ts"
 import type { AppConfig } from "../src/config.ts"
+import { toDiagnosisResponse } from "../src/domains/api/domain.response.ts"
 import type { Database } from "../src/shared/database.ts"
 import { type Challenge, DIAGNOSIS_CODES, type Diagnosis } from "../src/shared/diagnosis.ts"
 
@@ -23,14 +23,14 @@ const DOCUMENTED: AppConfig = {
     google: null,
   },
   mailer: { driver: "log", apiKey: "", from: "ownsi <no-reply@ownsi.dev>" },
-  dns: {
+  zones: {
     driver: "fake",
     recursiveResolvers: [],
     resolverTimeoutMs: 4_000,
     zoneCacheTtlSeconds: 300,
     soaBudgetMs: 2_500,
   },
-  claims: { driver: "demo" },
+  domains: { driver: "demo" },
 }
 
 export async function openApiDocument(): Promise<string> {

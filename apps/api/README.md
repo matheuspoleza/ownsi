@@ -13,19 +13,19 @@ src/
   app.ts             mounts every context onto one server; the only place that does
   config.ts          environment in, typed config out
 
-  dns/               reading a zone: nameservers, provider, publishing estimate
-    dns.config.ts      the config this context reads
-    dns.module.ts      the object graph — use cases, no transport
-    dns.app.ts         the Elysia plugin
+  zones/             reading a zone: nameservers, provider, publishing estimate
+    zones.config.ts    the config this context reads
+    zones.module.ts    the object graph — use cases, no transport
+    zones.app.ts       the Elysia plugin
     domain/            types, pure functions, port definitions
     application/       use cases and queries
     api/               route factories and wire schemas
     infra/             adapters: DoH, UDP/53, Postgres, recorded fakes
 
-  claims/            a domain on an account: the token, the state, the lifecycle
-    claims.config.ts   the config this context reads
-    claims.module.ts   the object graph — use cases, no transport
-    claims.app.ts      the Elysia plugin
+  domains/           a domain on an account: the token, the state, the lifecycle
+    domains.config.ts  the config this context reads
+    domains.module.ts  the object graph — use cases, no transport
+    domains.app.ts     the Elysia plugin
     domain/            Claim, the challenge record, the lifecycle transitions
     application/       use cases and queries
     api/               route factories and wire schemas
@@ -49,7 +49,7 @@ test/
   architecture.test.ts   layer boundaries; fails the build when one is crossed
   conventions.test.ts    comments, classes, throwing, response schemas
   docs.test.ts           the emitted documentation still matches the code
-  dns/                   the context's own tests
+  zones/, domains/       each context's own tests
 ```
 
 ## Where does it go
@@ -66,9 +66,9 @@ test/
 | Something two contexts need | `shared/` |
 | Anything to do with identity or sessions | `shared/`, never a context |
 
-`claims` answers the whole contract but keeps its claims in memory and seeds them from
+`domains` answers the whole contract but keeps its claims in memory and seeds them from
 `shared/demo.ts`: one demo domain per screen, so the front end can be built and polished
-against real Eden types before a row is ever written. `ClaimsDriver` has one member on
+against real Eden types before a row is ever written. `DomainsDriver` has one member on
 purpose — adding `"postgres"` breaks the build until the adapter exists.
 
 Contexts still to build: `proof`, `verification`. What they owe is in

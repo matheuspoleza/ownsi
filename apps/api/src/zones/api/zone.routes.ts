@@ -8,7 +8,7 @@ import { toDelegationStep, toPublishingStep, ZoneStepResponse } from "./zone.res
 const MAX_DOMAIN_LENGTH = 253
 
 export function zoneRoutes(readZone: ReadZone) {
-  return new Elysia({ name: "dns.zones", prefix: "/zones" }).get(
+  return new Elysia({ name: "zones.routes", prefix: "/zones" }).get(
     "/:name",
     async function* ({ params, request, status }) {
       for await (const step of readZone({ name: params.name, signal: request.signal })) {

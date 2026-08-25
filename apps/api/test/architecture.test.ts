@@ -53,7 +53,7 @@ const RULES: readonly Rule[] = [
   {
     name: "shared/ depends on no bounded context",
     appliesTo: (path) => path.startsWith("shared/"),
-    forbids: [/\.\.\/(dns|auth|claims|proof|verification)\//],
+    forbids: [/\.\.\/(zones|domains|proof|verification)\//],
   },
 ]
 

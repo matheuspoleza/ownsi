@@ -5,17 +5,17 @@ import type { ClaimDomain } from "../application/claim-domain.ts"
 import type { ListClaims } from "../application/list-claims.ts"
 import type { ReadClaim } from "../application/read-claim.ts"
 import type { TransitionClaim } from "../application/transition-claim.ts"
-import { notFound, toClaimDomainError } from "./claim.errors.ts"
+import { notFound, toClaimDomainError } from "./domain.errors.ts"
 import {
   ClaimListResponse,
   ClaimResponse,
   toClaimListResponse,
   toClaimResponse,
-} from "./claim.response.ts"
+} from "./domain.response.ts"
 
 const MAX_DOMAIN_LENGTH = 253
 
-export type ClaimHandlers = {
+export type DomainHandlers = {
   readonly claimDomain: ClaimDomain
   readonly listClaims: ListClaims
   readonly readClaim: ReadClaim
@@ -32,8 +32,8 @@ const transitionSchema = {
   response: { 200: ClaimResponse, 401: ErrorResponse, 404: ErrorResponse },
 } as const
 
-export function claimRoutes(handlers: ClaimHandlers, session: SessionPlugin) {
-  return new Elysia({ name: "claims.domains", prefix: "/domains" })
+export function domainRoutes(handlers: DomainHandlers, session: SessionPlugin) {
+  return new Elysia({ name: "domains.routes", prefix: "/domains" })
     .use(session)
     .post(
       "/",
