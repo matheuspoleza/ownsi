@@ -7,7 +7,7 @@ import {
   type ZoneDelegation,
   type ZonePublishing,
   type ZoneStep,
-} from "../../../api/zone.api.ts"
+} from "../api/zone.api.ts"
 
 export interface UseZoneStateOptions {
   domain: string
