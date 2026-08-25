@@ -48,20 +48,32 @@ app, so a browser session is all the credentials you need.
 
     <CodeGroup>
     ```ts TypeScript
-    const { data: claim } = await api.domains.post({ domain: "acme.com" })
+    const { data: domain } = await api.domains.post({ domain: "acme.com" })
+    const { data: claim } = await api.claims.post({ domainId: domain.id })
 
-    console.log(claim?.record)
+    console.log(claim?.records[0])
     // { host: "_ownsi-challenge", name: "_ownsi-challenge.acme.com",
     //   type: "TXT", value: "ownsi_v1_9f3a2c8d1e4b7a6053c21f8e4d7b0a95" }
     ```
 
     ```bash curl
-    curl -X POST https://ownsi.dev/api/domains \
+    DOMAIN_ID=$(curl -s -X POST https://ownsi.dev/api/domains \
       -H "content-type: application/json" \
       -b "$SESSION_COOKIE" \
-      -d '{"domain":"acme.com"}'
+      -d '{"domain":"acme.com"}' | jq -r .id)
+
+    curl -X POST https://ownsi.dev/api/claims \
+      -H "content-type: application/json" \
+      -b "$SESSION_COOKIE" \
+      -d "{\"domainId\":\"$DOMAIN_ID\"}"
     ```
     </CodeGroup>
+
+    <Note>
+      Two calls, not one: a domain is a name on your account, and a claim is one attempt at
+      proving it. The claim comes back with `verificationId` — the process that will do the
+      reading.
+    </Note>
 
     <Warning>
       Put **only** `_ownsi-challenge` in your panel's Host field. Most panels append the domain
@@ -75,27 +87,27 @@ app, so a browser session is all the credentials you need.
     |---|---|
     | Type | `TXT` |
     | Host / Name | `_ownsi-challenge` |
-    | Value | the `record.value` from the previous step, verbatim |
+    | Value | the `records[0].value` from the previous step, verbatim |
     | TTL | whatever your panel defaults to |
 
     No quotes, no trailing spaces. If your panel adds quotes on save, that is
     [`value_formatted`](/diagnostics/catalogue#value_formatted) and the fix is to retype the value.
   </Step>
 
-  <Step title="Read the claim back">
-    ownsi rechecks on its own. Poll the claim, or force an attempt with
-    `POST /api/domains/:id/verify`.
+  <Step title="Read the verification back">
+    ownsi runs on its own. Poll the verification, or force a run with
+    `POST /api/verifications/:id/runs`.
 
     <CodeGroup>
     ```ts TypeScript
-    const { data: checked } = await api.domains({ id: claim.id }).get()
+    const { data: checked } = await api.verifications({ id: claim.verificationId }).get()
 
-    if (checked?.status === "proved") console.log("proved at", checked.firstVerifiedAt)
+    if (checked?.status === "proved") console.log("proved at", checked.lastRunAt)
     else console.log(checked?.diagnosis?.fix ?? checked?.waitEstimate)
     ```
 
     ```bash curl
-    curl https://ownsi.dev/api/domains/dom_01H8X -b "$SESSION_COOKIE"
+    curl https://ownsi.dev/api/verifications/vrf_01H8X -b "$SESSION_COOKIE"
     ```
     </CodeGroup>
 
@@ -103,6 +115,9 @@ app, so a browser session is all the credentials you need.
 
     - `diagnosis` — something about the record is wrong, and `fix` says what to change.
     - `waitEstimate` — nothing is wrong, DNS just has not caught up. `secondsRemaining` is how long.
+
+    The claim ends `proved` the moment the verification does; read it back at
+    `GET /api/claims/:id` for the date the proof is dated by.
   </Step>
 </Steps>
 

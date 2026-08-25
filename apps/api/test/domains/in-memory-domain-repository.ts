@@ -1,28 +1,23 @@
-import type { AccountDomain } from "../../src/domains/domain/account-domain.ts"
-import type { AccountDomainRepository } from "../../src/domains/domain/ports.ts"
+import type { Domain } from "../../src/domains/domain/domain.ts"
+import type { DomainRepository } from "../../src/domains/domain/ports.ts"
 
-export function inMemoryDomainRepository(
-  seed: readonly AccountDomain[] = [],
-): AccountDomainRepository {
-  const records = new Map<string, AccountDomain>()
-
-  const key = (userId: string, domainId: string) => `${userId}:${domainId}`
+export function inMemoryDomainRepository(seed: readonly Domain[] = []): DomainRepository {
+  const stored = new Map<string, Domain>(seed.map((domain) => [domain.id, domain]))
 
   const ownedBy = (userId: string) =>
-    [...records.values()].filter((record) => record.userId === userId)
-
-  for (const record of seed) records.set(key(record.userId, record.domain.id), record)
+    [...stored.values()].filter((domain) => domain.userId === userId)
 
   return {
-    findById: async (userId, domainId) => records.get(key(userId, domainId)) ?? null,
+    findById: async (domainId) => stored.get(domainId) ?? null,
     findByName: async (userId, nameAscii) =>
-      ownedBy(userId).find((record) => record.domain.nameAscii === nameAscii) ?? null,
+      ownedBy(userId).find((domain) => domain.nameAscii === nameAscii) ?? null,
     listByUser: async (userId) =>
-      ownedBy(userId).sort(
-        (left, right) => right.claim.createdAt.getTime() - left.claim.createdAt.getTime(),
-      ),
-    save: async (record) => {
-      records.set(key(record.userId, record.domain.id), record)
+      ownedBy(userId).sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime()),
+    save: async (domain) => {
+      stored.set(domain.id, domain)
+    },
+    remove: async (domainId) => {
+      stored.delete(domainId)
     },
   }
 }

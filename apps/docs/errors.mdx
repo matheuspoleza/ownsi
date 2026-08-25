@@ -47,8 +47,8 @@ Retrying does not help until the registration goes through.
 
 ## unauthenticated
 
-**401.** No valid session on the request. Everything under `/api/domains` needs one; see
-[Authentication](/api-reference/authentication).
+**401.** No valid session on the request. Everything under `/api/domains`, `/api/claims` and
+`/api/verifications` needs one; see [Authentication](/api-reference/authentication).
 
 Retrying the same request does not help. Sign in and retry.
 
@@ -74,12 +74,29 @@ history.
 domain does not exist or belongs to someone else, deliberately — an id lookup should not confirm
 that someone else's domain exists.
 
+## claim_not_found
+
+**404.** No claim with that id belongs to your account. As with `domain_not_found`, the same code
+comes back whether the claim does not exist or belongs to someone else.
+
+## verification_not_found
+
+**404.** No verification with that id belongs to your account. A verification is reachable from the
+`verificationId` on the claim that started it.
+
+## verification_not_running
+
+**409.** The verification has finished — its claim was proved, the window closed, or the claim was
+canceled — so there is nothing left to run.
+
+Claim the domain again. That opens a new claim with a new token and a verification of its own.
+
 ## rate_limited
 
 **429.** Too many requests. Carries a `Retry-After` header in seconds.
 
-Enforced per IP on the public surfaces — reading a zone, and public proof pages — and per claim on
-`POST /api/domains/:id/verify`.
+Enforced per IP on the public surfaces — reading a zone, and public proof pages — and per
+verification on `POST /api/verifications/:id/runs`.
 
 <Check>Safe to retry after `Retry-After`. Forcing checks in a loop does not make DNS answer faster.</Check>
 
@@ -94,4 +111,7 @@ Enforced per IP on the public surfaces — reading a zone, and public proof page
 | `already_claimed` | 409 | No — use the open claim. |
 | `claim_ended` | 409 | No — claim the domain again. |
 | `domain_not_found` | 404 | No. |
+| `claim_not_found` | 404 | No. |
+| `verification_not_found` | 404 | No. |
+| `verification_not_running` | 409 | No — claim the domain again. |
 | `rate_limited` | 429 | Yes, after `Retry-After`. |

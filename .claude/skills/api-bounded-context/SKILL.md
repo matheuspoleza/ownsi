@@ -10,13 +10,13 @@ Read `CLAUDE.md` first; this is the procedure, that is the law.
 ## Where the code goes
 
 A bounded context is `apps/api/src/<context>/` with `domain/`, `application/`, `api/` and
-`infra/`, plus three roots: `<context>.config.ts`, `<context>.module.ts` (object graph, no
-transport) and `<context>.app.ts` (Elysia plugin). A small context may keep the layer files
-flat; add the folders when it stops fitting on one screen.
+`infra/`, plus `<context>.module.ts` (object graph, no transport) and `<context>.app.ts` (the
+Elysia plugin). Add `<context>.config.ts` only if there is something to configure, and
+`<context>.contract.ts` when another context needs a language to speak about this one. A small
+context may keep the layer files flat; add the folders when it stops fitting on one screen.
 
-Contexts planned but not built: `auth`, `claims`, `proof`, `verification`. What each owes is
-in `docs/domain-ownership/prd.md`. Commit `` holds the pre-refactor slice — useful for
-the Inngest wiring, misleading for structure, since its layers no longer exist.
+Built: `auth`, `zones`, `domains`, `claims`, `verification`. Still to build: `proof`. What it
+owes is in `docs/domain-ownership/prd.md`.
 
 ## Order of work
 
@@ -30,11 +30,15 @@ the Inngest wiring, misleading for structure, since its layers no longer exist.
 
 3. **Write the pure functions.** In `domain/`. They take data and return data.
 
-4. **Write the use case.** In `application/`, as `create<Name>(deps) => handler`. It
-   returns `Result<T, E>` with a tagged `E`. No throwing, no HTTP vocabulary, no Elysia.
+4. **Write the use case.** In `application/<verb>-<thing>.use-case.ts`, as `<verbThing>(deps)
+   => handler` — no factory prefix, the business verb from the closed set, one unit per file.
+   It returns `Result<T, E>` with a tagged `E`. No throwing, no HTTP vocabulary, no Elysia.
+   A read is a `.query.ts`; something on its own clock is a `.schedule.ts`, taking `step` as a
+   port so it is testable without waiting.
 
-5. **Write the adapter.** In `infra/`, a function returning the port. Map every vendor
-   failure onto the union — a timeout is `failed`, never an empty `answered`.
+5. **Write the adapter.** In `infra/<thing>.repository.ts` or `infra/<thing>.service.ts`, a
+   function returning the port. Map every vendor failure onto the union — a timeout is
+   `failed`, never an empty `answered`.
 
 6. **Write the route.** In `api/<thing>.routes.ts`, a factory taking the use case. Give
    the Elysia instance a `name`. Map the error union with an exhaustive `switch` closed by
@@ -54,5 +58,10 @@ the Inngest wiring, misleading for structure, since its layers no longer exist.
 cd apps/api && bun test && bun run typecheck && bun run lint
 ```
 
-`test/architecture.test.ts` fails the build if a layer imports across the boundary. If it
-fires, the fix is to move the code, never to widen the rule.
+`test/architecture.test.ts` fails the build if a layer imports across the boundary, or if a
+context reaches another outside its declared arrow. If it fires, the fix is to move the code,
+never to widen the rule. The conventions themselves are not asserted — run the
+`api-conventions` skill over the diff instead.
+
+**Reacting to an event is not a special kind of code.** Write the ordinary use case with a
+business name, and bind it in one line in `src/app.ts`. Nothing is called `on<Event>`.

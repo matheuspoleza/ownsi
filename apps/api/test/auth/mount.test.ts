@@ -36,7 +36,6 @@ const CONFIG: AppConfig = {
     resolverTimeoutMs: 4_000,
     authoritativeBudgetMs: 2_500,
   },
-  domains: { driver: "demo", appUrl: "https://ownsi.dev" },
 }
 
 const app = () => createApp(CONFIG, { database: {} as Database })

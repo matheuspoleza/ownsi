@@ -18,7 +18,7 @@ src/
     auth.module.ts     the object graph — the handler and a CheckSession, no Elysia
     auth.app.ts        the Elysia plugin mounting better-auth under its base path
     domain/            SendMagicLink, the one port
-    infra/             adapters: the better-auth instance, Resend and the log driver
+    infra/             better-auth.service.ts and magic-link.service.ts
 
   zones/             reading a zone: nameservers, provider, publishing estimate
     zones.config.ts    the config this context reads
@@ -28,41 +28,58 @@ src/
     domain/            types, pure functions, port definitions
     application/       use cases and queries
     api/               route factories and wire schemas
-    infra/             adapters: DoH, UDP/53, Postgres, recorded fakes
+    infra/             adapters: DoH, UDP/53, Postgres, and the recorded answers
+                       the fakes replay
 
-  domains/           a domain on an account: the token, the state, the lifecycle
-    domains.config.ts  the config this context reads
+  domains/           a name on an account, and nothing else: no status, no token
     domains.module.ts  the object graph — use cases, no transport
     domains.app.ts     the Elysia plugin
-    domain/            Domain, Claim, the one-way lifecycle, and the status it
-                       derives from a diagnosis it does not own
-    application/       use cases and queries
+    domains.contract.ts  DomainRef, and the one event: DomainArchived
+    domain/            Domain, and the two things that happen to one
+    application/       find-or-create, archive, delete, get, list
     api/               route factories and wire schemas
-    infra/             adapters: the Postgres store, the coexistence query, the demo
-                       catalogue, the token, the anti-corruption layer over
-                       verification, the Inngest watcher that is the claim's clock,
-                       the notice emails and the log that keeps them under the ceiling
+    infra/             domain.repository.ts, and that is all it needs
 
-  verification/      did this token appear at this host, and if not, which failure is it
+  claims/            the episode: one token, one seven-day window, one outcome
+    claims.config.ts   the config this context reads
+    claims.module.ts   the object graph — use cases, no transport
+    claims.app.ts      the Elysia plugin
+    claims.contract.ts what proof will speak: ClaimView, ClaimDetail, ClaimEnded
+    domain/            claim.ts is the four states and the three ways out;
+                       challenge.ts the record to write; notice.ts when to say
+                       something; coexistence.ts the masked other claimant
+    application/       create, cancel, prove, expire, notify — and two queries.
+                       prove, expire and notify are reached by reacting to an event
+                       and are ordinary use cases a test calls with no bus in sight
+    infra/             adapters: the Postgres store, the coexistence query, the
+                       token, the notice emails and the ceiling that keeps them to
+                       one per claim per notice per day
+
+  verification/      the process: did this token appear at this host, and if not, why
     verification.config.ts    the config this context reads
     verification.module.ts    the object graph — use cases, no transport
-    verification.contract.ts  what domains may speak: the diagnosis vocabulary and
-                       the check it can ask for — and none of the observation,
-                       the quorum or the probes
-    domain/            diagnosis.ts holds the 13 codes and the cause and fix each one
-                       reads as; attempt.ts the three outcomes; methods/txt/ the
-                       reduced observation, the quorum of three, and the probes
-    application/       check-challenge.ts dispatches on the method and owns no DNS
-                       of its own; txt-method.ts is the one method there is —
-                       collect, then diagnose, and the authority is asked only
-                       once the recursive answer came back negative
+    verification.app.ts       the Elysia plugin
+    verification.contract.ts  what claims may speak: the diagnosis vocabulary, the
+                       three events, and none of the observation, the quorum or
+                       the probes
+    domain/            verification.ts is the aggregate and every transition;
+                       backoff.ts the cadence; attempt.ts the three outcomes;
+                       diagnosis.ts the 13 codes and the cause and fix each one
+                       reads as; methods/txt/ the reduced observation, the quorum
+                       of three, and the probes
+    application/       create, run, stop, and two queries — plus
+                       verify-until-deadline.schedule.ts, the loop, over a Step port
     infra/             adapters: DoH over three resolvers, UDP/53 to the zone's own
-                       nameservers, the anti-corruption layer over zones, the fake
+                       nameservers, the Postgres store, the Inngest send and the
+                       Inngest step, the anti-corruption layer over zones, the fake
 
   shared/            what more than one context needs
     http/              error shape, the health route, and the session macro every
                        context opts into — the handoff, not the authenticating
+    bus.ts             a typed envelope, and one in-process adapter. Event shapes
+                       never live here; they belong to the context that publishes them
     clock.ts           injected so tests state the time instead of waiting for it
+    time.ts            daysAfter, secondsAfter, secondsBetween — one meaning for all
     email.ts           one Resend, one `log` driver, one `SendEmail` — no context owns it
     inngest.ts         the durable clock's client, built like the database is
     result.ts          Result, and the exhaustiveness guard for tagged unions
@@ -75,10 +92,11 @@ scripts/
 
 test/
   architecture.test.ts   layer boundaries; fails the build when one is crossed
-  conventions.test.ts    comments, classes, throwing, response schemas
   docs.test.ts           the emitted documentation still matches the code
+  harness.ts             createApp with in-memory adapters and a faked session
+  flow.test.ts           a name to a proof, over HTTP, through the whole graph
   auth/, zones/,         each context's own tests
-  domains/,
+  domains/, claims/,
   verification/
 ```
 
@@ -88,7 +106,9 @@ test/
 | --- | --- |
 | A type, or a function over that type with no I/O | `<context>/domain/` |
 | An interface to the outside world | `<context>/domain/ports.ts` |
-| A use case or query | `<context>/application/`, as `create<Name>(deps)` |
+| A use case | `<context>/application/<verb>-<thing>.use-case.ts` |
+| A query | `<context>/application/<verb>-<thing>.query.ts` |
+| Something that runs on its own clock | `<context>/application/<name>.schedule.ts` |
 | Something that talks to a vendor, a driver, the network | `<context>/infra/` |
 | An HTTP route | `<context>/api/<thing>.routes.ts` |
 | Wiring a context together | `<context>/<context>.module.ts` |
@@ -98,27 +118,39 @@ test/
 | Authenticating someone | `auth/` |
 | Asking who is on a request | `shared/http/session.ts`, the macro every route opts into |
 
-`domains` keeps its records in Postgres: a `Domain` row per name per account, and a `Claim` row
-per attempt at it, ordered by `sequence` — the highest is the one in play and the rest are
-history. Nothing is kept in memory; a claim survives a restart, which is the whole point of a
-seven-day window.
+## A claim is an episode; a verification is a process
 
-Inngest is the clock, not an orchestrator. Opening a claim sends one event; one durable function
-per claim then alternates `step.sleepUntil(nextCheckAt)` with `checkWhenDue`, which runs the same
-attempt the *check now* button runs. The function ends when `checkWhenDue` answers `null`, so
-cancelling, archiving or proving a claim needs no cancellation: the next wake finds no open claim
-and stops. A check that wakes past `expiresAt` expires the claim instead of checking it, which is
-why expiry needs no sweeper of its own.
+Four tables carry it. A `Domain` row per name per account — the name, and nothing else. A `Claim`
+row per attempt at proving it, ordered by `sequence`, the highest being the one in play. A
+`Verification` row per claim, 1:1, holding the challenge, the deadline and where the process has
+got to. And a `VerificationAttempt` row per DNS read, append-only, which is what makes PRD
+invariant 6 — *no proof without evidence* — something the schema can hold rather than something a
+reviewer has to check. Nothing is kept in memory; a claim survives a restart, which is the whole
+point of a seven-day window.
 
-The interval is derived, not guessed: 30 s while the claim is minutes old, widening to 6 h after a
-day, and never sooner than the SOA MINIMUM says resolvers will forget the "does not exist".
-Roughly sixty checks over the seven-day window. `unresolvable` moves nothing except
+The two contexts talk in two different directions on purpose, and the reasoning is in
+[`docs/backend-architecture.md`](../../docs/backend-architecture.md#calls-down-events-up).
+`claims` calls `verification` through a port and gets the `verificationId` back at once, so
+`POST /api/claims` can answer with it. `verification` publishes three events `claims` reacts to,
+and the whole reaction surface of the system is four lines in `src/app.ts`.
+
+Inngest is the clock, not an orchestrator. Creating a verification sends one event; one durable
+function per verification then alternates `step.sleepUntil(nextRunAt)` with `runVerification`,
+which is the same run the *check now* button runs. It ends when there is no next run — proved,
+exhausted or stopped — and cancelling a claim also sends `verification/stopped`, which the
+function is registered to cancel on. A run that wakes past the deadline exhausts the verification
+instead of reading DNS, which is why expiry needs no sweeper of its own.
+
+The interval is derived, not guessed: 30 s while the verification is minutes old, widening to 6 h
+after a day, and never sooner than the SOA MINIMUM says resolvers will forget the "does not
+exist". Roughly sixty runs over the seven-day window. `unresolvable` moves nothing except
 `consecutiveFailures`, which doubles the wait up to a ceiling — a resolver outage costs the claim
-nothing and says nothing.
+nothing, says nothing, and publishes no event at all.
 
-A check that changes something says so, once. `applyAttempt` returns the notices as data next to
-the new claim, so "a resolver outage sends zero emails" is an assertion over an array with no SMTP
-in sight. There are four, and each is a state change rather than a repetition:
+A run that changes something says so, once. `notifyClaimant` derives the notices from the claim's
+own age and the moment of the previous run, so "a resolver outage sends zero emails" is an
+assertion over an array with no SMTP in sight. There are four, and each is a state change rather
+than a repetition:
 
 | Notice | When |
 | --- | --- |
@@ -127,18 +159,19 @@ in sight. There are four, and each is a state change rather than a repetition:
 | `expiring` | the claim crossed day six — one warning, naming the fix that is outstanding |
 | `coexistence` | somebody else proved a name you are still claiming |
 
-Nudges and the warning come from crossing a boundary between two checks, not from a counter: if
-the previous check was before day one and this one is after, it crossed, and it crosses once.
-On top of that `announceOncePerDay` holds the PRD's ceiling — at most one email per claim per
-notice per 24 hours — against `SentNotice` rows. Expiry itself sends nothing: day six already said
-it, and a second email would only scold.
-
-`DOMAINS_DRIVER=demo` changes one thing: claiming a name from `domains/infra/demo.ts` opens with
-the history that screen is meant to show, so the front end can be built against real Eden types
-without hand-fabricating six states. It writes to the same Postgres as any other claim.
+Nudges and the warning come from crossing a boundary between two runs, not from a counter: the
+`AttemptFailed` event carries `since`, the moment of the previous run, so if that was before day
+one and this one is after, it crossed, and it crosses once. On top of that `atMostDaily` holds the
+PRD's ceiling — at most one email per claim per notice per 24 hours — against `ClaimNotice` rows.
+Expiry itself sends nothing: day six already said it, and a second email would only scold.
 
 Contexts still to build: `proof`. What it owes is in
-[the PRD](../../docs/domain-ownership/prd.md); commit `` has the pre-refactor sketch.
+[the PRD](../../docs/domain-ownership/prd.md).
+
+One read crosses a boundary on purpose. `claims/infra/coexistence.repository.ts` joins `Domain`
+and `User`, because "is anyone else claiming this name" is a question about names and about
+people, and neither belongs to `claims`. It is a read, it is the only one, and it is named so the
+next person finds it rather than repeats it.
 
 Auth is not among them: it is built. Authenticating is a domain with an owner; asking who is on
 a request is transport. The reasoning for that split is in
@@ -146,7 +179,7 @@ a request is transport. The reasoning for that split is in
 
 A context reaches another only through `<other>/<other>.contract.ts`, and only along an arrow
 declared in `CONTEXT_MAP` in `test/architecture.test.ts` — today `verification → zones` and
-`domains → verification`. The
+`claims → domains, verification`. The
 contract is a published language, deliberately narrower than the domain behind it: `ZoneDescription`
 carries nameservers and whether the authority answered, and none of `Zone`, its provider or its
 `observedAt`. Everything else in a context stays private to it, `domain/` imports nothing that
@@ -205,15 +238,25 @@ setting `railway.json` can hold.
 | Route | Auth | Notes |
 | --- | --- | --- |
 | `GET /api/zones/:name` | none | Public zone read. Rate limited at the Cloudflare edge, cached in Postgres under the name that was asked for. |
-| `POST /api/domains` | session | Claims a domain: issues the token and returns the record to create. |
+| `POST /api/domains` | session | Puts a name on the account. Idempotent: asking twice returns the same domain. |
 | `GET /api/domains` | session | The domains on this account, archived ones left out. |
-| `GET /api/domains/:id` | session | The open claim, every claim before it, and the named diagnosis. |
-| `POST /api/domains/:id/verify` | session | Reads DNS now instead of waiting for the next scheduled check: the claim comes back proved, or carrying the named reason the record is not there. 409 once the claim has ended. |
-| `POST /api/domains/:id/cancel` | session | Ends the open claim. The token stops being accepted. |
-| `POST /api/domains/:id/archive` | session | Leaves the list and ends any open claim. Retracts no proof. |
+| `GET /api/domains/:id` | session | One domain. Archived ones still read. |
+| `POST /api/domains/:id/archive` | session | Leaves the list and ends any claim open on the name. Retracts no proof. |
+| `DELETE /api/domains/:id` | session | The only eraser. Claims, verifications and proof links go with it. |
+| `POST /api/claims` | session | Opens a claim on a domain: issues the token, returns the record to create and the `verificationId` behind it. 409 while one is already open. |
+| `GET /api/claims` | session | Every claim on this account, newest first. `?domainId=` narrows it. |
+| `GET /api/claims/:id` | session | One claim, with whether another account has proved the same name. |
+| `POST /api/claims/:id/cancel` | session | Ends the claim and stops its verification. The token stops being accepted. |
+| `GET /api/verifications/:id` | session | Where the process is: the named diagnosis, the wait, the next run, the deadline. |
+| `GET /api/verifications/:id/attempts` | session | Every read this verification has made, newest first. The evidence a proof rests on. |
+| `POST /api/verifications/:id/runs` | session | Reads DNS now instead of waiting for the schedule. 409 once the process has finished. |
 | `ALL /api/auth/*` | none | better-auth, mounted whole: magic link and Google. Not in OpenAPI — the front end reaches it through its own client, not Eden. |
 | `ALL /api/inngest` | signature | Where the durable scheduler reaches the API. Absent when `INNGEST_DRIVER=manual`, and never in OpenAPI. |
 | `GET /api/health` | none | Pings the database. Hidden from OpenAPI. |
 
 A route asks for a session with `session: true`, which resolves `user` or answers 401 in the
 shared error shape. It is opt-in precisely so the public zone read stays public.
+
+The three resources stay separate on the wire because the backend stays split along its seams. A
+`packages/sdk` recomposing them into `domain.claim()` is the next thing worth building, and it is
+a client-side concern that costs the backend nothing.

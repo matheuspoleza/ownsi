@@ -7,7 +7,8 @@ Two surfaces, and they behave differently on purpose:
 
 - \`GET /api/zones/:name\` is public. It streams what DNS answers, in the order DNS answers it,
   and writes nothing. No account, no key.
-- Everything under \`/api/domains\` belongs to an account and needs a session cookie.
+- Everything under \`/api/domains\`, \`/api/claims\` and \`/api/verifications\` belongs to an
+  account and needs a session cookie.
 
 A lookup that failed never carries records, and a claim that has not been checked never carries a
 diagnosis: both are tagged unions, so the shape tells you which case you are in. Errors are always
@@ -39,8 +40,20 @@ export function openApiDocumentation(appUrl: string): OpenApiDocumentation {
       {
         name: "Domains",
         description:
-          "A domain on an account: the token it was issued, the state it is in, and the named " +
-          "diagnosis when a check does not find the record. Session required.",
+          "A name on an account, and nothing else — no status, no token. It is what a claim " +
+          "is opened against. Session required.",
+      },
+      {
+        name: "Claims",
+        description:
+          "The episode: one token, one seven-day window, one outcome. A claim is never " +
+          "reopened, so the list of them is the account's history. Session required.",
+      },
+      {
+        name: "Verifications",
+        description:
+          "The process behind a claim: the runs it has made, the named diagnosis of the last " +
+          "one, and when the next lands. Session required.",
       },
     ],
   }

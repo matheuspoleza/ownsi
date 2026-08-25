@@ -2,8 +2,8 @@ import { writeFile } from "node:fs/promises"
 import { join } from "node:path"
 import { createApp } from "../src/app.ts"
 import type { AppConfig } from "../src/config.ts"
-import { toDiagnosisResponse } from "../src/domains/api/domain.response.ts"
 import type { Database } from "../src/shared/database.ts"
+import { toDiagnosisResponse } from "../src/verification/api/verification.response.ts"
 import {
   type Challenge,
   DIAGNOSIS_CODES,
@@ -48,7 +48,6 @@ const DOCUMENTED: AppConfig = {
     resolverTimeoutMs: 4_000,
     authoritativeBudgetMs: 2_500,
   },
-  domains: { driver: "demo", appUrl: "https://ownsi.dev" },
 }
 
 export async function openApiDocument(): Promise<string> {
@@ -57,12 +56,12 @@ export async function openApiDocument(): Promise<string> {
   return `${JSON.stringify(await response.json(), null, 2)}\n`
 }
 
-const CHALLENGE: Challenge = {
+export const CHALLENGE: Challenge = {
   domain: "acme.com",
   token: "ownsi_v1_9f3a2c8d1e4b7a6053c21f8e4d7b0a95",
 }
 
-const SAMPLES: Readonly<Record<(typeof DIAGNOSIS_CODES)[number], Diagnosis>> = {
+export const SAMPLES: Readonly<Record<(typeof DIAGNOSIS_CODES)[number], Diagnosis>> = {
   domain_appended: {
     code: "domain_appended",
     observed: { name: "_ownsi-challenge.acme.com.acme.com" },

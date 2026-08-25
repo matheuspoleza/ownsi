@@ -1,50 +1,29 @@
 import { describe, expect, test } from "bun:test"
-import { DEMO_DOMAINS, DEMO_TOKEN } from "../../src/domains/infra/demo.ts"
+import { CHALLENGE, SAMPLES } from "../../scripts/emit-docs.ts"
 import {
-  type Challenge,
   DIAGNOSIS_CODES,
   type Diagnosis,
   explain,
   formatDuration,
 } from "../../src/verification/domain/diagnosis.ts"
 
-type Diagnosed = {
-  readonly domain: string
-  readonly diagnosis: Diagnosis
-}
-
-const diagnosed: readonly Diagnosed[] = DEMO_DOMAINS.flatMap((entry) =>
-  [entry.claim, ...entry.history].flatMap((claim) =>
-    claim.check?.outcome === "absent"
-      ? [{ domain: entry.domain, diagnosis: claim.check.diagnosis }]
-      : [],
-  ),
-)
-
 const SENTENCE_CEILING = 220
 
-const challengeFor = (claim: Diagnosed): Challenge => ({
-  domain: claim.domain,
-  token: DEMO_TOKEN,
-})
+const diagnosed: readonly Diagnosis[] = DIAGNOSIS_CODES.map((code) => SAMPLES[code])
 
-const explanationOf = (claim: Diagnosed) => explain(claim.diagnosis, challengeFor(claim))
+const explanationOf = (diagnosis: Diagnosis) => explain(diagnosis, CHALLENGE)
 
-const findByCode = (code: Diagnosis["code"]): Diagnosed => {
-  const claim = diagnosed.find((candidate) => candidate.diagnosis.code === code)
-  if (!claim) throw new Error(`no fixture reproduces ${code}`)
-  return claim
-}
+const findByCode = (code: Diagnosis["code"]): Diagnosis => SAMPLES[code]
 
 describe("the diagnostics catalogue", () => {
   test("every code has a fixture that reproduces it", () => {
-    const reproduced = new Set(diagnosed.map((claim) => claim.diagnosis.code))
+    const reproduced = new Set(diagnosed.map((diagnosis) => diagnosis.code))
     expect([...reproduced].sort()).toEqual([...DIAGNOSIS_CODES].sort())
   })
 
   test("every diagnosis names one cause and one fix", () => {
-    for (const claim of diagnosed) {
-      const { cause, fix } = explanationOf(claim)
+    for (const diagnosis of diagnosed) {
+      const { cause, fix } = explanationOf(diagnosis)
 
       expect(cause.length).toBeGreaterThan(0)
       expect(fix.length).toBeGreaterThan(0)
@@ -54,8 +33,8 @@ describe("the diagnostics catalogue", () => {
   })
 
   test("no sentence leaks an unfilled value", () => {
-    for (const claim of diagnosed) {
-      const { cause, fix } = explanationOf(claim)
+    for (const diagnosis of diagnosed) {
+      const { cause, fix } = explanationOf(diagnosis)
       expect(`${cause} ${fix}`).not.toMatch(/undefined|NaN|\[object Object\]/)
     }
   })
@@ -72,7 +51,7 @@ describe("the diagnostics catalogue", () => {
       "value_formatted",
       "record_absent",
     ] as const) {
-      expect(explanationOf(findByCode(code)).fix).toContain(DEMO_TOKEN)
+      expect(explanationOf(findByCode(code)).fix).toContain(CHALLENGE.token)
     }
   })
 
@@ -84,8 +63,8 @@ describe("the diagnostics catalogue", () => {
   })
 
   test("a sentence stays a sentence", () => {
-    for (const claim of diagnosed) {
-      const { cause, fix } = explanationOf(claim)
+    for (const diagnosis of diagnosed) {
+      const { cause, fix } = explanationOf(diagnosis)
       expect(cause.length).toBeLessThanOrEqual(SENTENCE_CEILING)
       expect(fix.length).toBeLessThanOrEqual(SENTENCE_CEILING)
     }

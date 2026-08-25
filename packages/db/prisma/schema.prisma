@@ -14,12 +14,6 @@ enum ClaimState {
   CANCELED
 }
 
-enum CheckOutcome {
-  FOUND
-  ABSENT
-  UNRESOLVABLE
-}
-
 enum NoticeKind {
   PROVED
   NUDGE
@@ -27,10 +21,27 @@ enum NoticeKind {
   COEXISTENCE
 }
 
-enum WaitReason {
+enum VerificationMethod {
+  DNS_TXT
+}
+
+enum VerificationStatus {
+  RUNNING
+  PROVED
+  EXHAUSTED
+  STOPPED
+}
+
+enum AttemptTrigger {
   FIRST_CHECK
-  NEGATIVE_CACHE
-  PROVIDER_PUBLISHING
+  SCHEDULED
+  REQUESTED
+}
+
+enum AttemptOutcome {
+  FOUND
+  ABSENT
+  UNRESOLVABLE
 }
 
 /// One account's involvement with one name. The same name is claimable by other
@@ -52,31 +63,26 @@ model Domain {
 /// `sequence` orders the claims of a domain; the highest is the one in play, the
 /// rest are history. A claim is never reopened, so the order never changes.
 model Claim {
-  id                   String        @id
-  sequence             Int           @default(autoincrement())
-  domainId             String
-  domain               Domain        @relation(fields: [domainId], references: [id], onDelete: Cascade)
-  userId               String
-  token                String
-  state                ClaimState
-  expiresAt            DateTime
-  nextCheckAt          DateTime?
-  consecutiveFailures  Int           @default(0)
-  endedAt              DateTime?
-  waitReason           WaitReason?
-  waitSecondsRemaining Int?
-  lastCheckOutcome     CheckOutcome?
-  lastCheckAt          DateTime?
-  lastDiagnosis        Json?
-  createdAt            DateTime
-  sentNotices          SentNotice[]
+  id             String        @id
+  sequence       Int           @default(autoincrement())
+  domainId       String
+  domain         Domain        @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  userId         String
+  token          String
+  state          ClaimState
+  expiresAt      DateTime
+  endedAt        DateTime?
+  verificationId String?
+  createdAt      DateTime
+  notices        ClaimNotice[]
+  verification   Verification?
 
   @@index([domainId, sequence])
-  @@index([state, nextCheckAt])
+  @@index([userId, state])
 }
 
 /// What we have already said about a claim, so that nothing is said twice inside a day.
-model SentNotice {
+model ClaimNotice {
   id      String     @id
   claimId String
   claim   Claim      @relation(fields: [claimId], references: [id], onDelete: Cascade)
@@ -84,6 +90,46 @@ model SentNotice {
   sentAt  DateTime
 
   @@index([claimId, notice, sentAt])
+}
+
+/// The process that runs until the challenge is found or the deadline passes. The
+/// column is `claimId` because there is one database; the code calls it a subject,
+/// and verification never reads the row it points at.
+model Verification {
+  id                  String                @id
+  claimId             String                @unique
+  claim               Claim                 @relation(fields: [claimId], references: [id], onDelete: Cascade)
+  ownerId             String
+  method              VerificationMethod
+  challenge           Json
+  status              VerificationStatus
+  deadline            DateTime
+  nextRunAt           DateTime?
+  consecutiveFailures Int                   @default(0)
+  lastOutcome         AttemptOutcome?
+  lastRunAt           DateTime?
+  lastDiagnosis       Json?
+  createdAt           DateTime
+  attempts            VerificationAttempt[]
+
+  @@index([ownerId])
+  @@index([status, nextRunAt])
+}
+
+/// Append-only. No path ends a claim as proved without one of these rows written in
+/// the same transaction.
+model VerificationAttempt {
+  id             String         @id
+  verificationId String
+  verification   Verification   @relation(fields: [verificationId], references: [id], onDelete: Cascade)
+  trigger        AttemptTrigger
+  outcome        AttemptOutcome
+  diagnosis      Json?
+  evidence       Json?
+  latencyMs      Int?
+  createdAt      DateTime
+
+  @@index([verificationId, createdAt])
 }
 
 /// `requestedName` is what a caller asked about; `name` is the zone that answered, which
@@ -149,7 +195,8 @@ model Account {
   @@index([userId])
 }
 
-model Verification {
+/// better-auth's own table, named so that `Verification` can mean the product's.
+model AuthVerification {
   id         String   @id
   identifier String
   value      String

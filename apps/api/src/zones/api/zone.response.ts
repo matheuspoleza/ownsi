@@ -1,5 +1,5 @@
 import { t } from "elysia"
-import type { ZoneStep } from "../application/read-zone.ts"
+import type { ZoneStep } from "../application/get-zone.query.ts"
 
 export type DelegatedStep = Extract<ZoneStep, { type: "delegated" }>
 export type PublishedStep = Extract<ZoneStep, { type: "published" }>

@@ -1,7 +1,7 @@
 ---
 feature: domain-ownership
 phase: prd
-updated: 2026-08-24
+updated: 2026-08-25
 ---
 
 # PRD — Ownsi
@@ -225,7 +225,7 @@ Everything follows from that one sentence:
 | Webhooks | One channel, email, for a hosted product with its users' addresses |
 | Publishable packages, API keys, multi-tenancy | Ownsi is a hosted product. The SDK shape is shown in the docs as a design, not shipped as a distribution |
 | Teams, roles, invitations | One account, one person |
-| A dedicated queue (Redis/BullMQ) | `next_check_at` in Postgres plus Inngest already covers it |
+| A dedicated queue (Redis/BullMQ) | `next_run_at` in Postgres plus Inngest already covers it |
 | Separate deploys, two hostnames, per-schema roles | One service, one deploy |
 
 ### Success criteria
@@ -254,19 +254,27 @@ in the `Engineering` layer of `designs.pen`.*
 
 ### 3.1 Domain model
 
-`Domain` is a name, and nothing more. `Claim` is an account's attempt on that name, and it is where
-every lifecycle lives. Verification attempts are append-only and referenced, not carried as
-children. The proof is not a separate entity — it is the pair of dates on the claim.
+`Domain` is a name, and nothing more. `Claim` is an account's attempt on that name — the token, the
+window, the outcome. `Verification` is the *process* that runs against it, and it is a separate
+aggregate: a claim is an episode, a verification is a process, and they are not the same row.
+Attempts are append-only children of the verification. The proof is not a separate entity — it is
+the date on the claim.
 
 | Object | Kind | What it is |
 |---|---|---|
-| `Domain` | entity | a name, once, for everyone: `id`, `nameAscii`, `nameUnicode`. **No owner and no status.** What claims and history hang from |
-| `Claim` | aggregate root | one open per (user, domain), many over time. Token, state, dates. `claim()`, `cancel()`, `expire()`, `applyAttempt()` |
+| `Domain` | entity | a name: `id`, `nameAscii`, `nameUnicode`. **No status.** What claims hang from |
+| `Claim` | aggregate root | one open per (user, domain), many over time. Token, state, window. `open()`, `prove()`, `expire()`, `cancel()` |
+| `Verification` | aggregate root | one per claim. The challenge, the deadline, the cadence, the last diagnosis. `start()`, `recordAttempt()`, `exhaust()`, `stop()` |
+| `VerificationAttempt` | entity | append-only child of a verification: trigger, outcome, diagnosis, evidence, latency |
 | `DomainName` | value object | parse, normalise, punycode, public suffix list, and the list of normalisations applied |
 | `Zone` | aggregate root | one per name: nameservers, provider, SOA MINIMUM, `observedAt`. Read before sign-in, shared across claims |
-| `VerificationAttempt` | aggregate root | append-only: trigger, outcome, resolver observations, diagnosis |
 | `PublicProofLink` | aggregate root | slug, claim, expiry |
 | `Diagnosis`, `ResolverObservation`, `MaskedEmail` | value objects | produced by domain services, never entities |
+
+**Verification never says the word *claim*.** It verifies a `subjectId` against a challenge until a
+deadline, which is what lets `claims` depend on `verification` with no arrow coming back. The
+column in Postgres is `claim_id`, because there is one database and *delete permanently* needs a
+real foreign key; the type says `subjectId` and the repository translates in one line.
 
 **`Domain` has no owner, and that is the whole point.** Resend's equivalent does: claiming a domain
 there transfers it and revokes the other team's access, which is correct for them, because a sending
@@ -282,6 +290,11 @@ to that context alone; nothing else should key off it. `Domain` is identity, and
 A `Domain` row is created on the first claim, never on a zone read: the pre-login read accepts
 whatever anyone types, and writing a row there would make the table a log of typos.
 
+**Owed.** The shipped table is still `UNIQUE (user_id, name_ascii)` — one row per name *per
+account*, not one row per name. Coexistence therefore still compares `name_ascii` as a string,
+which is exactly what the `Domain` entity exists to avoid. The migration is deferred, not
+cancelled; it is the last thing standing between the code and this model.
+
 Coexistence is a query across claims on the same `Domain`, not an aggregate — there is no invariant
 linking two accounts' claims, deliberately.
 
@@ -294,53 +307,64 @@ sessions               id, user_id, expires_at                -- better-auth
 zones                  name PK, nameservers text[], provider_id,
                        soa_minimum, observed_at
 
-domains                id, name_ascii UNIQUE, name_unicode, created_at
-                                                     -- a name, once, for everyone
+domains                id, user_id FK, name_ascii, name_unicode,
+                       archived_at, created_at
+                       UNIQUE (user_id, name_ascii)   -- owed: one row per name
+                       INDEX (name_ascii)             -- coexistence, for now
 
-domain_archives        user_id, domain_id, archived_at
-                       PRIMARY KEY (user_id, domain_id)
-                       -- "stop involving me with this name". A preference,
-                       -- not a claim state, so it survives every claim and
-                       -- retracts none of them
-
-claims                 id, user_id FK, domain_id FK, token,
-                       state, expires_at, next_check_at, consecutive_failures,
-                       last_diagnosis_code,
-                       ended_at, created_at
+claims                 id, sequence, user_id FK, domain_id FK, token,
+                       state, expires_at, ended_at, verification_id,
+                       created_at
                                                      -- a proved claim's ended_at
                                                      -- is the date of its proof
-                       UNIQUE (user_id, domain_id) WHERE state = 'pending'
-                       INDEX (domain_id)             -- coexistence
-                       INDEX (state, next_check_at)  -- the queue
+                       INDEX (domain_id, sequence)   -- the one in play, and history
+                       INDEX (user_id, state)
 
-verification_attempts  id, claim_id, trigger, outcome, resolvers jsonb,
-                       authoritative jsonb, diagnosis_code, latency_ms,
+claim_notices          id, claim_id FK, notice, sent_at
+                       INDEX (claim_id, notice, sent_at)
+                                                     -- the 24h ceiling
+
+verifications          id, claim_id FK UNIQUE, owner_id, method,
+                       challenge jsonb, status, deadline, next_run_at,
+                       consecutive_failures, last_outcome, last_run_at,
+                       last_diagnosis jsonb, created_at
+                       INDEX (status, next_run_at)   -- the queue
+
+verification_attempts  id, verification_id FK, trigger, outcome,
+                       diagnosis jsonb, evidence jsonb, latency_ms,
                        created_at                    -- 30d retention
-
-claim_events           id, claim_id, type, payload jsonb, created_at
-                                                     -- permanent
 
 proof_links            slug PK, claim_id, issued_at, expires_at, revoked_at
 ```
 
-**Internal state vs exposed status.** `state` holds `pending | proved | expired | canceled`, and
-only `pending` is live — the other three are terminal and never move again. Everything the screen
-says is derived, so a new rule never becomes a migration:
+Eight columns came off `claims` in the split, and every one of them was verification state:
+`next_check_at`, `consecutive_failures`, `wait_reason`, `wait_seconds_remaining`,
+`last_check_outcome`, `last_check_at`, `last_diagnosis`. `wait_*` did not move — the wait a screen
+renders is derived from the last diagnosis and the next run, so it can never go stale.
 
-| `state` + timestamps | `status` |
+`archived_at` sits on the domain rather than in a `domain_archives` table, which is correct only
+while a domain row belongs to one account. It moves with the migration owed above, and
+`DomainArchived` already exists as an event, so the command moves and the reaction does not.
+
+**The claim's state, the verification's status.** `state` holds `pending | proved | expired |
+canceled`, and only `pending` is live — the other three are terminal and never move again. What the
+screen shows *while* a claim is pending belongs to the verification, and is derived, so a new rule
+never becomes a migration:
+
+| verification | `status` shown |
 |---|---|
-| `pending` | `pending` |
-| `pending`, authoritative has the record | `propagating` |
-| `pending`, diagnosis is a user error | `needs_attention` |
-| `proved` | `proved`, dated by `ended_at` |
-| `expired` | `expired` |
-| `canceled` | `canceled` |
+| `running`, nothing read yet, or the last read reached nobody | `checking` |
+| `running`, last diagnosis is `negative_cache` | `propagating` |
+| `running`, last diagnosis is anything else | `needs_attention` |
+| `proved` | `proved`, and the claim ends dated by `ended_at` |
+| `exhausted` | `exhausted`, and the claim expires with it |
+| `stopped` | `stopped` — the claim was canceled, or its domain archived |
 
-`archived` is deliberately absent from that table. It is a fact about a (user, domain) pair, not
-about any claim, so it filters the list rather than describing a state.
+`archived` is deliberately absent from both. It is a fact about a (user, domain) pair, not about any
+claim, so it filters the list rather than describing a state.
 
-`last_diagnosis_code` is deliberate denormalisation: the dashboard renders a "next step" column with
-no DNS query.
+`last_diagnosis` stays denormalised on the verification: the dashboard renders a "next step" column
+with no DNS query and without reading the attempts table.
 
 **Invariants, all testable:**
 
@@ -348,23 +372,27 @@ no DNS query.
    A terminal claim's token proves nothing, which is what keeps a proof's date honest.
 2. A claim only runs forwards. From `pending` to one of three terminal states, and from a terminal
    state to nowhere. No path re-opens one.
-3. `outcome` has three values, and `unresolvable` changes no state and sends no email.
+3. `outcome` has three values, and `unresolvable` changes no state, sends no email and
+   **publishes no event**. There is no topic to subscribe to, so no future rule can react to our
+   own outage by accident.
 4. Archiving cancels an open claim and stops coexistence notifications, and retracts no proof: a
    granted proof keeps its dates and its links resolve.
 5. A proof is dated once, by the `ended_at` of the claim that earned it, and that date never
    moves. A newer proof is a newer claim, so a domain's *first verified* is the earliest proof
    across its claims and its *last confirmed* is the most recent — both derived, neither stored.
    Nothing re-dates a claim, because nothing re-checks one.
-6. No path ends a claim as `proved` without a `verification_attempts` row in the same transaction.
-7. At most one email per claim per event type every 24h.
+6. No path proves a claim without a `verification_attempts` row already written. One transaction
+   writes the verification and its attempt; the claim is proved by reacting to the event that
+   transaction published, so the evidence is on disk before the proof exists. This is what the
+   attempts table is for: before the split there was no row to require.
+7. At most one email per claim per notice every 24h, held against `claim_notices`.
 
-**Semantic events:** `DomainClaimed` · `RecordFound` · `ProofGranted` · `CheckFailed(code)` ·
-`PropagationDetected` · `ClaimExpiring` · `ClaimExpired` · `ClaimCanceled` · `DomainArchived` ·
-`OtherAccountProved` · `ProofLinkIssued`. `CheckFailed` is emitted only when the diagnosis code
-changes, so a stuck claim does not flood its own timeline.
-
-One transaction writes `claims` + `verification_attempts` + `claim_events`. Evidence and state never
-diverge.
+**Events, three of them, and they all point the same way.** `verification/attempt.succeeded` ·
+`verification/attempt.failed` · `verification/exhausted`, published by `verification` and reacted
+to by `claims`; plus `domains/domain.archived`, published by `domains`. Every reaction is an
+ordinary use case — `proveClaim`, `notifyClaimant`, `expireClaim`, `cancelClaim` — that a test
+calls directly with no bus in sight, and the whole reaction surface of the product is four lines at
+the composition root.
 
 ### 3.3 HTTP API
 
@@ -372,29 +400,41 @@ Session-authenticated, same origin. The vocabulary mirrors Resend's own API, so 
 Resend does not learn a second dialect.
 
 ```
-GET    /api/zones/:name             pre-login zone reading (rate limited per IP)
-POST   /api/domains                 { domain } — opens a claim, returns the record to create
-GET    /api/domains                 the list, one row per domain, newest claim in front
-GET    /api/domains/:id             the domain, its open claim, and every claim before it
-POST   /api/domains/:id/verify      forces an attempt on the open claim (rate limited)
-POST   /api/domains/:id/cancel      ends the open claim
-POST   /api/domains/:id/archive     stop involving me with this name
-DELETE /api/domains/:id             delete permanently — the only thing that erases history
-GET    /api/domains/:id/events      the timeline, across every claim on this name
-POST   /api/domains/:id/proof_links
-GET    /p/:slug                     the public proof page, server-rendered
+GET    /api/zones/:name                    pre-login zone reading (rate limited per IP)
+
+POST   /api/domains                        { domain } — a name on the account, idempotent
+GET    /api/domains                        the list, archived ones left out
+GET    /api/domains/:id                    one name
+POST   /api/domains/:id/archive            stop involving me with this name
+DELETE /api/domains/:id                    delete permanently — the only eraser
+
+POST   /api/claims                         { domainId } — mints the token, starts the process
+GET    /api/claims                         every claim on the account; ?domainId= narrows it
+GET    /api/claims/:id                     the token, the record, the window, coexistence
+POST   /api/claims/:id/cancel              ends the claim and stops its verification
+
+GET    /api/verifications/:id              the diagnosis, the wait, the next run, the deadline
+GET    /api/verifications/:id/attempts     the evidence, newest first (30d)
+POST   /api/verifications/:id/runs         reads DNS now instead of waiting (rate limited)
+
+POST   /api/claims/:id/proof_links
+GET    /p/:slug                            the public proof page, server-rendered
 ```
 
-The resource is the domain, and claims are its history — which is why `verify` and `cancel` address
-the domain rather than a claim id: there is at most one claim to act on, and an ended one takes no
-action at all. `restore` is gone with the backwards transition it served; claiming a name again is
-`POST /api/domains`, and that is the only way forward there has ever needed to be.
+Three resources, one per context, and they stay separate because the backend stays split along its
+seams. `POST /api/verifications/:id/runs` **creates an attempt**, which is what it actually does —
+and it hands back a `202` and an attempt id for free the day a run stops being synchronous.
+
+The ergonomics of one call — `domain.claim()` — are recomposed client-side in a `packages/sdk` over
+the Eden client, where they cost the backend nothing. `restore` is gone with the backwards
+transition it served; claiming a name again is `POST /api/claims`, and that is the only way forward
+there has ever needed to be.
 
 Every route declares `body` / `params` / `query` **and `response`**: it pins the type on the
 frontend, stops an ORM object serialising an internal field by accident, and fills the OpenAPI
 document.
 
-`GET /api/domains/:id` carries the block that is the heart of the product:
+`GET /api/verifications/:id` carries the block that is the heart of the product:
 
 ```json
 "diagnosis": {
@@ -406,12 +446,12 @@ document.
 "waitEstimate": { "reason": "negative_cache", "secondsRemaining": 240 }
 ```
 
-`POST /api/domains/:id/verify` answers `{ stages[], diagnosis, resolvers[], nextCheckAt }` — the
-three stages of the wireframe (Nameservers → Record → Token) plus per-resolver evidence, because the
-disagreement between resolvers *is* the propagation information.
+`POST /api/verifications/:id/runs` answers with the verification as it stands after the run, and
+`GET /api/verifications/:id/attempts` carries the per-resolver evidence behind each one — because
+the disagreement between resolvers *is* the propagation information.
 
 Conventions: `Idempotency-Key` on every POST; errors as `{ error: { code, message, docsUrl } }` with
-a stable `code`; cursor pagination; rate limiting per user and per claim separately.
+a stable `code`; cursor pagination; rate limiting per user and per verification separately.
 
 ### 3.4 Verification engine
 
@@ -423,26 +463,38 @@ A check is four steps, and only the first decides.
    authoritative zone, query its NS over UDP/53, read the SOA.
 3. **Probes run.** The 13 probes pattern-match over the `DnsObservation` already collected — no
    further network.
-4. **Transition.** A pure function turns (claim, diagnosis, now) into the new state, the events,
-   `nextCheckIn`, and the effects to dispatch.
+4. **Transition.** A pure function — `recordAttempt(verification, outcome, at)` — turns the
+   verification, the outcome and the clock into the new verification, including `next_run_at`. It
+   writes nothing and dispatches nothing; the use case around it saves the attempt and publishes.
 
 ### 3.5 Scheduling
 
-Only pending claims are scheduled. Nothing sweeps a terminal one — proved, expired and canceled
-claims are history, and history does not need a clock.
+Only running verifications are scheduled. Nothing sweeps a terminal one — proved, exhausted and
+stopped are history, and history does not need a clock. The claim never runs a clock at all: it
+computes `expires_at` and hands it over as the verification's `deadline`, so there is exactly one
+scheduler in the product.
 
-`next_check_at` is derived from (claim age, the zone's SOA MINIMUM, consecutive failures) and is the
-state; **Inngest is the clock**, with one `step.sleep` per pending claim, which gives second-level
-granularity with no cron tick as a floor. With the tab open the client also polls the verify
-endpoint directly, rate limited per claim.
+`next_run_at` is derived from (verification age, the zone's SOA MINIMUM, consecutive failures) and
+is the state; **Inngest is the clock**, with one `step.sleepUntil` per running verification, which
+gives second-level granularity with no cron tick as a floor. With the tab open the client also
+polls the run endpoint directly, rate limited per verification.
 
-`expires_at` is set when the claim opens and needs no sweeper of its own: the scheduled check that
-wakes past it ends the claim instead of checking it, and the D+6 warning is one more scheduled step
-on the same timeline.
+The deadline needs no sweeper of its own: the run that wakes past it exhausts the verification
+instead of reading DNS, and `VerificationExhausted` is what expires the claim. Cancelling a claim
+publishes `verification/stopped`, which the durable function is registered to cancel on, so a
+sleeping run does not outlive the claim that started it.
+
+The D+1 / D+3 / D+6 notices are not scheduled at all, which removes the second clock:
+`notifyClaimant` derives them from the claim's own age and the moment of the previous run, both of
+which arrive on the `AttemptFailed` event.
 
 The SOA MINIMUM (RFC 2308) states exactly how long a "does not exist" stays in negative cache, so
-`next_check_at = now() + soa.minimum` is derived rather than guessed — and turns into a UI sentence
+`next_run_at = now() + soa.minimum` is derived rather than guessed — and turns into a UI sentence
 ("resolvers forget the 'does not exist' in about 5 min").
+
+`step` reaches `application/` as a two-function port, so the seven-day window is testable in a
+millisecond against a fake that returns at once — and `verification/infra/inngest-step.service.ts`
+is the whole production adapter.
 
 ### 3.6 Internal architecture
 
@@ -451,35 +503,64 @@ criteria of Section 2 are statements about it — "a resolver outage sends zero 
 13 probes names its cause". Those are only cheap to assert if the engine has no I/O.
 
 One folder per bounded context, each with the same four layers, plus a `shared/` for what more than
-one of them needs. Contexts never import each other.
+one of them needs. A context reaches another only along a declared arrow, through that context's
+published `*.contract.ts`, and the map is asserted acyclic.
 
 ```
 apps/api/src/
+  auth/          who is this: better-auth, the magic link, Google
   zones/         reading a zone: nameservers, provider, SOA, publishing estimate
-  domains/       the account's claims on a name: token, state, lifecycle
-  verification/  did this token appear at this host, and if not, which failure is it
+  domains/       a name on an account, and nothing else
+  claims/        the episode: token, state, the seven-day window, notices, coexistence
+  verification/  the process: methods, attempts, diagnoses, the retry clock
   proof/         the public proof page and its links
-  shared/        DomainName, Result, the clock, auth, the diagnostics vocabulary
+  shared/        DomainName, Result, the clock, the email transport
 
   <context>/
     domain/        types, pure functions, port definitions — no I/O
-    application/   use cases, as closures over their deps
+    application/   use cases, queries and schedules, as closures over their deps
     api/           Elysia route factories and wire schemas
     infra/         adapters that implement the ports
-    <context>.config.ts / .module.ts / .app.ts
+    <context>.config.ts / .module.ts / .app.ts / .contract.ts
 ```
 
+**A claim is an episode; a verification is a process.** The claim owns the token, the state and
+the seven-day window — the juridical facts. The verification owns the attempts, the diagnoses and
+the retry cadence — the technical ones. The claim hands over its `expires_at` as a deadline and
+never runs a clock of its own, so there is exactly one scheduler in the product.
+
+Verification never says the word *claim*: it verifies a subject against a challenge until a
+deadline. That is what keeps the arrow one-way (`claims → verification`) and the map acyclic, and
+it is what would let either side move out of process without the other noticing.
+
+Claims depends on verification, so the two directions are not symmetric, and neither is a
+stylistic choice. **Down the arrow, a port is called** — `claims` starts a verification through a
+port bound at the composition root, so `POST /claims` answers with the verification already
+created. **Up the arrow, an event is published** — verification cannot name claims, so it
+publishes `AttemptSucceeded`, `AttemptFailed` and `VerificationExhausted`, and `src/app.ts` binds
+each to a claims use case.
+
+The third outcome has no event at all. `unresolvable` is recorded as an attempt, widens the
+backoff and publishes nothing — so §2's promise that our own failure counts against nobody is
+enforced by the absence of a topic rather than by a branch someone must remember.
+
 The names are the concepts, not the machinery: `zones`, not `dns`. Each context is testable at the
-line that matters — `zones` answers with no account, `verification` needs only a token and a host,
-`domains` is what survives closing the tab.
+line that matters — `zones` answers with no account, `verification` needs only a challenge and a
+host, `claims` is what survives closing the tab.
+
+That extends inside a context. A closed set of verbs, one name carried by the file, the type, the
+function and the module property, and one use case per file — the conventions are in `CLAUDE.md`
+and the reasoning in [`backend-architecture.md`](../backend-architecture.md#naming-is-the-architecture).
+The rule that pays most: an act wanting a verb outside the set is usually two acts.
 
 Nothing under `domain/` imports the HTTP framework, the ORM or `node:dns`. No DI container: deps are
 arguments, applied once at composition time. **The pure core returns effects as data; the shell
 executes them**, so "a resolver outage sends zero emails" is an assertion over an array with no SMTP
 mock.
 
-The same verification runs from the *check now* button and from the scheduler — the scheduler is an
-adapter, not an orchestrator.
+The same verification runs from the *check now* button and from the schedule: both call
+`runVerification`, and the schedule takes its clock as a port, so the seven-day window is testable
+against a fake in a millisecond.
 
 `test/architecture.test.ts` fails the build when a layer or a context boundary is crossed, and it
 has done since day 2.
@@ -573,7 +654,7 @@ One week, one developer. Every day ends with something demonstrable and live —
 |---|---|---|
 | **D1** | Skeleton live: spikes, Bun monorepo, Elysia, blank SPA, Worker proxy, Neon, Railway | `ownsi.dev` responds and `/api/health` comes back through the proxy |
 | **D2** | Pure core: `DomainName`, `Zone`, probes, `diagnose`, `transition`, `schedule` | `bun test` covers the 13 probes and the transition table, and the boundary guard is in CI |
-| **D3** | Real verification: DoH quorum, authoritative path, `claimDomain`, `verifyClaim`, persistence, timeline, ~6 providers | a test domain with the right TXT goes to proved unattended; a planted mistake names the right cause |
+| **D3** | Real verification: DoH quorum, authoritative path, `createClaim`, `runVerification`, persistence, timeline, ~6 providers | a test domain with the right TXT goes to proved unattended; a planted mistake names the right cause |
 | **D4** | Clock and identity: Inngest per-claim scheduling, better-auth with magic link and Google, state-change emails with the 24h ceiling | I close the tab, the record propagates, the email arrives |
 | **D5** | The main flow in the browser: zone reading → sign-in → record screen with live state → proved | the whole happy path runs with no Postman |
 | **D6** | Recovery and coexistence: expiry with its D+6 warning, cancel, archive, claim history under the autocomplete, coexistence email, "that wasn't me" advisory, `/p/:slug` with OG tags | I archive a proved domain, type it again, and the proof is still there and still dated |

@@ -1,10 +1,10 @@
 import { errorResponse } from "../../shared/http/error-response.ts"
 import { unreachable } from "../../shared/result.ts"
-import type { ReadZoneError } from "../application/read-zone.ts"
+import type { GetZoneError } from "../application/get-zone.query.ts"
 
 export type ZoneErrorStatus = 400 | 404 | 502
 
-export function toZoneError(error: ReadZoneError): {
+export function toZoneError(error: GetZoneError): {
   status: ZoneErrorStatus
   body: ReturnType<typeof errorResponse>
 } {

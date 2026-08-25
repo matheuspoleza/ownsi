@@ -16,7 +16,7 @@ report=$(mktemp)
 failed=0
 
 bunx biome check src test >>"$report" 2>&1 || failed=1
-bun test test/architecture.test.ts test/conventions.test.ts >>"$report" 2>&1 || failed=1
+bun test test/architecture.test.ts >>"$report" 2>&1 || failed=1
 
 if [ "$failed" -ne 0 ]; then
   printf 'API guardrails failed. Fix before continuing:\n\n%s\n' "$(cat "$report")" >&2

@@ -52,9 +52,9 @@ Deriving the interval from `waitEstimate.secondsRemaining` means the client asks
 is something new to hear, instead of every five seconds forever.
 
 <Note>
-  `POST /api/domains/:id/verify` forces an attempt and is rate limited per claim. Wire it to a
-  button the person presses, not to a timer. Nothing about asking more often makes DNS answer
-  sooner, and the honest interval is already on the claim.
+  `POST /api/verifications/:id/runs` forces a run and is rate limited per verification. Wire it to
+  a button the person presses, not to a timer. Nothing about asking more often makes DNS answer
+  sooner, and the honest interval is already on the verification.
 </Note>
 
 ## One message, from two fields

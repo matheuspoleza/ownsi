@@ -1,5 +1,4 @@
 import type { AuthConfig, GoogleCredentials } from "./auth/auth.config.ts"
-import type { DomainsConfig } from "./domains/domains.config.ts"
 import type { MailerConfig } from "./shared/email.ts"
 import type { InngestConfig } from "./shared/inngest.ts"
 import type { VerificationConfig } from "./verification/verification.config.ts"
@@ -14,7 +13,6 @@ export type AppConfig = {
   readonly inngest: InngestConfig
   readonly zones: ZonesConfig
   readonly verification: VerificationConfig
-  readonly domains: DomainsConfig
 }
 
 type Environment = Record<string, string | undefined>
@@ -53,7 +51,6 @@ export function loadConfig(source: Environment = process.env): AppConfig {
       resolverTimeoutMs: integer(source.DNS_RESOLVER_TIMEOUT_MS, 4_000),
       authoritativeBudgetMs: integer(source.AUTHORITATIVE_BUDGET_MS, 2_500),
     },
-    domains: { driver: source.DOMAINS_DRIVER === "demo" ? "demo" : "postgres", appUrl },
   }
 }
 

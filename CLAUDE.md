@@ -35,17 +35,22 @@ Everything is written in English, including commit messages.
 | `api/`         | Elysia route factories and wire schemas            | `application/`, `shared/`|
 | `infra/`       | adapters that implement the ports                  | `domain/`, `shared/`    |
 
-Three files sit at the root of a context and carry the wiring:
+Up to four files sit at the root of a context and carry the wiring:
 
-| file                  | holds                                          |
-| --------------------- | ---------------------------------------------- |
-| `<context>.config.ts` | the config shape the context reads             |
-| `<context>.module.ts` | the object graph — use cases, no transport      |
-| `<context>.app.ts`    | the Elysia plugin mounting the context's routes |
+| file                    | holds                                                    |
+| ----------------------- | -------------------------------------------------------- |
+| `<context>.module.ts`   | the object graph — use cases, no transport                |
+| `<context>.app.ts`      | the Elysia plugin mounting the context's routes           |
+| `<context>.config.ts`   | the config shape the context reads, when there is any     |
+| `<context>.contract.ts` | the language other contexts may speak about this one      |
+
+`module` and `app` are always there. `domains` has no config because it has nothing to
+configure; `auth` has no contract because nothing reaches it along an arrow.
 
 The split is load-bearing. `*.module.ts` imports no Elysia, so a context can be driven by
-something other than HTTP: `domains.checkWhenDue` is driven by an Inngest durable function
-with no request in sight, and must never pull a service out of an Elysia instance to get it.
+something other than HTTP: `verification.verifyUntilDeadline` is driven by an Inngest durable
+function with no request in sight, and must never pull a service out of an Elysia instance to
+get it.
 `*.app.ts` is where context-level `model()` and `onError` belong as the context grows.
 
 `src/app.ts` is the only file that wires contexts into a server.
@@ -66,6 +71,69 @@ its neighbour is not shared either; it is published on one side and translated o
 The reasoning is in
 [`docs/backend-architecture.md`](docs/backend-architecture.md#a-context-publishes-a-language).
 
+### Naming
+
+Names come from the business, never from the machinery. Three rules, and a suffix that says
+which kind of thing a file holds. The reasoning is in
+[`docs/backend-architecture.md`](docs/backend-architecture.md#naming-is-the-architecture).
+
+**The verbs are a closed set.** Queries are `get<Thing>` (one, by id, scoped to the caller),
+`list<Things>` (many, always scoped) and `findOrCreate<Thing>` (idempotent on a natural key —
+the only compound verb). Commands take one imperative verb from `create`, `cancel`, `archive`,
+`delete`, `run`, `stop`, `revoke`, `prove`, `expire`, `notify`. Events are `<Entity><Verb>ed`,
+derived from the command that caused them: `ClaimCreated`, never `ClaimIssued`.
+
+An act that wants a verb outside the set is usually two acts. Widening the set is a decision;
+reaching for `apply`, `request`, `announce`, `handle` or `process` is not.
+
+**One name, in four places.** The file, the type, the function and the module property carry the
+same word:
+
+```ts
+// claims/application/create-claim.use-case.ts
+export type CreateClaim = (input: CreateClaimInput) => Promise<Result<ClaimView, CreateClaimError>>
+export function createClaim(deps: CreateClaimDeps): CreateClaim { ... }
+
+// claims.module.ts
+return { createClaim: createClaim(deps) }
+```
+
+That the function closes over its dependencies is the pattern, not the noun, so it never appears
+in the name. There is no `create*`/`make*` factory prefix in `application/` — `infra/` already
+names adapters this way (`postgresDomainRepository`, `dohTxtLookup`), and dropping the prefix is
+what frees `create` to mean the business act. `create` in a name means creating something, or
+constructing an adapter instance (`createDatabase`, `createAuth`). It never means "returns a
+closure".
+
+**One file, one unit.** One use case per file, one query per file, one schedule per file. The
+filename *is* its name, so two of them in one file means one of them has no name. Its own input,
+deps and error types travel with it; nothing else does. A type invented to cover several use
+cases at once — because they share a signature rather than a meaning — is the smell this rule
+removes.
+
+**The suffix says the role.** Same move `apps/web` makes with `.page.tsx` and `.route.tsx`, and
+it makes the system greppable: `ls **/*.use-case.ts` is every act the product performs.
+
+| folder | suffix | holds |
+| --- | --- | --- |
+| `domain/` | none | pure types and functions; the folder already says it |
+| `application/` | `.use-case.ts` | a command — writes, returns `Result` |
+| | `.query.ts` | a read — never writes |
+| | `.schedule.ts` | a use case that runs on its own clock, not on a request |
+| `api/` | `.routes.ts` `.response.ts` `.errors.ts` | wire shapes and Elysia factories |
+| `infra/` | `.repository.ts` | persistence for one aggregate |
+| | `.service.ts` | every other adapter — DNS, email, the scheduler |
+| | none | recorded data a fake reads, which implements no port |
+| root | `.module.ts` `.app.ts` `.config.ts` `.contract.ts` | the wiring |
+
+A `.schedule.ts` takes its clock as a port, so `application/` holds no scheduler framework and a
+seven-day expiry is testable in a millisecond against a fake.
+
+**A reaction to an event is an ordinary use case.** Nothing is named `on<Event>` and no file is a
+subscriber. When a policy — "whenever X happens, do Y" — is unconditional, the rule is one line
+in `src/app.ts` binding a topic to a use case anyone can call directly. A `.policy.ts` is earned
+only by a reaction that carries a real condition of its own.
+
 ### Auth is a context; the HTTP session is not
 
 Authenticating someone is a domain — better-auth, the magic link, Google, the user record —
@@ -75,8 +143,8 @@ The two are split accordingly:
 
 | file | holds |
 | --- | --- |
-| `auth/infra/better-auth.ts` | `createAuth` — the configured instance — and `createCheckSession` |
-| `auth/infra/mailer.ts` | `SendMagicLink`: renders the template, hands it to `shared/email.ts` |
+| `auth/infra/better-auth.service.ts` | `createAuth` — the configured instance — and `createCheckSession` |
+| `auth/infra/magic-link.service.ts` | `SendMagicLink`: renders the template, hands it to `shared/email.ts` |
 | `auth/auth.module.ts` | the graph: the handler and a `CheckSession`, no Elysia |
 | `auth/auth.app.ts` | the plugin that mounts better-auth under its base path |
 | `shared/http/session.ts` | `SessionCheck`, and the Elysia macro a route opts into with `session: true` |
@@ -190,8 +258,9 @@ keeps working — the naming rules above are for application code.
 `api/` is the only place that knows a server exists. The Eden client is typed off the API's
 exported `App` type, so a changed route is a type error here.
 
-`test/conventions.test.ts` enforces the naming, the colocation and the component rules
-above, and fails the build on a violation.
+The rules above are read, not asserted — the `web-conventions` skill is the pass to run over
+a diff. Biome and `tsc` still fail the build on `any`, `!`, unused code, barrel files and a
+props shape that does not match.
 
 `docs/frontend-architecture.md` explains the reasoning.
 
@@ -225,25 +294,28 @@ thing, show the failure next to the success, no "simply" and no "just".
 
 ## Testing
 
-`bun test` in `apps/api` and `apps/web`. Tests construct their subject directly and pass
-fakes as arguments; there is no test container and no module mocking.
+`bun test` in `apps/api`. Tests construct their subject directly and pass fakes as
+arguments; there is no test container and no module mocking.
 
 Fixtures live in the test file that uses them. A test must not depend on a default baked
 into a module factory — if it does, the test can pass while ignoring its own setup.
+`test/harness.ts` builds the whole app with in-memory adapters and a faked session, which is
+how a route is tested; `test/flow.test.ts` runs a name to a proof over HTTP through it.
 
-`apps/web` currently runs only the conventions guard. Hooks are the first thing worth
-covering there, and they need no DOM. `apps/docs` runs only its conventions guard, which is
-all a package of MDX has to prove.
+`apps/web` has no test task at all today. Hooks are the first thing worth covering there,
+and they need no DOM — adding the first one is what puts `test` back in its `package.json`.
+`apps/docs` runs only its conventions guard, which is all a package of MDX has to prove.
 
 ## What enforces what
 
 | Rule | Enforced by |
 | --- | --- |
 | Layer boundaries, module/app split, context isolation | `apps/api/test/architecture.test.ts` |
-| No comments, no classes, no throwing in domain/application | `apps/api/test/conventions.test.ts` |
-| Every route documents a response schema per status | `apps/api/test/conventions.test.ts` |
+| Comments, classes, throwing, the verb set, one unit per file, the suffixes | the rules above, and the `api-conventions` skill |
+| Every route documents a response schema per status | the same, and `apps/api/test/docs.test.ts` on the emitted document |
 | No `any`, no `!`, bounded complexity, no barrel files | Biome override on `apps/api/**` |
-| Web naming, colocation, arrow components, named props, no comments | `apps/web/test/conventions.test.ts` |
+| Web naming, colocation, arrow components, named props, no comments | the rules above, and the `web-conventions` skill |
+| No `any`, no `!`, unused code, no barrel files, hook dependencies | Biome, on `apps/web/**` |
 | The published docs match the code they document | `apps/api/test/docs.test.ts` |
 | Every docs page is navigated, has frontmatter and links somewhere real | `apps/docs/test/conventions.test.ts` |
 | All of the above, on every edit | `.claude/hooks/check-api.sh`, `.claude/hooks/check-web.sh` |
@@ -264,7 +336,17 @@ cd apps/web && bun test
 cd packages/db && bun run db:migrate
 ```
 
-The context still to build is `proof`. What it
-owes is in the PRD, not in the codebase — the pre-refactor slice that sketched them, including
-the working Inngest wiring, is at commit ``. Read it for reference, never as a template:
-it predates this architecture and its folder layout no longer exists.
+The context still to build is `proof`. What it owes is in the PRD, not in the codebase.
+
+Two things `apps/api` does not enforce with a test, on purpose:
+
+- **The conventions above are read, not asserted.** `apps/api/test/conventions.test.ts` and
+  `apps/web/test/conventions.test.ts` both scanned for them, and both were deleted; the rules
+  live here and in the `api-conventions` and `web-conventions` skills instead. A guard that
+  greps for `//` cannot tell a comment that earns its place from one that does not, and the
+  naming rules are judgements. `apps/api/test/architecture.test.ts` still asserts every
+  boundary, because a boundary is a fact and not a judgement.
+- **Coexistence reads across a table it does not own.** `claims/infra/coexistence.repository.ts`
+  joins `Domain` and `User`, because "is anyone else claiming this name" is a question about
+  names and about people, and neither belongs to `claims`. It is the one read that crosses,
+  it is a read, and it is named so the next person finds it.
