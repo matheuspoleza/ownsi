@@ -9,7 +9,7 @@ import {
   fakeResolver,
   unreachableResolver,
 } from "../../src/zones/infra/fake-resolver.ts"
-import { inMemoryZoneRepository } from "../../src/zones/infra/zone-repository.ts"
+import { inMemoryZoneRepository } from "./in-memory-zone-repository.ts"
 
 const CONFIG: AppConfig = {
   port: 0,
@@ -23,6 +23,14 @@ const CONFIG: AppConfig = {
     google: null,
   },
   mailer: { driver: "log", apiKey: "", from: "ownsi <no-reply@ownsi.dev>" },
+  inngest: {
+    driver: "manual",
+    id: "ownsi",
+    isDev: true,
+    baseUrl: null,
+    eventKey: "",
+    signingKey: "",
+  },
   zones: {
     driver: "fake",
     recursiveResolvers: [],
@@ -30,7 +38,13 @@ const CONFIG: AppConfig = {
     zoneCacheTtlSeconds: 300,
     soaBudgetMs: 2_500,
   },
-  domains: { driver: "demo" },
+  verification: {
+    driver: "fake",
+    recursiveResolvers: [],
+    resolverTimeoutMs: 4_000,
+    authoritativeBudgetMs: 2_500,
+  },
+  domains: { driver: "demo", appUrl: "https://ownsi.dev" },
 }
 
 const FIXTURES: DnsFixtures = {

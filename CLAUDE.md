@@ -44,8 +44,8 @@ Three files sit at the root of a context and carry the wiring:
 | `<context>.app.ts`    | the Elysia plugin mounting the context's routes |
 
 The split is load-bearing. `*.module.ts` imports no Elysia, so a context can be driven by
-something other than HTTP: an Inngest durable function runs the same use case with no
-request in sight, and must never pull a service out of an Elysia instance to get it.
+something other than HTTP: `domains.checkWhenDue` is driven by an Inngest durable function
+with no request in sight, and must never pull a service out of an Elysia instance to get it.
 `*.app.ts` is where context-level `model()` and `onError` belong as the context grows.
 
 `src/app.ts` is the only file that wires contexts into a server.
@@ -53,29 +53,52 @@ request in sight, and must never pull a service out of an Elysia instance to get
 `test/architecture.test.ts` enforces every boundary above, including the module/app split,
 and fails the build on a violation.
 
-Bounded contexts never import each other. Anything two of them need lives in `shared/`.
+A context reaches another only through `<other>/<other>.contract.ts`, and only along an arrow
+declared in `CONTEXT_MAP` in `test/architecture.test.ts` — the map is asserted, cycles included.
+The contract is a published language: deliberately narrower than the domain behind it, and the
+only file of a context that anything outside it may import.
 
-### Auth is not a bounded context
+`shared/` is for something else — what two contexts need with the *same meaning* **and no owner**:
+`DomainName`, `Result`, the clock, the email transport. Ownership is the test, not popularity: the diagnosis vocabulary is
+read by three contexts and published on the public docs, and it still belongs to `verification`,
+because only `verification` constructs one. A type that means one thing to one context and another to
+its neighbour is not shared either; it is published on one side and translated on the other.
+The reasoning is in
+[`docs/backend-architecture.md`](docs/backend-architecture.md#a-context-publishes-a-language).
 
-Identity is cross-cutting, not a domain: every other context asks "who is this", and none of
-them owns the answer. So better-auth is used directly, from `shared/`, and there is no `auth/`
-folder:
+### Auth is a context; the HTTP session is not
+
+Authenticating someone is a domain — better-auth, the magic link, Google, the user record —
+and it has an owner, so it is a context like any other. Asking "who is this" on a request is
+not: it is transport, every context does it, and none of them cares how the answer was reached.
+The two are split accordingly:
 
 | file | holds |
 | --- | --- |
-| `shared/auth.ts` | `createAuth` — the configured better-auth instance, and `createCheckSession` |
+| `auth/infra/better-auth.ts` | `createAuth` — the configured instance — and `createCheckSession` |
+| `auth/infra/mailer.ts` | `SendMagicLink`: renders the template, hands it to `shared/email.ts` |
+| `auth/auth.module.ts` | the graph: the handler and a `CheckSession`, no Elysia |
+| `auth/auth.app.ts` | the plugin that mounts better-auth under its base path |
 | `shared/http/session.ts` | `SessionCheck`, and the Elysia macro a route opts into with `session: true` |
-| `shared/mailer.ts` | `SendMagicLink`, with the Resend and `log` drivers |
 
-Two rules survive that shortcut, and they are the point of it:
+`SessionCheck` stays in `shared/http/` on purpose, and it is the one place the ownership test
+is answered by transport rather than by domain. The macro is an Elysia plugin, so it can never
+live in `auth.contract.ts`, which may not import Elysia; and a context's `*.app.ts` may not
+import another context's `api/`. Leaving the check where every route already reaches it is what
+keeps the guards honest instead of widened. `auth/` produces one; `shared/http/` describes the
+handoff and the 401.
 
-- Nothing outside `shared/` imports `better-auth`. Contexts read `SessionCheck`, a tagged
-  union, so no handler can reach a user off a check that came back anonymous.
+Three rules survive, and they are the point:
+
+- Nothing outside `auth/` imports `better-auth`. Contexts read `SessionCheck`, a tagged union,
+  so no handler can reach a user off a check that came back anonymous.
 - The macro is opt-in per route. `GET /api/zones/:name` is a logged-out visitor's first
   impression and must stay that way (PRD §3.7).
+- `auth.module.ts` imports no Elysia, so the day a second runtime needs the instance — Inngest
+  out of process — it calls the module and mounts nothing.
 
-Wrapping better-auth's own API buys nothing and is not done. The day a second runtime needs
-the instance — Inngest out of process — `shared/auth.ts` moves to a package unchanged.
+Wrapping better-auth's own API buys nothing and is not done: `Auth` is republished from the
+module because `apps/web` infers its client off that type.
 
 ### Functional and typed first
 
@@ -183,7 +206,7 @@ that reach back into the code.
 | Generated file | Comes from |
 | --- | --- |
 | `api-reference/openapi.json` | the running Elysia app, via `/openapi/json` |
-| `diagnostics/catalogue.mdx` | `explain()` in `apps/api/src/shared/diagnosis.ts` |
+| `diagnostics/catalogue.mdx` | `explain()` in `apps/api/src/verification/domain/diagnosis.ts` |
 
 `apps/api/scripts/emit-docs.ts` writes both; `bun run docs:emit` runs it. `apps/api/test/docs.test.ts`
 fails when either drifts from the code, so a route change without a regenerate does not merge.
@@ -230,6 +253,7 @@ When a guard fires, move the code. Do not widen the rule.
 ## Commands
 
 ```
+bun run infra:up   # postgres and the inngest dev server
 bun run dev        # turbo: api + web
 bun run dev:docs   # mintlify on :3000, after regenerating what is generated
 bun run docs:emit  # regenerate openapi.json and the diagnostics catalogue
@@ -240,7 +264,7 @@ cd apps/web && bun test
 cd packages/db && bun run db:migrate
 ```
 
-The contexts still to build are `proof` and `verification`. What they
-owe is in the PRD, not in the codebase — the pre-refactor slice that sketched them, including
+The context still to build is `proof`. What it
+owes is in the PRD, not in the codebase — the pre-refactor slice that sketched them, including
 the working Inngest wiring, is at commit ``. Read it for reference, never as a template:
 it predates this architecture and its folder layout no longer exists.

@@ -1,6 +1,8 @@
-import { unreachable } from "./result.ts"
+import { unreachable } from "../../shared/result.ts"
 
 export const CHALLENGE_LABEL = "_ownsi-challenge"
+
+export const CHALLENGE_TOKEN_PREFIX = "ownsi_v1_"
 
 export const DIAGNOSIS_CODES = [
   "domain_appended",

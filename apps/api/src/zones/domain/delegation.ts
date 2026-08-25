@@ -1,6 +1,18 @@
-import { type DomainName, zoneCandidates } from "../../shared/domain-name.ts"
+import type { DomainName } from "../../shared/domain-name.ts"
 import type { AnsweredDns, RecordType } from "./dns.ts"
 import type { DnsResolver } from "./ports.ts"
+
+export function zoneCandidates(domain: DomainName): readonly string[] {
+  const apex = domain.registrable ?? domain.ascii
+  const labels = domain.ascii.split(".")
+  const apexLabelCount = apex.split(".").length
+
+  const candidates: string[] = []
+  for (let offset = 0; labels.length - offset >= apexLabelCount; offset++) {
+    candidates.push(labels.slice(offset).join("."))
+  }
+  return candidates
+}
 
 export type Delegation =
   | {

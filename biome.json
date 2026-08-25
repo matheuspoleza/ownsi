@@ -78,6 +78,18 @@
           }
         }
       }
+    },
+    {
+      "includes": [
+        "apps/api/src/*/*.contract.ts"
+      ],
+      "linter": {
+        "rules": {
+          "performance": {
+            "noBarrelFile": "off"
+          }
+        }
+      }
     }
   ]
 }

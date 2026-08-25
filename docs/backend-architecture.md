@@ -29,6 +29,54 @@ use case. If the module returned an Elysia instance instead, that function would
 either re-wire the whole graph or pull a service out of `decorate` — a service locator,
 which Elysia's own documentation advises against.
 
+## A context publishes a language
+
+Contexts used to be forbidden from importing each other at all, which sounds strict and is
+not. The arrows are real — `verification` needs to know a zone's nameservers and how long a
+denial stays cached, because three of the thirteen probes are statements about the zone
+rather than about the record. Forbidding the import does not delete that dependency; it
+moves it into `src/app.ts`, where the translation happens without anyone calling it
+translation, and where nothing stops a caller from passing another context's internals
+around.
+
+So the rule is not "no arrows". It is "declared arrows, through a published surface":
+
+```ts
+const CONTEXT_MAP: Record<string, readonly string[]> = {
+  zones: [],
+  verification: ["zones"],
+  domains: ["verification"],
+  proof: ["domains"],
+}
+```
+
+`zones.contract.ts` is what `verification` may pronounce about a zone, and it is smaller
+than `Zone` on purpose — nameservers, the zone name, and whether the authority answered.
+No provider, no `observedAt`, no cache. The aggregate stays free to change shape while the
+sentence other contexts speak stays still.
+
+The downstream side owns the translation. `verification` declares `ReadZoneFacts` in its
+own words — `answering`, `silent`, `unknown` — and adapts the contract onto it. That is an
+anti-corruption layer, and while the translation is a handful of lines it lives at the
+composition root; the day it grows it becomes `verification/infra/zone-facts.ts` and
+nothing else moves, because the published surface already exists.
+
+### Why not `shared/`
+
+The tempting alternative was to lift `DnsAnswer`, `SoaRecord` and the DoH client into
+`shared/` and let both contexts read DNS from one place. It fails on a distinction worth
+naming: `shared/` holds what two contexts need with **one meaning**. `DomainName` parses
+the same name for everybody. A DNS answer does not — for `zones` it is "what a zone read
+saw", cached in Postgres under a TTL, resolved first-answer-wins; for `verification` it is
+"what three resolvers each said about one host", never cached, where the disagreement
+between them *is* the propagation information. Same words, different questions.
+
+Working the probes backwards settles it. What they actually read is TXT values, whether a
+host was absent or merely typeless, a CNAME target, two small enums and two numbers — no
+foreign vocabulary at all. Even the negative-cache seconds arrive as a number through the
+port, so `verification` never parses an SOA record. Nothing needed sharing; one side needed
+to publish.
+
 ## Functional and typed first
 
 Data is plain `readonly` types. Behaviour is pure functions over that data. Nothing is

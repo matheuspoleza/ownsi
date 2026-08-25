@@ -1,24 +1,12 @@
 import { betterAuth } from "better-auth"
 import { prismaAdapter } from "better-auth/adapters/prisma"
 import { magicLink } from "better-auth/plugins"
-import type { Database } from "./database.ts"
-import type { CheckSession } from "./http/session.ts"
-import type { SendMagicLink } from "./mailer.ts"
+import type { Database } from "../../shared/database.ts"
+import type { CheckSession } from "../../shared/http/session.ts"
+import type { AuthConfig } from "../auth.config.ts"
+import type { SendMagicLink } from "../domain/ports.ts"
 
 const SECONDS_PER_MINUTE = 60
-
-export type GoogleCredentials = {
-  readonly clientId: string
-  readonly clientSecret: string
-}
-
-export type AuthConfig = {
-  readonly secret: string
-  readonly baseUrl: string
-  readonly basePath: string
-  readonly magicLinkTtlSeconds: number
-  readonly google: GoogleCredentials | null
-}
 
 export type AuthDeps = {
   readonly config: AuthConfig

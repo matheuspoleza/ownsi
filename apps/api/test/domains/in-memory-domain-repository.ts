@@ -1,5 +1,5 @@
-import type { AccountDomain } from "../domain/account-domain.ts"
-import type { AccountDomainRepository } from "../domain/ports.ts"
+import type { AccountDomain } from "../../src/domains/domain/account-domain.ts"
+import type { AccountDomainRepository } from "../../src/domains/domain/ports.ts"
 
 export function inMemoryDomainRepository(
   seed: readonly AccountDomain[] = [],

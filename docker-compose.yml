@@ -19,19 +19,19 @@ services:
       timeout: 3s
       retries: 20
 
-  # Commented out until the `verification` context exists. It syncs against
-  # /api/inngest, a route the refactor removed, so it only retries and fails.
-  # inngest:
-  #   image: inngest/inngest:latest
-  #   container_name: ownsi-inngest
-  #   command: inngest dev -u http://host.docker.internal:3000/api/inngest
-  #   ports:
-  #     - "8288:8288"
-  #   extra_hosts:
-  #     - "host.docker.internal:host-gateway"
-  #   depends_on:
-  #     postgres:
-  #       condition: service_healthy
+  # The clock behind every pending claim: one durable function per claim, sleeping
+  # until its next check. It syncs against /api/inngest.
+  inngest:
+    image: inngest/inngest:latest
+    container_name: ownsi-inngest
+    command: inngest dev -u http://host.docker.internal:3000/api/inngest
+    ports:
+      - "8288:8288"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      postgres:
+        condition: service_healthy
 
 volumes:
   pgdata:

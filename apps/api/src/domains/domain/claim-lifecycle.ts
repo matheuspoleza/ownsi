@@ -1,4 +1,4 @@
-import type { DiagnosisCode } from "./diagnosis.ts"
+import type { DiagnosisCode } from "../../verification/verification.contract.ts"
 
 export const CLAIM_STATES = ["pending", "proved", "expired", "canceled"] as const
 

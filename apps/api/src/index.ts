@@ -6,7 +6,7 @@ const config = loadConfig()
 export const app = createApp(config).listen(config.port)
 
 export type App = typeof app
-export type { Auth } from "./shared/auth.ts"
+export type { Auth } from "./auth/auth.module.ts"
 
 console.log(`api  ->  http://localhost:${config.port}/api/health`)
 console.log(`docs ->  http://localhost:${config.port}/openapi`)

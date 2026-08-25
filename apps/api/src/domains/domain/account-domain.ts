@@ -1,4 +1,12 @@
-import { type Claim, end, isOpen, type OpenClaim, provedAt } from "./claim.ts"
+import {
+  type Claim,
+  type ClaimChallenge,
+  end,
+  isOpen,
+  type OpenClaim,
+  openClaim,
+  provedAt,
+} from "./claim.ts"
 import type { Domain } from "./domain.ts"
 
 export type AccountDomain = {
@@ -9,8 +17,40 @@ export type AccountDomain = {
   readonly archivedAt: Date | null
 }
 
+export type NewAccountDomain = {
+  readonly userId: string
+  readonly domain: Domain
+  readonly claimId: string
+  readonly token: string
+  readonly now: Date
+}
+
+export function startAccountDomain({
+  userId,
+  domain,
+  claimId,
+  token,
+  now,
+}: NewAccountDomain): AccountDomain {
+  return {
+    userId,
+    domain,
+    claim: openClaim({ id: claimId, userId, domainId: domain.id, token, openedAt: now }),
+    history: [],
+    archivedAt: null,
+  }
+}
+
 export function pendingClaim(record: AccountDomain): OpenClaim | null {
   return isOpen(record.claim) ? record.claim : null
+}
+
+export function challengeFor(record: AccountDomain, claim: OpenClaim): ClaimChallenge {
+  return {
+    domain: record.domain.nameAscii,
+    token: claim.token,
+    previousTokens: record.history.map((past) => past.token),
+  }
 }
 
 export function reclaim(record: AccountDomain, claim: OpenClaim): AccountDomain {

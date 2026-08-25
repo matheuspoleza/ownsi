@@ -1,7 +1,6 @@
 import type { Database } from "../../shared/database.ts"
 import type { ZoneRepository } from "../domain/ports.ts"
 import type { ProviderId } from "../domain/provider.ts"
-import type { Zone } from "../domain/zone.ts"
 
 export function postgresZoneRepository(database: Database): ZoneRepository {
   return {
@@ -39,19 +38,6 @@ export function postgresZoneRepository(database: Database): ZoneRepository {
         create: { requestedName, ...data },
         update: data,
       })
-    },
-  }
-}
-
-export function inMemoryZoneRepository(seed: ReadonlyArray<[string, Zone]> = []): ZoneRepository {
-  const zones = new Map<string, Zone>(seed)
-
-  return {
-    async findByRequestedName(requestedName) {
-      return zones.get(requestedName) ?? null
-    },
-    async save(requestedName, zone) {
-      zones.set(requestedName, zone)
     },
   }
 }

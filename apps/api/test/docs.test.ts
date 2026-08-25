@@ -17,7 +17,7 @@ describe("the emitted documentation", () => {
     expect(committed).toBe(await openApiDocument())
   })
 
-  test("the committed catalogue matches diagnosis.ts — else `bun run docs:emit`", async () => {
+  test("the committed catalogue matches the diagnosis vocabulary — else `bun run docs:emit`", async () => {
     const committed = await Bun.file(DIAGNOSTICS_PATH).text()
     expect(committed).toBe(diagnosticsCatalogue())
   })

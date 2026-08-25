@@ -117,8 +117,8 @@ export function domainRoutes(handlers: DomainHandlers, session: SessionPlugin) {
           tags: ["Domains"],
           summary: "Ask for a check now",
           description:
-            "Runs against the open claim. The check itself belongs to the verification " +
-            "context, which is not wired yet.",
+            "Reads DNS now instead of waiting for the next scheduled check, and returns the " +
+            "domain with what the read found: the proof, or the named reason it is not there.",
         },
       },
     )

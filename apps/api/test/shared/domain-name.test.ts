@@ -1,10 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import {
-  childHost,
-  type DomainName,
-  parseDomainName,
-  zoneCandidates,
-} from "../../src/shared/domain-name.ts"
+import { type DomainName, parseDomainName } from "../../src/shared/domain-name.ts"
 
 function parse(raw: string): DomainName {
   const result = parseDomainName(raw)
@@ -69,26 +64,4 @@ describe("parseDomainName", () => {
     expect(result.ok).toBe(false)
     if (!result.ok) expect(result.error).toBe(reason)
   })
-})
-
-describe("zoneCandidates", () => {
-  test("walks up to the registrable name and stops there", () => {
-    expect(zoneCandidates(parse("app.staging.acme.com"))).toEqual([
-      "app.staging.acme.com",
-      "staging.acme.com",
-      "acme.com",
-    ])
-  })
-
-  test("stops above the public suffix, never at it", () => {
-    expect(zoneCandidates(parse("shop.acme.co.uk"))).toEqual(["shop.acme.co.uk", "acme.co.uk"])
-  })
-
-  test("is just the name itself when it is already the apex", () => {
-    expect(zoneCandidates(parse("acme.com"))).toEqual(["acme.com"])
-  })
-})
-
-test("childHost puts the prefix on the domain, not on www", () => {
-  expect(childHost(parse("www.acme.com"), "_ownsi-challenge")).toBe("_ownsi-challenge.acme.com")
 })

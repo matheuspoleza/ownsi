@@ -61,7 +61,7 @@ to be able to read them without running Bun.
 | File | Emitted from | Regenerate with |
 |---|---|---|
 | `api-reference/openapi.json` | The running Elysia app's `/openapi/json` | `bun run docs:emit` |
-| `diagnostics/catalogue.mdx` | `explain()` in `apps/api/src/shared/diagnosis.ts` | `bun run docs:emit` |
+| `diagnostics/catalogue.mdx` | `explain()` in `apps/api/src/verification/domain/diagnosis.ts` | `bun run docs:emit` |
 
 `apps/api/test/docs.test.ts` fails when either file drifts from the code, so CI catches a stale
 commit. **Editing a generated file by hand is always wrong** — change the route schema or the

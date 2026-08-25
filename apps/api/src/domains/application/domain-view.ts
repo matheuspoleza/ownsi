@@ -1,5 +1,5 @@
-import type { Coexistence } from "../../shared/claim-lifecycle.ts"
 import type { AccountDomain } from "../domain/account-domain.ts"
+import type { Coexistence } from "../domain/claim-lifecycle.ts"
 import type { FindCoexistence } from "../domain/ports.ts"
 
 export type DomainView = {
