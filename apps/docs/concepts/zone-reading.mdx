@@ -1,0 +1,81 @@
+---
+title: "Reading a zone"
+description: "The public endpoint: who answers for a name, which provider they belong to, and how long publishing takes there."
+icon: "globe"
+---
+
+`GET /api/zones/:name` is the only endpoint that needs no account. It answers the question a visitor
+has before they trust you with anything: *do you actually know my DNS?*
+
+It writes nothing, creates nothing, and never touches a claim.
+
+## What it reads
+
+<Steps>
+  <Step title="The delegation">
+    Which nameservers the parent zone delegates `acme.com` to. This is a fact about the zone, not
+    about you — it is the same answer for everyone asking.
+  </Step>
+  <Step title="The provider">
+    The nameserver hostnames identify the provider: `*.ns.cloudflare.com` is Cloudflare,
+    `*.awsdns-*` is Route 53, and so on. Anything unrecognised comes back as `other`, which is a
+    real answer and not a failure.
+  </Step>
+  <Step title="The publishing estimate">
+    Two numbers, from two different places. `publishingMinutes` is how long that provider is known
+    to take to push an edit out to its own nameservers. `negativeCacheTtlSeconds` is the zone's SOA
+    MINIMUM (RFC 2308) — how long a recursive resolver keeps remembering that a name did not exist.
+  </Step>
+</Steps>
+
+<Note>
+  The two numbers answer different questions and are both worth showing. The provider estimate is
+  "when will my edit leave my panel". The negative-cache TTL is "when will the rest of the internet
+  stop remembering that this name was missing". The second one is usually the longer wait, and it
+  is the one people mistake for a broken record.
+</Note>
+
+## It streams, in the order DNS answers
+
+The delegation is one query. The SOA needs the delegation first, and it is the slower of the two.
+Waiting for both before answering would mean a blank screen for the length of the slowest lookup,
+so the endpoint yields each step as it lands.
+
+```text Server-sent events
+event: delegation
+data: {"step":"delegation","name":"acme.com","domain":{"ascii":"acme.com","unicode":"acme.com","normalisations":[],"isPublicSuffix":false},"nameservers":["dana.ns.cloudflare.com","rick.ns.cloudflare.com"],"provider":"cloudflare","observedAt":"2026-08-24T12:00:00.000Z","cached":false}
+
+event: publishing
+data: {"step":"publishing","publishingMinutes":1,"negativeCacheTtlSeconds":300}
+```
+
+The screen can name the provider and start rendering its instructions the moment the first frame
+arrives. See [Streaming responses](/api-reference/streaming) for how to consume this.
+
+## Normalisation is reported, not hidden
+
+`domain.normalisations` lists what was done to what the person typed — a trailing dot removed, a
+`www.` stripped, an IDN punycoded. It is an array so the UI can say *"reading acme.com — we removed
+the www"* instead of silently reading something other than what was typed.
+
+`isPublicSuffix` is `true` when the name is a registry suffix like `co.uk`, which nobody can own.
+
+## Caching
+
+`observedAt` and `cached` tell you whether the answer came from a fresh query or from the stored
+zone. The store is deliberate: without it, a public unauthenticated endpoint that queries DNS on
+demand is an open resolver. It is also rate limited per IP at the edge — over the limit you get
+[`rate_limited`](/errors#rate_limited).
+
+## Failures
+
+Three, and they are different problems:
+
+| Code | Status | What it means |
+|---|---|---|
+| [`invalid_domain`](/errors#invalid_domain) | 400 | Not a domain name we can read. Your input, not DNS. |
+| [`no_delegation`](/errors#no_delegation) | 404 | The name resolves to no nameservers. Usually unregistered. |
+| [`unresolvable`](/errors#unresolvable) | 502 | We could not reach DNS. Ours, not yours — retry. |
+
+A failure arrives as a normal HTTP status, not as an event in the stream, so the stream never
+carries a half-read zone.

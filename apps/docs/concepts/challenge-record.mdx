@@ -1,0 +1,76 @@
+---
+title: "The challenge record"
+description: "One TXT record on _ownsi-challenge, one token, and the rules that make it safe to leave in place."
+icon: "key"
+---
+
+Claiming a domain issues a token and tells you exactly one record to create.
+
+```json The record block on every claim
+{
+  "host": "_ownsi-challenge",
+  "name": "_ownsi-challenge.acme.com",
+  "type": "TXT",
+  "value": "ownsi_v1_9f3a2c8d1e4b7a6053c21f8e4d7b0a95"
+}
+```
+
+## host and name are both given, on purpose
+
+DNS panels disagree about what goes in the Host field. Some want the label on its own; some want the
+fully qualified name; most append the zone to whatever you type. So the API hands you both and lets
+the UI pick:
+
+- `host` — `_ownsi-challenge`, the label alone. **This is what almost every panel wants.**
+- `name` — `_ownsi-challenge.acme.com`, fully qualified, for the panels that want it and for
+  `dig`.
+
+Typing the fully qualified name into a panel that appends the zone produces
+`_ownsi-challenge.acme.com.acme.com`, which is the [`domain_appended`](/diagnostics/catalogue#domain_appended)
+diagnosis. It is the most common mistake by a wide margin, which is why it has its own code and its
+own sentence.
+
+## Why an underscore label
+
+`_ownsi-challenge` cannot collide with a hostname. An underscore is not legal in a hostname
+(RFC 1123), so no web server, mail record or CDN target will ever want that name. The record can
+stay in the zone forever without getting in the way of anything.
+
+<Warning>
+  A name that holds a `CNAME` can hold nothing else (RFC 1034). If `_ownsi-challenge` is already a
+  CNAME — some platforms create one for their own verification — the TXT record silently will not
+  exist. That is [`cname_conflict`](/diagnostics/catalogue#cname_conflict).
+</Warning>
+
+## The token
+
+128 bits of randomness, issued once per claim, never reused across claims or accounts.
+
+<Check>
+  **The token is immutable for the life of the claim.** Rechecking, archiving and reactivating all
+  preserve it. A record you left in the zone a year ago verifies again the moment you reactivate,
+  without opening your DNS panel.
+</Check>
+
+Two consequences worth designing around:
+
+- Leaving the record in place is the supported state, not an oversight. Continuous reconfirmation
+  is what keeps `lastConfirmedAt` moving.
+- Finding a token at `_ownsi-challenge` that is *not* yours is a real, named case
+  ([`foreign_token`](/diagnostics/catalogue#foreign_token)) — another account claimed the domain
+  and got a different token. It is not a corrupted record.
+
+## Value formatting
+
+The value must be exactly the token: no quotes, no whitespace, nothing appended.
+
+Panels that wrap TXT values in quotes on save are common enough that this has its own diagnosis,
+[`value_formatted`](/diagnostics/catalogue#value_formatted), rather than being reported as "not
+found". The record is there; it just does not say what you meant it to say.
+
+## More than one TXT record is fine
+
+`_ownsi-challenge` can carry several TXT records and ownsi looks for its token among them. It never
+asks you to remove anything. If the host has records but none of them is your token, that is
+[`no_matching_record`](/diagnostics/catalogue#no_matching_record) — and the diagnosis tells you how
+many are there.

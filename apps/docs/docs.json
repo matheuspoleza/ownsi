@@ -1,0 +1,147 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "ownsi",
+  "description": "Prove what's yours. Domain ownership, proved with one TXT record.",
+  "colors": {
+    "primary": "#000000",
+    "light": "#FFFFFF",
+    "dark": "#000000"
+  },
+  "fonts": {
+    "family": "Inter"
+  },
+  "favicon": "/favicon.png",
+  "appearance": {
+    "default": "system"
+  },
+  "styling": {
+    "eyebrows": "breadcrumbs"
+  },
+  "search": {
+    "prompt": "Search the docs"
+  },
+  "api": {
+    "playground": {
+      "display": "interactive"
+    },
+    "examples": {
+      "languages": ["typescript", "curl"]
+    }
+  },
+  "contextual": {
+    "options": ["copy", "view", "claude", "chatgpt", "cursor", "vscode", "mcp"]
+  },
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "icon": "book-open",
+        "groups": [
+          {
+            "group": "Get started",
+            "pages": ["index", "quickstart"]
+          },
+          {
+            "group": "How it works",
+            "pages": [
+              "concepts/zone-reading",
+              "concepts/challenge-record",
+              "concepts/verification",
+              "concepts/claim-lifecycle"
+            ]
+          },
+          {
+            "group": "When it does not verify",
+            "pages": ["diagnostics/overview", "diagnostics/catalogue"]
+          },
+          {
+            "group": "Guides",
+            "pages": ["guides/read-a-zone", "guides/claim-a-domain"]
+          }
+        ]
+      },
+      {
+        "tab": "API reference",
+        "icon": "code",
+        "groups": [
+          {
+            "group": "Using the API",
+            "pages": [
+              "api-reference/introduction",
+              "api-reference/authentication",
+              "api-reference/streaming",
+              "errors"
+            ]
+          },
+          {
+            "group": "Endpoints",
+            "openapi": "api-reference/openapi.json"
+          }
+        ]
+      },
+      {
+        "tab": "SDKs",
+        "icon": "cube",
+        "groups": [
+          {
+            "group": "Clients",
+            "pages": ["sdk/typescript", "sdk/http"]
+          }
+        ]
+      }
+    ],
+    "global": {
+      "anchors": [
+        {
+          "anchor": "GitHub",
+          "icon": "github",
+          "href": "https://github.com/matheuspoleza/ownsi"
+        }
+      ]
+    }
+  },
+  "navbar": {
+    "links": [
+      {
+        "type": "github",
+        "href": "https://github.com/matheuspoleza/ownsi"
+      }
+    ],
+    "primary": {
+      "type": "button",
+      "label": "Open ownsi",
+      "href": "https://ownsi.dev"
+    }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/matheuspoleza/ownsi",
+      "website": "https://ownsi.dev"
+    },
+    "links": [
+      {
+        "header": "Product",
+        "items": [
+          { "label": "ownsi.dev", "href": "https://ownsi.dev" },
+          { "label": "Quickstart", "href": "/quickstart" }
+        ]
+      },
+      {
+        "header": "Reference",
+        "items": [
+          { "label": "API", "href": "/api-reference/introduction" },
+          { "label": "Diagnostics", "href": "/diagnostics/catalogue" },
+          { "label": "Errors", "href": "/errors" }
+        ]
+      }
+    ]
+  },
+  "errors": {
+    "404": {
+      "redirect": false,
+      "title": "Nothing is delegated here",
+      "description": "That page does not exist. Try the [quickstart](/quickstart) or the [API reference](/api-reference/introduction)."
+    }
+  }
+}

@@ -9,6 +9,8 @@
   ],
   "scripts": {
     "dev": "turbo run dev --filter=@ownsi/api --filter=@ownsi/web",
+    "dev:docs": "turbo run dev --filter=@ownsi/docs",
+    "docs:emit": "turbo run docs:emit",
     "build": "turbo run build",
     "test": "turbo run test",
     "lint": "turbo run lint",

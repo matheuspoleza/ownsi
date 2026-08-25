@@ -1,0 +1,143 @@
+---
+title: "TypeScript"
+description: "Eden Treaty — the client types are the server's types, so a changed route is a compile error."
+icon: "js"
+---
+
+There is no generated SDK and no code-generation step. The TypeScript client is
+[Eden Treaty](https://elysiajs.com/eden/treaty/overview), which infers the whole surface from the
+API's exported `App` type.
+
+<Check>
+  A route that changes shape becomes a **type error at the call site**, in the same commit. Nothing
+  to regenerate, nothing to fall out of date.
+</Check>
+
+## Install
+
+```bash
+bun add @elysiajs/eden
+```
+
+Inside this repo, `@ownsi/api` is a workspace dependency and the types come from source. Outside it,
+you would install the published types package — that does not exist yet, because
+[the API is still internal](/api-reference/authentication#when-the-api-opens).
+
+## Create the client
+
+```ts api/eden.client.ts
+import { treaty } from "@elysiajs/eden"
+import type { App } from "@ownsi/api"
+
+export const api = treaty<App>(window.location.origin).api
+```
+
+Same origin, so the session cookie rides along with no extra configuration. `.api` at the end
+matches the server's `/api` prefix, so paths read the way the URL does.
+
+## Reading a zone
+
+The zone read streams, so `data` is an async iterable of frames rather than a value.
+
+```ts
+const { data, error } = await api.zones({ name: "acme.com" }).get()
+
+if (error) {
+  switch (error.status) {
+    case 400: return invalid(error.value.error.message)
+    case 404: return notDelegated()
+    case 502: return retryLater()
+  }
+}
+
+for await (const frame of data) {
+  if (frame.event === "delegation") setProvider(frame.data.provider)
+  if (frame.event === "publishing") setWait(frame.data.negativeCacheTtlSeconds)
+}
+```
+
+`error.status` is narrowed to the statuses that route actually declares — `400 | 404 | 502` here —
+so a `case 500` is a compile error rather than dead code.
+
+### Cancelling
+
+```ts
+const controller = new AbortController()
+
+await api.zones({ name }).get({ fetch: { signal: controller.signal } })
+
+controller.abort()
+```
+
+## Claims
+
+```ts
+const { data: claim } = await api.domains.post({ domain: "acme.com" })
+
+const { data: list } = await api.domains.get()
+
+const { data: one } = await api.domains({ id }).get()
+
+await api.domains({ id }).verify.post()
+await api.domains({ id }).archive.post()
+await api.domains({ id }).restore.post()
+```
+
+## Deriving your own types from the client
+
+Rather than redeclaring response shapes, pull them off the call. They stay correct by construction.
+
+```ts api/zone.api.ts
+const request = (name: string, signal?: AbortSignal) =>
+  api.zones({ name }).get({ fetch: { signal } })
+
+type ZoneRequest = Awaited<ReturnType<typeof request>>
+type ZoneFrame = NonNullable<ZoneRequest["data"]>
+
+export type ZoneStep = ZoneFrame["data"]
+export type ZoneDelegation = Extract<ZoneStep, { step: "delegation" }>
+export type ZonePublishing = Extract<ZoneStep, { step: "publishing" }>
+```
+
+`Extract` on the discriminant is how you narrow any of the tagged unions in this API — zone frames
+on `step`, diagnoses on `code`, wait estimates on `reason`.
+
+## Authentication
+
+Sessions are better-auth, not Eden:
+
+```ts api/auth.client.ts
+import type { Auth } from "@ownsi/api"
+import { createAuthClient } from "better-auth/react"
+import { inferAdditionalFields, magicLinkClient } from "better-auth/client/plugins"
+
+export const authClient = createAuthClient({
+  baseURL: window.location.origin,
+  basePath: "/api/auth",
+  plugins: [magicLinkClient(), inferAdditionalFields<Auth>()],
+})
+```
+
+`inferAdditionalFields<Auth>()` types the session off the server's configured instance, the same
+way Treaty types the routes.
+
+## With TanStack Query
+
+Eden returns a promise, so it drops straight into a query function. Keep the call in a hook rather
+than in a component.
+
+```ts hooks/useClaimState.ts
+export const useClaimState = (id: string) =>
+  useQuery({
+    queryKey: ["claim", id],
+    queryFn: async () => {
+      const { data, error } = await api.domains({ id }).get()
+      if (error) throw error
+      return data
+    },
+    refetchInterval: (query) =>
+      query.state.data?.status === "proved" ? false : 5_000,
+  })
+```
+
+Stop polling on `proved`; keep polling while a `waitEstimate` says the wait is real.

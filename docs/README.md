@@ -8,6 +8,10 @@ updated: 2026-08-24
 Documentation is organised as `docs/{feature}/`. Each feature folder holds its own PRD and research;
 nothing in here assumes you were part of an earlier conversation.
 
+**This folder is internal.** The public documentation site is [`apps/docs/`](../apps/docs/README.md)
+— a Mintlify project whose API reference and diagnostics catalogue are generated from `apps/api`.
+Product decisions land here first; what a user needs to read lands there.
+
 | File | What it is |
 |---|---|
 | [`backend-architecture.md`](backend-architecture.md) | How `apps/api` is put together, and why — layers, tagged unions, dependencies without a container, Elysia |

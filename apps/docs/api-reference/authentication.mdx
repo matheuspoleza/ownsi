@@ -1,0 +1,87 @@
+---
+title: "Authentication"
+description: "A session cookie today. What a public API key would change, and what it would not."
+icon: "lock"
+---
+
+## Today: a session cookie
+
+Identity is a session cookie on the same origin. Sign in with a magic link or with Google, and the
+browser carries the session on every request after that.
+
+```ts
+import { createAuthClient } from "better-auth/react"
+import { magicLinkClient } from "better-auth/client/plugins"
+
+const auth = createAuthClient({
+  baseURL: window.location.origin,
+  basePath: "/api/auth",
+  plugins: [magicLinkClient()],
+})
+
+await auth.signIn.magicLink({ email: "you@acme.com", callbackURL: "/claim/acme.com" })
+```
+
+From a server or a script, send the session cookie you already hold:
+
+```bash
+curl https://ownsi.dev/api/domains -b "$SESSION_COOKIE"
+```
+
+## What needs it, and what does not
+
+<CardGroup cols={2}>
+  <Card title="Public" icon="globe">
+    `GET /api/zones/:name` — reading a zone. No account, no key, rate limited per IP.
+
+    This is a logged-out visitor's first impression of the product and it stays that way
+    deliberately.
+  </Card>
+  <Card title="Session required" icon="lock">
+    Everything under `/api/domains`. Without a session you get `401` with
+    [`unauthenticated`](/errors#unauthenticated).
+  </Card>
+</CardGroup>
+
+Authentication is opt-in per route rather than a blanket middleware, so a route that should be
+public cannot become private by accident.
+
+## When the API opens
+
+<Note>
+  There are no public API keys yet. This section describes the intended shape so that anything you
+  build now stays valid — it is not a switch you can flip today.
+</Note>
+
+A bearer token would sit alongside the cookie, not replace it:
+
+```bash
+curl https://ownsi.dev/api/domains \
+  -H "Authorization: Bearer ownsi_sk_..."
+```
+
+What that would change:
+
+- A second way to present identity on the same routes.
+- Per-key rate limits, and per-key scopes (`zones:read`, `domains:read`, `domains:write`).
+
+What it would **not** change:
+
+- Any response shape on this site.
+- The error envelope. An invalid key would be one more `code` in [the catalogue](/errors).
+- The public zone read, which stays keyless.
+
+## Idempotency
+
+`POST` requests accept an `Idempotency-Key` header. Retrying with the same key returns the original
+response rather than issuing a second token or a second claim.
+
+```bash
+curl -X POST https://ownsi.dev/api/domains \
+  -H "content-type: application/json" \
+  -H "Idempotency-Key: 1f0c9e2a-6d4b-4d0e-9a1c-77b4c2e5f8d1" \
+  -b "$SESSION_COOKIE" \
+  -d '{"domain":"acme.com"}'
+```
+
+Use it on anything a user can double-click.

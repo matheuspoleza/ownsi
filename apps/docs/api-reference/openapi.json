@@ -1,0 +1,4498 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "ownsi API",
+    "description": "Prove ownership of a domain with a TXT record, and read a zone before anyone signs in.\n\nTwo surfaces, and they behave differently on purpose:\n\n- `GET /api/zones/:name` is public. It streams what DNS answers, in the order DNS answers it,\n  and writes nothing. No account, no key.\n- Everything under `/api/domains` belongs to an account and needs a session cookie.\n\nA lookup that failed never carries records, and a claim that has not been checked never carries a\ndiagnosis: both are tagged unions, so the shape tells you which case you are in. Errors are always\n`{ error: { code, message, docsUrl } }` with a stable `code`.",
+    "version": "0.1.0"
+  },
+  "servers": [
+    {
+      "url": "https://ownsi.dev",
+      "description": "The origin the front end and the API share"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Zones",
+      "description": "Reading a zone the way a visitor sees it: the delegation first, so the provider can be named, then how long publishing is likely to take. Public, rate limited per IP."
+    },
+    {
+      "name": "Domains",
+      "description": "A domain on an account: the token it was issued, the state it is in, and the named diagnosis when a check does not find the record. Session required."
+    }
+  ],
+  "paths": {
+    "/api/zones/{name}": {
+      "get": {
+        "tags": [
+          "Zones"
+        ],
+        "summary": "Read a zone",
+        "description": "Streams the reading in the order DNS answers it: the delegation first, so the provider can be named, then the publishing estimate. No account needed; nothing is written to DNS.",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "maxLength": 253,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Response for status 200",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "required": [
+                        "event",
+                        "data"
+                      ],
+                      "properties": {
+                        "event": {
+                          "const": "delegation",
+                          "type": "string"
+                        },
+                        "data": {
+                          "type": "object",
+                          "required": [
+                            "step",
+                            "name",
+                            "domain",
+                            "nameservers",
+                            "provider",
+                            "observedAt",
+                            "cached"
+                          ],
+                          "properties": {
+                            "step": {
+                              "const": "delegation",
+                              "type": "string"
+                            },
+                            "name": {
+                              "type": "string"
+                            },
+                            "domain": {
+                              "type": "object",
+                              "required": [
+                                "ascii",
+                                "unicode",
+                                "normalisations",
+                                "isPublicSuffix"
+                              ],
+                              "properties": {
+                                "ascii": {
+                                  "type": "string"
+                                },
+                                "unicode": {
+                                  "type": "string"
+                                },
+                                "normalisations": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                },
+                                "isPublicSuffix": {
+                                  "type": "boolean"
+                                }
+                              }
+                            },
+                            "nameservers": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "provider": {
+                              "default": "cloudflare",
+                              "type": "string",
+                              "enum": [
+                                "cloudflare",
+                                "route53",
+                                "godaddy",
+                                "namecheap",
+                                "google-domains",
+                                "vercel",
+                                "other"
+                              ]
+                            },
+                            "observedAt": {
+                              "type": "string"
+                            },
+                            "cached": {
+                              "type": "boolean"
+                            }
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "required": [
+                        "event",
+                        "data"
+                      ],
+                      "properties": {
+                        "event": {
+                          "const": "publishing",
+                          "type": "string"
+                        },
+                        "data": {
+                          "type": "object",
+                          "required": [
+                            "step",
+                            "publishingMinutes",
+                            "negativeCacheTtlSeconds"
+                          ],
+                          "properties": {
+                            "step": {
+                              "const": "publishing",
+                              "type": "string"
+                            },
+                            "publishingMinutes": {
+                              "anyOf": [
+                                {
+                                  "type": "number"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "negativeCacheTtlSeconds": {
+                              "anyOf": [
+                                {
+                                  "type": "number"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Response for status 400",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "docsUrl"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "docsUrl": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Response for status 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "docsUrl"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "docsUrl": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Response for status 502",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "docsUrl"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "docsUrl": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "operationId": "getApiZonesByName"
+      }
+    },
+    "/api/domains/": {
+      "post": {
+        "tags": [
+          "Domains"
+        ],
+        "summary": "Claim a domain",
+        "description": "Issues the token for this account and returns the record to create. The token is stable for the life of the claim: recheck, archive and reactivation preserve it.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "domain"
+                ],
+                "properties": {
+                  "domain": {
+                    "minLength": 1,
+                    "maxLength": 253,
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "domain"
+                ],
+                "properties": {
+                  "domain": {
+                    "minLength": 1,
+                    "maxLength": 253,
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "domain"
+                ],
+                "properties": {
+                  "domain": {
+                    "minLength": 1,
+                    "maxLength": 253,
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Response for status 201",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "domain",
+                    "status",
+                    "record",
+                    "lastOutcome",
+                    "diagnosis",
+                    "waitEstimate",
+                    "firstVerifiedAt",
+                    "lastConfirmedAt",
+                    "coexistence",
+                    "createdAt"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "domain": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "default": "pending",
+                      "type": "string",
+                      "enum": [
+                        "pending",
+                        "propagating",
+                        "needs_attention",
+                        "paused",
+                        "proved",
+                        "archived"
+                      ]
+                    },
+                    "record": {
+                      "type": "object",
+                      "required": [
+                        "host",
+                        "name",
+                        "type",
+                        "value"
+                      ],
+                      "properties": {
+                        "host": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "type": {
+                          "const": "TXT",
+                          "type": "string"
+                        },
+                        "value": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "lastOutcome": {
+                      "anyOf": [
+                        {
+                          "default": "found",
+                          "type": "string",
+                          "enum": [
+                            "found",
+                            "absent",
+                            "unresolvable"
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "diagnosis": {
+                      "anyOf": [
+                        {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "required": [
+                                "code",
+                                "cause",
+                                "fix",
+                                "observed"
+                              ],
+                              "properties": {
+                                "code": {
+                                  "const": "domain_appended",
+                                  "type": "string"
+                                },
+                                "cause": {
+                                  "type": "string"
+                                },
+                                "fix": {
+                                  "type": "string"
+                                },
+                                "observed": {
+                                  "type": "object",
+                                  "required": [
+                                    "name"
+                                  ],
+                                  "properties": {
+                                    "name": {
+                                      "type": "string"
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            {
+                              "type": "object",
+                              "required": [
+                                "code",
+                                "cause",
+                                "fix",
+                                "observed"
+                              ],
+                              "properties": {
+                                "code": {
+                                  "const": "record_at_apex",
+                                  "type": "string"
+                                },
+                                "cause": {
+                                  "type": "string"
+                                },
+                                "fix": {
+                                  "type": "string"
+                                },
+                                "observed": {
+                                  "type": "object",
+                                  "required": [
+                                    "name",
+                                    "value"
+                                  ],
+                                  "properties": {
+                                    "name": {
+                                      "type": "string"
+                                    },
+                                    "value": {
+                                      "type": "string"
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            {
+                              "type": "object",
+                              "required": [
+                                "code",
+                                "cause",
+                                "fix",
+                                "observed"
+                              ],
+                              "properties": {
+                                "code": {
+                                  "const": "foreign_token",
+                                  "type": "string"
+                                },
+                                "cause": {
+                                  "type": "string"
+                                },
+                                "fix": {
+                                  "type": "string"
+                                },
+                                "observed": {
+                                  "type": "object",
+                                  "required": [
+                                    "value"
+                                  ],
+                                  "properties": {
+                                    "value": {
+                                      "type": "string"
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            {
+                              "type": "object",
+                              "required": [
+                                "code",
+                                "cause",
+                                "fix",
+                                "observed"
+                              ],
+                              "properties": {
+                                "code": {
+                                  "const": "value_formatted",
+                                  "type": "string"
+                                },
+                                "cause": {
+                                  "type": "string"
+                                },
+                                "fix": {
+                                  "type": "string"
+                                },
+                                "observed": {
+                                  "type": "object",
+                                  "required": [
+                                    "value"
+                                  ],
+                                  "properties": {
+                                    "value": {
+                                      "type": "string"
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            {
+                              "type": "object",
+                              "required": [
+                                "code",
+                                "cause",
+                                "fix",
+                                "observed"
+                              ],
+                              "properties": {
+                                "code": {
+                                  "const": "no_matching_record",
+                                  "type": "string"
+                                },
+                                "cause": {
+                                  "type": "string"
+                                },
+                                "fix": {
+                                  "type": "string"
+                                },
+                                "observed": {
+                                  "type": "object",
+                                  "required": [
+                                    "values"
+                                  ],
+                                  "properties": {
+                                    "values": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string"
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            {
+                              "type": "object",
+                              "required": [
+                                "code",
+                                "cause",
+                                "fix",
+                                "observed"
+                              ],
+                              "properties": {
+                                "code": {
+                                  "const": "cname_conflict",
+                                  "type": "string"
+                                },
+                                "cause": {
+                                  "type": "string"
+                                },
+                                "fix": {
+                                  "type": "string"
+                                },
+                                "observed": {
+                                  "type": "object",
+                                  "required": [
+                                    "target"
+                                  ],
+                                  "properties": {
+                                    "target": {
+                                      "type": "string"
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            {
+                              "type": "object",
+                              "required": [
+                                "code",
+                                "cause",
+                                "fix",
+                                "observed"
+                              ],
+                              "properties": {
+                                "code": {
+                                  "const": "record_absent",
+                                  "type": "string"
+                                },
+                                "cause": {
+                                  "type": "string"
+                                },
+                                "fix": {
+                                  "type": "string"
+                                },
+                                "observed": {
+                                  "type": "object",
+                                  "required": [
+                                    "answer"
+                                  ],
+                                  "properties": {
+                                    "answer": {
+                                      "anyOf": [
+                                        {
+                                          "type": "object",
+                                          "required": [
+                                            "type"
+                                          ],
+                                          "properties": {
+                                            "type": {
+                                              "const": "nxdomain",
+                                              "type": "string"
+                                            }
+                                          }
+                                        },
+                                        {
+                                          "type": "object",
+                                          "required": [
+                                            "type",
+                                            "types"
+                                          ],
+                                          "properties": {
+                                            "type": {
+                                              "const": "nodata",
+                                              "type": "string"
+                                            },
+                                            "types": {
+                                              "type": "array",
+                                              "items": {
+                                                "type": "string"
+                                              }
+                                            }
+                                          }
+                                        }
+                                      ]
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            {
+                              "type": "object",
+                              "required": [
+                                "code",
+                                "cause",
+                                "fix",
+                                "observed"
+                              ],
+                              "properties": {
+                                "code": {
+                                  "const": "record_on_www",
+                                  "type": "string"
+                                },
+                                "cause": {
+                                  "type": "string"
+                                },
+                                "fix": {
+                                  "type": "string"
+                                },
+                                "observed": {
+                                  "type": "object",
+                                  "required": [
+                                    "name",
+                                    "value"
+                                  ],
+                                  "properties": {
+                                    "name": {
+                                      "type": "string"
+                                    },
+                                    "value": {
+                                      "type": "string"
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            {
+                              "type": "object",
+                              "required": [
+                                "code",
+                                "cause",
+                                "fix",
+                                "observed"
+                              ],
+                              "properties": {
+                                "code": {
+                                  "const": "not_published",
+                                  "type": "string"
+                                },
+                                "cause": {
+                                  "type": "string"
+                                },
+                                "fix": {
+                                  "type": "string"
+                                },
+                                "observed": {
+                                  "type": "object",
+                                  "required": [
+                                    "nameservers"
+                                  ],
+                                  "properties": {
+                                    "nameservers": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string"
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            {
+                              "type": "object",
+                              "required": [
+                                "code",
+                                "cause",
+                                "fix",
+                                "observed"
+                              ],
+                              "properties": {
+                                "code": {
+                                  "const": "negative_cache",
+                                  "type": "string"
+                                },
+                                "cause": {
+                                  "type": "string"
+                                },
+                                "fix": {
+                                  "type": "string"
+                                },
+                                "observed": {
+                                  "type": "object",
+                                  "required": [
+                                    "secondsRemaining"
+                                  ],
+                                  "properties": {
+                                    "secondsRemaining": {
+                                      "type": "number"
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            {
+                              "type": "object",
+                              "required": [
+                                "code",
+                                "cause",
+                                "fix",
+                                "observed"
+                              ],
+                              "properties": {
+                                "code": {
+                                  "const": "servfail",
+                                  "type": "string"
+                                },
+                                "cause": {
+                                  "type": "string"
+                                },
+                                "fix": {
+                                  "type": "string"
+                                },
+                                "observed": {
+                                  "type": "object",
+                                  "required": [
+                                    "resolvers"
+                                  ],
+                                  "properties": {
+                                    "resolvers": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string"
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            {
+                              "type": "object",
+                              "required": [
+                                "code",
+                                "cause",
+                                "fix",
+                                "observed"
+                              ],
+                              "properties": {
+                                "code": {
+                                  "const": "lame_delegation",
+                                  "type": "string"
+                                },
+                                "cause": {
+                                  "type": "string"
+                                },
+                                "fix": {
+                                  "type": "string"
+                                },
+                                "observed": {
+                                  "type": "object",
+                                  "required": [
+                                    "nameservers"
+                                  ],
+                                  "properties": {
+                                    "nameservers": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string"
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "waitEstimate": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "required": [
+                            "reason",
+                            "secondsRemaining"
+                          ],
+                          "properties": {
+                            "reason": {
+                              "default": "first_check",
+                              "type": "string",
+                              "enum": [
+                                "first_check",
+                                "negative_cache",
+                                "provider_publishing"
+                              ]
+                            },
+                            "secondsRemaining": {
+                              "type": "number"
+                            }
+                          }
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "firstVerifiedAt": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "lastConfirmedAt": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "coexistence": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "required": [
+                            "maskedEmail",
+                            "provedAt"
+                          ],
+                          "properties": {
+                            "maskedEmail": {
+                              "type": "string"
+                            },
+                            "provedAt": {
+                              "type": "string"
+                            }
+                          }
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "createdAt": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Response for status 400",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "docsUrl"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "docsUrl": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Response for status 401",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "docsUrl"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "docsUrl": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Response for status 409",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "docsUrl"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "docsUrl": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "operationId": "postApiDomains"
+      },
+      "get": {
+        "tags": [
+          "Domains"
+        ],
+        "summary": "List the domains on this account",
+        "responses": {
+          "200": {
+            "description": "Response for status 200",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "claims"
+                  ],
+                  "properties": {
+                    "claims": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "id",
+                          "domain",
+                          "status",
+                          "record",
+                          "lastOutcome",
+                          "diagnosis",
+                          "waitEstimate",
+                          "firstVerifiedAt",
+                          "lastConfirmedAt",
+                          "coexistence",
+                          "createdAt"
+                        ],
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "domain": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "default": "pending",
+                            "type": "string",
+                            "enum": [
+                              "pending",
+                              "propagating",
+                              "needs_attention",
+                              "paused",
+                              "proved",
+                              "archived"
+                            ]
+                          },
+                          "record": {
+                            "type": "object",
+                            "required": [
+                              "host",
+                              "name",
+                              "type",
+                              "value"
+                            ],
+                            "properties": {
+                              "host": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "type": {
+                                "const": "TXT",
+                                "type": "string"
+                              },
+                              "value": {
+                                "type": "string"
+                              }
+                            }
+                          },
+                          "lastOutcome": {
+                            "anyOf": [
+                              {
+                                "default": "found",
+                                "type": "string",
+                                "enum": [
+                                  "found",
+                                  "absent",
+                                  "unresolvable"
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "diagnosis": {
+                            "anyOf": [
+                              {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "required": [
+                                      "code",
+                                      "cause",
+                                      "fix",
+                                      "observed"
+                                    ],
+                                    "properties": {
+                                      "code": {
+                                        "const": "domain_appended",
+                                        "type": "string"
+                                      },
+                                      "cause": {
+                                        "type": "string"
+                                      },
+                                      "fix": {
+                                        "type": "string"
+                                      },
+                                      "observed": {
+                                        "type": "object",
+                                        "required": [
+                                          "name"
+                                        ],
+                                        "properties": {
+                                          "name": {
+                                            "type": "string"
+                                          }
+                                        }
+                                      }
+                                    }
+                                  },
+                                  {
+                                    "type": "object",
+                                    "required": [
+                                      "code",
+                                      "cause",
+                                      "fix",
+                                      "observed"
+                                    ],
+                                    "properties": {
+                                      "code": {
+                                        "const": "record_at_apex",
+                                        "type": "string"
+                                      },
+                                      "cause": {
+                                        "type": "string"
+                                      },
+                                      "fix": {
+                                        "type": "string"
+                                      },
+                                      "observed": {
+                                        "type": "object",
+                                        "required": [
+                                          "name",
+                                          "value"
+                                        ],
+                                        "properties": {
+                                          "name": {
+                                            "type": "string"
+                                          },
+                                          "value": {
+                                            "type": "string"
+                                          }
+                                        }
+                                      }
+                                    }
+                                  },
+                                  {
+                                    "type": "object",
+                                    "required": [
+                                      "code",
+                                      "cause",
+                                      "fix",
+                                      "observed"
+                                    ],
+                                    "properties": {
+                                      "code": {
+                                        "const": "foreign_token",
+                                        "type": "string"
+                                      },
+                                      "cause": {
+                                        "type": "string"
+                                      },
+                                      "fix": {
+                                        "type": "string"
+                                      },
+                                      "observed": {
+                                        "type": "object",
+                                        "required": [
+                                          "value"
+                                        ],
+                                        "properties": {
+                                          "value": {
+                                            "type": "string"
+                                          }
+                                        }
+                                      }
+                                    }
+                                  },
+                                  {
+                                    "type": "object",
+                                    "required": [
+                                      "code",
+                                      "cause",
+                                      "fix",
+                                      "observed"
+                                    ],
+                                    "properties": {
+                                      "code": {
+                                        "const": "value_formatted",
+                                        "type": "string"
+                                      },
+                                      "cause": {
+                                        "type": "string"
+                                      },
+                                      "fix": {
+                                        "type": "string"
+                                      },
+                                      "observed": {
+                                        "type": "object",
+                                        "required": [
+                                          "value"
+                                        ],
+                                        "properties": {
+                                          "value": {
+                                            "type": "string"
+                                          }
+                                        }
+                                      }
+                                    }
+                                  },
+                                  {
+                                    "type": "object",
+                                    "required": [
+                                      "code",
+                                      "cause",
+                                      "fix",
+                                      "observed"
+                                    ],
+                                    "properties": {
+                                      "code": {
+                                        "const": "no_matching_record",
+                                        "type": "string"
+                                      },
+                                      "cause": {
+                                        "type": "string"
+                                      },
+                                      "fix": {
+                                        "type": "string"
+                                      },
+                                      "observed": {
+                                        "type": "object",
+                                        "required": [
+                                          "values"
+                                        ],
+                                        "properties": {
+                                          "values": {
+                                            "type": "array",
+                                            "items": {
+                                              "type": "string"
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  },
+                                  {
+                                    "type": "object",
+                                    "required": [
+                                      "code",
+                                      "cause",
+                                      "fix",
+                                      "observed"
+                                    ],
+                                    "properties": {
+                                      "code": {
+                                        "const": "cname_conflict",
+                                        "type": "string"
+                                      },
+                                      "cause": {
+                                        "type": "string"
+                                      },
+                                      "fix": {
+                                        "type": "string"
+                                      },
+                                      "observed": {
+                                        "type": "object",
+                                        "required": [
+                                          "target"
+                                        ],
+                                        "properties": {
+                                          "target": {
+                                            "type": "string"
+                                          }
+                                        }
+                                      }
+                                    }
+                                  },
+                                  {
+                                    "type": "object",
+                                    "required": [
+                                      "code",
+                                      "cause",
+                                      "fix",
+                                      "observed"
+                                    ],
+                                    "properties": {
+                                      "code": {
+                                        "const": "record_absent",
+                                        "type": "string"
+                                      },
+                                      "cause": {
+                                        "type": "string"
+                                      },
+                                      "fix": {
+                                        "type": "string"
+                                      },
+                                      "observed": {
+                                        "type": "object",
+                                        "required": [
+                                          "answer"
+                                        ],
+                                        "properties": {
+                                          "answer": {
+                                            "anyOf": [
+                                              {
+                                                "type": "object",
+                                                "required": [
+                                                  "type"
+                                                ],
+                                                "properties": {
+                                                  "type": {
+                                                    "const": "nxdomain",
+                                                    "type": "string"
+                                                  }
+                                                }
+                                              },
+                                              {
+                                                "type": "object",
+                                                "required": [
+                                                  "type",
+                                                  "types"
+                                                ],
+                                                "properties": {
+                                                  "type": {
+                                                    "const": "nodata",
+                                                    "type": "string"
+                                                  },
+                                                  "types": {
+                                                    "type": "array",
+                                                    "items": {
+                                                      "type": "string"
+                                                    }
+                                                  }
+                                                }
+                                              }
+                                            ]
+                                          }
+                                        }
+                                      }
+                                    }
+                                  },
+                                  {
+                                    "type": "object",
+                                    "required": [
+                                      "code",
+                                      "cause",
+                                      "fix",
+                                      "observed"
+                                    ],
+                                    "properties": {
+                                      "code": {
+                                        "const": "record_on_www",
+                                        "type": "string"
+                                      },
+                                      "cause": {
+                                        "type": "string"
+                                      },
+                                      "fix": {
+                                        "type": "string"
+                                      },
+                                      "observed": {
+                                        "type": "object",
+                                        "required": [
+                                          "name",
+                                          "value"
+                                        ],
+                                        "properties": {
+                                          "name": {
+                                            "type": "string"
+                                          },
+                                          "value": {
+                                            "type": "string"
+                                          }
+                                        }
+                                      }
+                                    }
+                                  },
+                                  {
+                                    "type": "object",
+                                    "required": [
+                                      "code",
+                                      "cause",
+                                      "fix",
+                                      "observed"
+                                    ],
+                                    "properties": {
+                                      "code": {
+                                        "const": "not_published",
+                                        "type": "string"
+                                      },
+                                      "cause": {
+                                        "type": "string"
+                                      },
+                                      "fix": {
+                                        "type": "string"
+                                      },
+                                      "observed": {
+                                        "type": "object",
+                                        "required": [
+                                          "nameservers"
+                                        ],
+                                        "properties": {
+                                          "nameservers": {
+                                            "type": "array",
+                                            "items": {
+                                              "type": "string"
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  },
+                                  {
+                                    "type": "object",
+                                    "required": [
+                                      "code",
+                                      "cause",
+                                      "fix",
+                                      "observed"
+                                    ],
+                                    "properties": {
+                                      "code": {
+                                        "const": "negative_cache",
+                                        "type": "string"
+                                      },
+                                      "cause": {
+                                        "type": "string"
+                                      },
+                                      "fix": {
+                                        "type": "string"
+                                      },
+                                      "observed": {
+                                        "type": "object",
+                                        "required": [
+                                          "secondsRemaining"
+                                        ],
+                                        "properties": {
+                                          "secondsRemaining": {
+                                            "type": "number"
+                                          }
+                                        }
+                                      }
+                                    }
+                                  },
+                                  {
+                                    "type": "object",
+                                    "required": [
+                                      "code",
+                                      "cause",
+                                      "fix",
+                                      "observed"
+                                    ],
+                                    "properties": {
+                                      "code": {
+                                        "const": "servfail",
+                                        "type": "string"
+                                      },
+                                      "cause": {
+                                        "type": "string"
+                                      },
+                                      "fix": {
+                                        "type": "string"
+                                      },
+                                      "observed": {
+                                        "type": "object",
+                                        "required": [
+                                          "resolvers"
+                                        ],
+                                        "properties": {
+                                          "resolvers": {
+                                            "type": "array",
+                                            "items": {
+                                              "type": "string"
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  },
+                                  {
+                                    "type": "object",
+                                    "required": [
+                                      "code",
+                                      "cause",
+                                      "fix",
+                                      "observed"
+                                    ],
+                                    "properties": {
+                                      "code": {
+                                        "const": "lame_delegation",
+                                        "type": "string"
+                                      },
+                                      "cause": {
+                                        "type": "string"
+                                      },
+                                      "fix": {
+                                        "type": "string"
+                                      },
+                                      "observed": {
+                                        "type": "object",
+                                        "required": [
+                                          "nameservers"
+                                        ],
+                                        "properties": {
+                                          "nameservers": {
+                                            "type": "array",
+                                            "items": {
+                                              "type": "string"
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  }
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "waitEstimate": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "required": [
+                                  "reason",
+                                  "secondsRemaining"
+                                ],
+                                "properties": {
+                                  "reason": {
+                                    "default": "first_check",
+                                    "type": "string",
+                                    "enum": [
+                                      "first_check",
+                                      "negative_cache",
+                                      "provider_publishing"
+                                    ]
+                                  },
+                                  "secondsRemaining": {
+                                    "type": "number"
+                                  }
+                                }
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "firstVerifiedAt": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "lastConfirmedAt": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "coexistence": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "required": [
+                                  "maskedEmail",
+                                  "provedAt"
+                                ],
+                                "properties": {
+                                  "maskedEmail": {
+                                    "type": "string"
+                                  },
+                                  "provedAt": {
+                                    "type": "string"
+                                  }
+                                }
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "createdAt": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Response for status 401",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "docsUrl"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "docsUrl": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "operationId": "getApiDomains"
+      }
+    },
+    "/api/domains/{id}": {
+      "get": {
+        "tags": [
+          "Domains"
+        ],
+        "summary": "Read one claim",
+        "description": "Carries the named diagnosis and the wait estimate, so the screen says which of the failures is yours without running a DNS query of its own.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Response for status 200",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "domain",
+                    "status",
+                    "record",
+                    "lastOutcome",
+                    "diagnosis",
+                    "waitEstimate",
+                    "firstVerifiedAt",
+                    "lastConfirmedAt",
+                    "coexistence",
+                    "createdAt"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "domain": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "default": "pending",
+                      "type": "string",
+                      "enum": [
+                        "pending",
+                        "propagating",
+                        "needs_attention",
+                        "paused",
+                        "proved",
+                        "archived"
+                      ]
+                    },
+                    "record": {
+                      "type": "object",
+                      "required": [
+                        "host",
+                        "name",
+                        "type",
+                        "value"
+                      ],
+                      "properties": {
+                        "host": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "type": {
+                          "const": "TXT",
+                          "type": "string"
+                        },
+                        "value": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "lastOutcome": {
+                      "anyOf": [
+                        {
+                          "default": "found",
+                          "type": "string",
+                          "enum": [
+                            "found",
+                            "absent",
+                            "unresolvable"
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "diagnosis": {
+                      "anyOf": [
+                        {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "required": [
+                                "code",
+                                "cause",
+                                "fix",
+                                "observed"
+                              ],
+                              "properties": {
+                                "code": {
+                                  "const": "domain_appended",
+                                  "type": "string"
+                                },
+                                "cause": {
+                                  "type": "string"
+                                },
+                                "fix": {
+                                  "type": "string"
+                                },
+                                "observed": {
+                                  "type": "object",
+                                  "required": [
+                                    "name"
+                                  ],
+                                  "properties": {
+                                    "name": {
+                                      "type": "string"
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            {
+                              "type": "object",
+                              "required": [
+                                "code",
+                                "cause",
+                                "fix",
+                                "observed"
+                              ],
+                              "properties": {
+                                "code": {
+                                  "const": "record_at_apex",
+                                  "type": "string"
+                                },
+                                "cause": {
+                                  "type": "string"
+                                },
+                                "fix": {
+                                  "type": "string"
+                                },
+                                "observed": {
+                                  "type": "object",
+                                  "required": [
+                                    "name",
+                                    "value"
+                                  ],
+                                  "properties": {
+                                    "name": {
+                                      "type": "string"
+                                    },
+                                    "value": {
+                                      "type": "string"
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            {
+                              "type": "object",
+                              "required": [
+                                "code",
+                                "cause",
+                                "fix",
+                                "observed"
+                              ],
+                              "properties": {
+                                "code": {
+                                  "const": "foreign_token",
+                                  "type": "string"
+                                },
+                                "cause": {
+                                  "type": "string"
+                                },
+                                "fix": {
+                                  "type": "string"
+                                },
+                                "observed": {
+                                  "type": "object",
+                                  "required": [
+                                    "value"
+                                  ],
+                                  "properties": {
+                                    "value": {
+                                      "type": "string"
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            {
+                              "type": "object",
+                              "required": [
+                                "code",
+                                "cause",
+                                "fix",
+                                "observed"
+                              ],
+                              "properties": {
+                                "code": {
+                                  "const": "value_formatted",
+                                  "type": "string"
+                                },
+                                "cause": {
+                                  "type": "string"
+                                },
+                                "fix": {
+                                  "type": "string"
+                                },
+                                "observed": {
+                                  "type": "object",
+                                  "required": [
+                                    "value"
+                                  ],
+                                  "properties": {
+                                    "value": {
+                                      "type": "string"
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            {
+                              "type": "object",
+                              "required": [
+                                "code",
+                                "cause",
+                                "fix",
+                                "observed"
+                              ],
+                              "properties": {
+                                "code": {
+                                  "const": "no_matching_record",
+                                  "type": "string"
+                                },
+                                "cause": {
+                                  "type": "string"
+                                },
+                                "fix": {
+                                  "type": "string"
+                                },
+                                "observed": {
+                                  "type": "object",
+                                  "required": [
+                                    "values"
+                                  ],
+                                  "properties": {
+                                    "values": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string"
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            {
+                              "type": "object",
+                              "required": [
+                                "code",
+                                "cause",
+                                "fix",
+                                "observed"
+                              ],
+                              "properties": {
+                                "code": {
+                                  "const": "cname_conflict",
+                                  "type": "string"
+                                },
+                                "cause": {
+                                  "type": "string"
+                                },
+                                "fix": {
+                                  "type": "string"
+                                },
+                                "observed": {
+                                  "type": "object",
+                                  "required": [
+                                    "target"
+                                  ],
+                                  "properties": {
+                                    "target": {
+                                      "type": "string"
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            {
+                              "type": "object",
+                              "required": [
+                                "code",
+                                "cause",
+                                "fix",
+                                "observed"
+                              ],
+                              "properties": {
+                                "code": {
+                                  "const": "record_absent",
+                                  "type": "string"
+                                },
+                                "cause": {
+                                  "type": "string"
+                                },
+                                "fix": {
+                                  "type": "string"
+                                },
+                                "observed": {
+                                  "type": "object",
+                                  "required": [
+                                    "answer"
+                                  ],
+                                  "properties": {
+                                    "answer": {
+                                      "anyOf": [
+                                        {
+                                          "type": "object",
+                                          "required": [
+                                            "type"
+                                          ],
+                                          "properties": {
+                                            "type": {
+                                              "const": "nxdomain",
+                                              "type": "string"
+                                            }
+                                          }
+                                        },
+                                        {
+                                          "type": "object",
+                                          "required": [
+                                            "type",
+                                            "types"
+                                          ],
+                                          "properties": {
+                                            "type": {
+                                              "const": "nodata",
+                                              "type": "string"
+                                            },
+                                            "types": {
+                                              "type": "array",
+                                              "items": {
+                                                "type": "string"
+                                              }
+                                            }
+                                          }
+                                        }
+                                      ]
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            {
+                              "type": "object",
+                              "required": [
+                                "code",
+                                "cause",
+                                "fix",
+                                "observed"
+                              ],
+                              "properties": {
+                                "code": {
+                                  "const": "record_on_www",
+                                  "type": "string"
+                                },
+                                "cause": {
+                                  "type": "string"
+                                },
+                                "fix": {
+                                  "type": "string"
+                                },
+                                "observed": {
+                                  "type": "object",
+                                  "required": [
+                                    "name",
+                                    "value"
+                                  ],
+                                  "properties": {
+                                    "name": {
+                                      "type": "string"
+                                    },
+                                    "value": {
+                                      "type": "string"
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            {
+                              "type": "object",
+                              "required": [
+                                "code",
+                                "cause",
+                                "fix",
+                                "observed"
+                              ],
+                              "properties": {
+                                "code": {
+                                  "const": "not_published",
+                                  "type": "string"
+                                },
+                                "cause": {
+                                  "type": "string"
+                                },
+                                "fix": {
+                                  "type": "string"
+                                },
+                                "observed": {
+                                  "type": "object",
+                                  "required": [
+                                    "nameservers"
+                                  ],
+                                  "properties": {
+                                    "nameservers": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string"
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            {
+                              "type": "object",
+                              "required": [
+                                "code",
+                                "cause",
+                                "fix",
+                                "observed"
+                              ],
+                              "properties": {
+                                "code": {
+                                  "const": "negative_cache",
+                                  "type": "string"
+                                },
+                                "cause": {
+                                  "type": "string"
+                                },
+                                "fix": {
+                                  "type": "string"
+                                },
+                                "observed": {
+                                  "type": "object",
+                                  "required": [
+                                    "secondsRemaining"
+                                  ],
+                                  "properties": {
+                                    "secondsRemaining": {
+                                      "type": "number"
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            {
+                              "type": "object",
+                              "required": [
+                                "code",
+                                "cause",
+                                "fix",
+                                "observed"
+                              ],
+                              "properties": {
+                                "code": {
+                                  "const": "servfail",
+                                  "type": "string"
+                                },
+                                "cause": {
+                                  "type": "string"
+                                },
+                                "fix": {
+                                  "type": "string"
+                                },
+                                "observed": {
+                                  "type": "object",
+                                  "required": [
+                                    "resolvers"
+                                  ],
+                                  "properties": {
+                                    "resolvers": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string"
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            {
+                              "type": "object",
+                              "required": [
+                                "code",
+                                "cause",
+                                "fix",
+                                "observed"
+                              ],
+                              "properties": {
+                                "code": {
+                                  "const": "lame_delegation",
+                                  "type": "string"
+                                },
+                                "cause": {
+                                  "type": "string"
+                                },
+                                "fix": {
+                                  "type": "string"
+                                },
+                                "observed": {
+                                  "type": "object",
+                                  "required": [
+                                    "nameservers"
+                                  ],
+                                  "properties": {
+                                    "nameservers": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string"
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "waitEstimate": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "required": [
+                            "reason",
+                            "secondsRemaining"
+                          ],
+                          "properties": {
+                            "reason": {
+                              "default": "first_check",
+                              "type": "string",
+                              "enum": [
+                                "first_check",
+                                "negative_cache",
+                                "provider_publishing"
+                              ]
+                            },
+                            "secondsRemaining": {
+                              "type": "number"
+                            }
+                          }
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "firstVerifiedAt": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "lastConfirmedAt": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "coexistence": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "required": [
+                            "maskedEmail",
+                            "provedAt"
+                          ],
+                          "properties": {
+                            "maskedEmail": {
+                              "type": "string"
+                            },
+                            "provedAt": {
+                              "type": "string"
+                            }
+                          }
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "createdAt": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Response for status 401",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "docsUrl"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "docsUrl": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Response for status 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "docsUrl"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "docsUrl": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "operationId": "getApiDomainsById"
+      }
+    },
+    "/api/domains/{id}/verify": {
+      "post": {
+        "tags": [
+          "Domains"
+        ],
+        "summary": "Ask for a check now",
+        "description": "Resumes a dormant claim and returns the claim as it stands. The check itself belongs to the verification context, which is not wired yet.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Response for status 200",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "domain",
+                    "status",
+                    "record",
+                    "lastOutcome",
+                    "diagnosis",
+                    "waitEstimate",
+                    "firstVerifiedAt",
+                    "lastConfirmedAt",
+                    "coexistence",
+                    "createdAt"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "domain": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "default": "pending",
+                      "type": "string",
+                      "enum": [
+                        "pending",
+                        "propagating",
+                        "needs_attention",
+                        "paused",
+                        "proved",
+                        "archived"
+                      ]
+                    },
+                    "record": {
+                      "type": "object",
+                      "required": [
+                        "host",
+                        "name",
+                        "type",
+                        "value"
+                      ],
+                      "properties": {
+                        "host": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "type": {
+                          "const": "TXT",
+                          "type": "string"
+                        },
+                        "value": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "lastOutcome": {
+                      "anyOf": [
+                        {
+                          "default": "found",
+                          "type": "string",
+                          "enum": [
+                            "found",
+                            "absent",
+                            "unresolvable"
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "diagnosis": {
+                      "anyOf": [
+                        {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "required": [
+                                "code",
+                                "cause",
+                                "fix",
+                                "observed"
+                              ],
+                              "properties": {
+                                "code": {
+                                  "const": "domain_appended",
+                                  "type": "string"
+                                },
+                                "cause": {
+                                  "type": "string"
+                                },
+                                "fix": {
+                                  "type": "string"
+                                },
+                                "observed": {
+                                  "type": "object",
+                                  "required": [
+                                    "name"
+                                  ],
+                                  "properties": {
+                                    "name": {
+                                      "type": "string"
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            {
+                              "type": "object",
+                              "required": [
+                                "code",
+                                "cause",
+                                "fix",
+                                "observed"
+                              ],
+                              "properties": {
+                                "code": {
+                                  "const": "record_at_apex",
+                                  "type": "string"
+                                },
+                                "cause": {
+                                  "type": "string"
+                                },
+                                "fix": {
+                                  "type": "string"
+                                },
+                                "observed": {
+                                  "type": "object",
+                                  "required": [
+                                    "name",
+                                    "value"
+                                  ],
+                                  "properties": {
+                                    "name": {
+                                      "type": "string"
+                                    },
+                                    "value": {
+                                      "type": "string"
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            {
+                              "type": "object",
+                              "required": [
+                                "code",
+                                "cause",
+                                "fix",
+                                "observed"
+                              ],
+                              "properties": {
+                                "code": {
+                                  "const": "foreign_token",
+                                  "type": "string"
+                                },
+                                "cause": {
+                                  "type": "string"
+                                },
+                                "fix": {
+                                  "type": "string"
+                                },
+                                "observed": {
+                                  "type": "object",
+                                  "required": [
+                                    "value"
+                                  ],
+                                  "properties": {
+                                    "value": {
+                                      "type": "string"
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            {
+                              "type": "object",
+                              "required": [
+                                "code",
+                                "cause",
+                                "fix",
+                                "observed"
+                              ],
+                              "properties": {
+                                "code": {
+                                  "const": "value_formatted",
+                                  "type": "string"
+                                },
+                                "cause": {
+                                  "type": "string"
+                                },
+                                "fix": {
+                                  "type": "string"
+                                },
+                                "observed": {
+                                  "type": "object",
+                                  "required": [
+                                    "value"
+                                  ],
+                                  "properties": {
+                                    "value": {
+                                      "type": "string"
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            {
+                              "type": "object",
+                              "required": [
+                                "code",
+                                "cause",
+                                "fix",
+                                "observed"
+                              ],
+                              "properties": {
+                                "code": {
+                                  "const": "no_matching_record",
+                                  "type": "string"
+                                },
+                                "cause": {
+                                  "type": "string"
+                                },
+                                "fix": {
+                                  "type": "string"
+                                },
+                                "observed": {
+                                  "type": "object",
+                                  "required": [
+                                    "values"
+                                  ],
+                                  "properties": {
+                                    "values": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string"
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            {
+                              "type": "object",
+                              "required": [
+                                "code",
+                                "cause",
+                                "fix",
+                                "observed"
+                              ],
+                              "properties": {
+                                "code": {
+                                  "const": "cname_conflict",
+                                  "type": "string"
+                                },
+                                "cause": {
+                                  "type": "string"
+                                },
+                                "fix": {
+                                  "type": "string"
+                                },
+                                "observed": {
+                                  "type": "object",
+                                  "required": [
+                                    "target"
+                                  ],
+                                  "properties": {
+                                    "target": {
+                                      "type": "string"
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            {
+                              "type": "object",
+                              "required": [
+                                "code",
+                                "cause",
+                                "fix",
+                                "observed"
+                              ],
+                              "properties": {
+                                "code": {
+                                  "const": "record_absent",
+                                  "type": "string"
+                                },
+                                "cause": {
+                                  "type": "string"
+                                },
+                                "fix": {
+                                  "type": "string"
+                                },
+                                "observed": {
+                                  "type": "object",
+                                  "required": [
+                                    "answer"
+                                  ],
+                                  "properties": {
+                                    "answer": {
+                                      "anyOf": [
+                                        {
+                                          "type": "object",
+                                          "required": [
+                                            "type"
+                                          ],
+                                          "properties": {
+                                            "type": {
+                                              "const": "nxdomain",
+                                              "type": "string"
+                                            }
+                                          }
+                                        },
+                                        {
+                                          "type": "object",
+                                          "required": [
+                                            "type",
+                                            "types"
+                                          ],
+                                          "properties": {
+                                            "type": {
+                                              "const": "nodata",
+                                              "type": "string"
+                                            },
+                                            "types": {
+                                              "type": "array",
+                                              "items": {
+                                                "type": "string"
+                                              }
+                                            }
+                                          }
+                                        }
+                                      ]
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            {
+                              "type": "object",
+                              "required": [
+                                "code",
+                                "cause",
+                                "fix",
+                                "observed"
+                              ],
+                              "properties": {
+                                "code": {
+                                  "const": "record_on_www",
+                                  "type": "string"
+                                },
+                                "cause": {
+                                  "type": "string"
+                                },
+                                "fix": {
+                                  "type": "string"
+                                },
+                                "observed": {
+                                  "type": "object",
+                                  "required": [
+                                    "name",
+                                    "value"
+                                  ],
+                                  "properties": {
+                                    "name": {
+                                      "type": "string"
+                                    },
+                                    "value": {
+                                      "type": "string"
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            {
+                              "type": "object",
+                              "required": [
+                                "code",
+                                "cause",
+                                "fix",
+                                "observed"
+                              ],
+                              "properties": {
+                                "code": {
+                                  "const": "not_published",
+                                  "type": "string"
+                                },
+                                "cause": {
+                                  "type": "string"
+                                },
+                                "fix": {
+                                  "type": "string"
+                                },
+                                "observed": {
+                                  "type": "object",
+                                  "required": [
+                                    "nameservers"
+                                  ],
+                                  "properties": {
+                                    "nameservers": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string"
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            {
+                              "type": "object",
+                              "required": [
+                                "code",
+                                "cause",
+                                "fix",
+                                "observed"
+                              ],
+                              "properties": {
+                                "code": {
+                                  "const": "negative_cache",
+                                  "type": "string"
+                                },
+                                "cause": {
+                                  "type": "string"
+                                },
+                                "fix": {
+                                  "type": "string"
+                                },
+                                "observed": {
+                                  "type": "object",
+                                  "required": [
+                                    "secondsRemaining"
+                                  ],
+                                  "properties": {
+                                    "secondsRemaining": {
+                                      "type": "number"
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            {
+                              "type": "object",
+                              "required": [
+                                "code",
+                                "cause",
+                                "fix",
+                                "observed"
+                              ],
+                              "properties": {
+                                "code": {
+                                  "const": "servfail",
+                                  "type": "string"
+                                },
+                                "cause": {
+                                  "type": "string"
+                                },
+                                "fix": {
+                                  "type": "string"
+                                },
+                                "observed": {
+                                  "type": "object",
+                                  "required": [
+                                    "resolvers"
+                                  ],
+                                  "properties": {
+                                    "resolvers": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string"
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            {
+                              "type": "object",
+                              "required": [
+                                "code",
+                                "cause",
+                                "fix",
+                                "observed"
+                              ],
+                              "properties": {
+                                "code": {
+                                  "const": "lame_delegation",
+                                  "type": "string"
+                                },
+                                "cause": {
+                                  "type": "string"
+                                },
+                                "fix": {
+                                  "type": "string"
+                                },
+                                "observed": {
+                                  "type": "object",
+                                  "required": [
+                                    "nameservers"
+                                  ],
+                                  "properties": {
+                                    "nameservers": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string"
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "waitEstimate": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "required": [
+                            "reason",
+                            "secondsRemaining"
+                          ],
+                          "properties": {
+                            "reason": {
+                              "default": "first_check",
+                              "type": "string",
+                              "enum": [
+                                "first_check",
+                                "negative_cache",
+                                "provider_publishing"
+                              ]
+                            },
+                            "secondsRemaining": {
+                              "type": "number"
+                            }
+                          }
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "firstVerifiedAt": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "lastConfirmedAt": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "coexistence": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "required": [
+                            "maskedEmail",
+                            "provedAt"
+                          ],
+                          "properties": {
+                            "maskedEmail": {
+                              "type": "string"
+                            },
+                            "provedAt": {
+                              "type": "string"
+                            }
+                          }
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "createdAt": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Response for status 401",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "docsUrl"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "docsUrl": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Response for status 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "docsUrl"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "docsUrl": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "operationId": "postApiDomainsByIdVerify"
+      }
+    },
+    "/api/domains/{id}/archive": {
+      "post": {
+        "tags": [
+          "Domains"
+        ],
+        "summary": "Archive a domain",
+        "description": "Leaves the main list and stops being checked. Token and history are preserved, and it stops counting towards coexistence.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Response for status 200",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "domain",
+                    "status",
+                    "record",
+                    "lastOutcome",
+                    "diagnosis",
+                    "waitEstimate",
+                    "firstVerifiedAt",
+                    "lastConfirmedAt",
+                    "coexistence",
+                    "createdAt"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "domain": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "default": "pending",
+                      "type": "string",
+                      "enum": [
+                        "pending",
+                        "propagating",
+                        "needs_attention",
+                        "paused",
+                        "proved",
+                        "archived"
+                      ]
+                    },
+                    "record": {
+                      "type": "object",
+                      "required": [
+                        "host",
+                        "name",
+                        "type",
+                        "value"
+                      ],
+                      "properties": {
+                        "host": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "type": {
+                          "const": "TXT",
+                          "type": "string"
+                        },
+                        "value": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "lastOutcome": {
+                      "anyOf": [
+                        {
+                          "default": "found",
+                          "type": "string",
+                          "enum": [
+                            "found",
+                            "absent",
+                            "unresolvable"
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "diagnosis": {
+                      "anyOf": [
+                        {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "required": [
+                                "code",
+                                "cause",
+                                "fix",
+                                "observed"
+                              ],
+                              "properties": {
+                                "code": {
+                                  "const": "domain_appended",
+                                  "type": "string"
+                                },
+                                "cause": {
+                                  "type": "string"
+                                },
+                                "fix": {
+                                  "type": "string"
+                                },
+                                "observed": {
+                                  "type": "object",
+                                  "required": [
+                                    "name"
+                                  ],
+                                  "properties": {
+                                    "name": {
+                                      "type": "string"
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            {
+                              "type": "object",
+                              "required": [
+                                "code",
+                                "cause",
+                                "fix",
+                                "observed"
+                              ],
+                              "properties": {
+                                "code": {
+                                  "const": "record_at_apex",
+                                  "type": "string"
+                                },
+                                "cause": {
+                                  "type": "string"
+                                },
+                                "fix": {
+                                  "type": "string"
+                                },
+                                "observed": {
+                                  "type": "object",
+                                  "required": [
+                                    "name",
+                                    "value"
+                                  ],
+                                  "properties": {
+                                    "name": {
+                                      "type": "string"
+                                    },
+                                    "value": {
+                                      "type": "string"
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            {
+                              "type": "object",
+                              "required": [
+                                "code",
+                                "cause",
+                                "fix",
+                                "observed"
+                              ],
+                              "properties": {
+                                "code": {
+                                  "const": "foreign_token",
+                                  "type": "string"
+                                },
+                                "cause": {
+                                  "type": "string"
+                                },
+                                "fix": {
+                                  "type": "string"
+                                },
+                                "observed": {
+                                  "type": "object",
+                                  "required": [
+                                    "value"
+                                  ],
+                                  "properties": {
+                                    "value": {
+                                      "type": "string"
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            {
+                              "type": "object",
+                              "required": [
+                                "code",
+                                "cause",
+                                "fix",
+                                "observed"
+                              ],
+                              "properties": {
+                                "code": {
+                                  "const": "value_formatted",
+                                  "type": "string"
+                                },
+                                "cause": {
+                                  "type": "string"
+                                },
+                                "fix": {
+                                  "type": "string"
+                                },
+                                "observed": {
+                                  "type": "object",
+                                  "required": [
+                                    "value"
+                                  ],
+                                  "properties": {
+                                    "value": {
+                                      "type": "string"
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            {
+                              "type": "object",
+                              "required": [
+                                "code",
+                                "cause",
+                                "fix",
+                                "observed"
+                              ],
+                              "properties": {
+                                "code": {
+                                  "const": "no_matching_record",
+                                  "type": "string"
+                                },
+                                "cause": {
+                                  "type": "string"
+                                },
+                                "fix": {
+                                  "type": "string"
+                                },
+                                "observed": {
+                                  "type": "object",
+                                  "required": [
+                                    "values"
+                                  ],
+                                  "properties": {
+                                    "values": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string"
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            {
+                              "type": "object",
+                              "required": [
+                                "code",
+                                "cause",
+                                "fix",
+                                "observed"
+                              ],
+                              "properties": {
+                                "code": {
+                                  "const": "cname_conflict",
+                                  "type": "string"
+                                },
+                                "cause": {
+                                  "type": "string"
+                                },
+                                "fix": {
+                                  "type": "string"
+                                },
+                                "observed": {
+                                  "type": "object",
+                                  "required": [
+                                    "target"
+                                  ],
+                                  "properties": {
+                                    "target": {
+                                      "type": "string"
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            {
+                              "type": "object",
+                              "required": [
+                                "code",
+                                "cause",
+                                "fix",
+                                "observed"
+                              ],
+                              "properties": {
+                                "code": {
+                                  "const": "record_absent",
+                                  "type": "string"
+                                },
+                                "cause": {
+                                  "type": "string"
+                                },
+                                "fix": {
+                                  "type": "string"
+                                },
+                                "observed": {
+                                  "type": "object",
+                                  "required": [
+                                    "answer"
+                                  ],
+                                  "properties": {
+                                    "answer": {
+                                      "anyOf": [
+                                        {
+                                          "type": "object",
+                                          "required": [
+                                            "type"
+                                          ],
+                                          "properties": {
+                                            "type": {
+                                              "const": "nxdomain",
+                                              "type": "string"
+                                            }
+                                          }
+                                        },
+                                        {
+                                          "type": "object",
+                                          "required": [
+                                            "type",
+                                            "types"
+                                          ],
+                                          "properties": {
+                                            "type": {
+                                              "const": "nodata",
+                                              "type": "string"
+                                            },
+                                            "types": {
+                                              "type": "array",
+                                              "items": {
+                                                "type": "string"
+                                              }
+                                            }
+                                          }
+                                        }
+                                      ]
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            {
+                              "type": "object",
+                              "required": [
+                                "code",
+                                "cause",
+                                "fix",
+                                "observed"
+                              ],
+                              "properties": {
+                                "code": {
+                                  "const": "record_on_www",
+                                  "type": "string"
+                                },
+                                "cause": {
+                                  "type": "string"
+                                },
+                                "fix": {
+                                  "type": "string"
+                                },
+                                "observed": {
+                                  "type": "object",
+                                  "required": [
+                                    "name",
+                                    "value"
+                                  ],
+                                  "properties": {
+                                    "name": {
+                                      "type": "string"
+                                    },
+                                    "value": {
+                                      "type": "string"
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            {
+                              "type": "object",
+                              "required": [
+                                "code",
+                                "cause",
+                                "fix",
+                                "observed"
+                              ],
+                              "properties": {
+                                "code": {
+                                  "const": "not_published",
+                                  "type": "string"
+                                },
+                                "cause": {
+                                  "type": "string"
+                                },
+                                "fix": {
+                                  "type": "string"
+                                },
+                                "observed": {
+                                  "type": "object",
+                                  "required": [
+                                    "nameservers"
+                                  ],
+                                  "properties": {
+                                    "nameservers": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string"
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            {
+                              "type": "object",
+                              "required": [
+                                "code",
+                                "cause",
+                                "fix",
+                                "observed"
+                              ],
+                              "properties": {
+                                "code": {
+                                  "const": "negative_cache",
+                                  "type": "string"
+                                },
+                                "cause": {
+                                  "type": "string"
+                                },
+                                "fix": {
+                                  "type": "string"
+                                },
+                                "observed": {
+                                  "type": "object",
+                                  "required": [
+                                    "secondsRemaining"
+                                  ],
+                                  "properties": {
+                                    "secondsRemaining": {
+                                      "type": "number"
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            {
+                              "type": "object",
+                              "required": [
+                                "code",
+                                "cause",
+                                "fix",
+                                "observed"
+                              ],
+                              "properties": {
+                                "code": {
+                                  "const": "servfail",
+                                  "type": "string"
+                                },
+                                "cause": {
+                                  "type": "string"
+                                },
+                                "fix": {
+                                  "type": "string"
+                                },
+                                "observed": {
+                                  "type": "object",
+                                  "required": [
+                                    "resolvers"
+                                  ],
+                                  "properties": {
+                                    "resolvers": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string"
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            {
+                              "type": "object",
+                              "required": [
+                                "code",
+                                "cause",
+                                "fix",
+                                "observed"
+                              ],
+                              "properties": {
+                                "code": {
+                                  "const": "lame_delegation",
+                                  "type": "string"
+                                },
+                                "cause": {
+                                  "type": "string"
+                                },
+                                "fix": {
+                                  "type": "string"
+                                },
+                                "observed": {
+                                  "type": "object",
+                                  "required": [
+                                    "nameservers"
+                                  ],
+                                  "properties": {
+                                    "nameservers": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string"
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "waitEstimate": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "required": [
+                            "reason",
+                            "secondsRemaining"
+                          ],
+                          "properties": {
+                            "reason": {
+                              "default": "first_check",
+                              "type": "string",
+                              "enum": [
+                                "first_check",
+                                "negative_cache",
+                                "provider_publishing"
+                              ]
+                            },
+                            "secondsRemaining": {
+                              "type": "number"
+                            }
+                          }
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "firstVerifiedAt": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "lastConfirmedAt": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "coexistence": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "required": [
+                            "maskedEmail",
+                            "provedAt"
+                          ],
+                          "properties": {
+                            "maskedEmail": {
+                              "type": "string"
+                            },
+                            "provedAt": {
+                              "type": "string"
+                            }
+                          }
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "createdAt": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Response for status 401",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "docsUrl"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "docsUrl": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Response for status 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "docsUrl"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "docsUrl": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "operationId": "postApiDomainsByIdArchive"
+      }
+    },
+    "/api/domains/{id}/restore": {
+      "post": {
+        "tags": [
+          "Domains"
+        ],
+        "summary": "Reactivate and recheck",
+        "description": "Same token as before, so a TXT record still in the zone verifies without the owner opening their DNS panel.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Response for status 200",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "domain",
+                    "status",
+                    "record",
+                    "lastOutcome",
+                    "diagnosis",
+                    "waitEstimate",
+                    "firstVerifiedAt",
+                    "lastConfirmedAt",
+                    "coexistence",
+                    "createdAt"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "domain": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "default": "pending",
+                      "type": "string",
+                      "enum": [
+                        "pending",
+                        "propagating",
+                        "needs_attention",
+                        "paused",
+                        "proved",
+                        "archived"
+                      ]
+                    },
+                    "record": {
+                      "type": "object",
+                      "required": [
+                        "host",
+                        "name",
+                        "type",
+                        "value"
+                      ],
+                      "properties": {
+                        "host": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "type": {
+                          "const": "TXT",
+                          "type": "string"
+                        },
+                        "value": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "lastOutcome": {
+                      "anyOf": [
+                        {
+                          "default": "found",
+                          "type": "string",
+                          "enum": [
+                            "found",
+                            "absent",
+                            "unresolvable"
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "diagnosis": {
+                      "anyOf": [
+                        {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "required": [
+                                "code",
+                                "cause",
+                                "fix",
+                                "observed"
+                              ],
+                              "properties": {
+                                "code": {
+                                  "const": "domain_appended",
+                                  "type": "string"
+                                },
+                                "cause": {
+                                  "type": "string"
+                                },
+                                "fix": {
+                                  "type": "string"
+                                },
+                                "observed": {
+                                  "type": "object",
+                                  "required": [
+                                    "name"
+                                  ],
+                                  "properties": {
+                                    "name": {
+                                      "type": "string"
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            {
+                              "type": "object",
+                              "required": [
+                                "code",
+                                "cause",
+                                "fix",
+                                "observed"
+                              ],
+                              "properties": {
+                                "code": {
+                                  "const": "record_at_apex",
+                                  "type": "string"
+                                },
+                                "cause": {
+                                  "type": "string"
+                                },
+                                "fix": {
+                                  "type": "string"
+                                },
+                                "observed": {
+                                  "type": "object",
+                                  "required": [
+                                    "name",
+                                    "value"
+                                  ],
+                                  "properties": {
+                                    "name": {
+                                      "type": "string"
+                                    },
+                                    "value": {
+                                      "type": "string"
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            {
+                              "type": "object",
+                              "required": [
+                                "code",
+                                "cause",
+                                "fix",
+                                "observed"
+                              ],
+                              "properties": {
+                                "code": {
+                                  "const": "foreign_token",
+                                  "type": "string"
+                                },
+                                "cause": {
+                                  "type": "string"
+                                },
+                                "fix": {
+                                  "type": "string"
+                                },
+                                "observed": {
+                                  "type": "object",
+                                  "required": [
+                                    "value"
+                                  ],
+                                  "properties": {
+                                    "value": {
+                                      "type": "string"
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            {
+                              "type": "object",
+                              "required": [
+                                "code",
+                                "cause",
+                                "fix",
+                                "observed"
+                              ],
+                              "properties": {
+                                "code": {
+                                  "const": "value_formatted",
+                                  "type": "string"
+                                },
+                                "cause": {
+                                  "type": "string"
+                                },
+                                "fix": {
+                                  "type": "string"
+                                },
+                                "observed": {
+                                  "type": "object",
+                                  "required": [
+                                    "value"
+                                  ],
+                                  "properties": {
+                                    "value": {
+                                      "type": "string"
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            {
+                              "type": "object",
+                              "required": [
+                                "code",
+                                "cause",
+                                "fix",
+                                "observed"
+                              ],
+                              "properties": {
+                                "code": {
+                                  "const": "no_matching_record",
+                                  "type": "string"
+                                },
+                                "cause": {
+                                  "type": "string"
+                                },
+                                "fix": {
+                                  "type": "string"
+                                },
+                                "observed": {
+                                  "type": "object",
+                                  "required": [
+                                    "values"
+                                  ],
+                                  "properties": {
+                                    "values": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string"
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            {
+                              "type": "object",
+                              "required": [
+                                "code",
+                                "cause",
+                                "fix",
+                                "observed"
+                              ],
+                              "properties": {
+                                "code": {
+                                  "const": "cname_conflict",
+                                  "type": "string"
+                                },
+                                "cause": {
+                                  "type": "string"
+                                },
+                                "fix": {
+                                  "type": "string"
+                                },
+                                "observed": {
+                                  "type": "object",
+                                  "required": [
+                                    "target"
+                                  ],
+                                  "properties": {
+                                    "target": {
+                                      "type": "string"
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            {
+                              "type": "object",
+                              "required": [
+                                "code",
+                                "cause",
+                                "fix",
+                                "observed"
+                              ],
+                              "properties": {
+                                "code": {
+                                  "const": "record_absent",
+                                  "type": "string"
+                                },
+                                "cause": {
+                                  "type": "string"
+                                },
+                                "fix": {
+                                  "type": "string"
+                                },
+                                "observed": {
+                                  "type": "object",
+                                  "required": [
+                                    "answer"
+                                  ],
+                                  "properties": {
+                                    "answer": {
+                                      "anyOf": [
+                                        {
+                                          "type": "object",
+                                          "required": [
+                                            "type"
+                                          ],
+                                          "properties": {
+                                            "type": {
+                                              "const": "nxdomain",
+                                              "type": "string"
+                                            }
+                                          }
+                                        },
+                                        {
+                                          "type": "object",
+                                          "required": [
+                                            "type",
+                                            "types"
+                                          ],
+                                          "properties": {
+                                            "type": {
+                                              "const": "nodata",
+                                              "type": "string"
+                                            },
+                                            "types": {
+                                              "type": "array",
+                                              "items": {
+                                                "type": "string"
+                                              }
+                                            }
+                                          }
+                                        }
+                                      ]
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            {
+                              "type": "object",
+                              "required": [
+                                "code",
+                                "cause",
+                                "fix",
+                                "observed"
+                              ],
+                              "properties": {
+                                "code": {
+                                  "const": "record_on_www",
+                                  "type": "string"
+                                },
+                                "cause": {
+                                  "type": "string"
+                                },
+                                "fix": {
+                                  "type": "string"
+                                },
+                                "observed": {
+                                  "type": "object",
+                                  "required": [
+                                    "name",
+                                    "value"
+                                  ],
+                                  "properties": {
+                                    "name": {
+                                      "type": "string"
+                                    },
+                                    "value": {
+                                      "type": "string"
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            {
+                              "type": "object",
+                              "required": [
+                                "code",
+                                "cause",
+                                "fix",
+                                "observed"
+                              ],
+                              "properties": {
+                                "code": {
+                                  "const": "not_published",
+                                  "type": "string"
+                                },
+                                "cause": {
+                                  "type": "string"
+                                },
+                                "fix": {
+                                  "type": "string"
+                                },
+                                "observed": {
+                                  "type": "object",
+                                  "required": [
+                                    "nameservers"
+                                  ],
+                                  "properties": {
+                                    "nameservers": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string"
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            {
+                              "type": "object",
+                              "required": [
+                                "code",
+                                "cause",
+                                "fix",
+                                "observed"
+                              ],
+                              "properties": {
+                                "code": {
+                                  "const": "negative_cache",
+                                  "type": "string"
+                                },
+                                "cause": {
+                                  "type": "string"
+                                },
+                                "fix": {
+                                  "type": "string"
+                                },
+                                "observed": {
+                                  "type": "object",
+                                  "required": [
+                                    "secondsRemaining"
+                                  ],
+                                  "properties": {
+                                    "secondsRemaining": {
+                                      "type": "number"
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            {
+                              "type": "object",
+                              "required": [
+                                "code",
+                                "cause",
+                                "fix",
+                                "observed"
+                              ],
+                              "properties": {
+                                "code": {
+                                  "const": "servfail",
+                                  "type": "string"
+                                },
+                                "cause": {
+                                  "type": "string"
+                                },
+                                "fix": {
+                                  "type": "string"
+                                },
+                                "observed": {
+                                  "type": "object",
+                                  "required": [
+                                    "resolvers"
+                                  ],
+                                  "properties": {
+                                    "resolvers": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string"
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            {
+                              "type": "object",
+                              "required": [
+                                "code",
+                                "cause",
+                                "fix",
+                                "observed"
+                              ],
+                              "properties": {
+                                "code": {
+                                  "const": "lame_delegation",
+                                  "type": "string"
+                                },
+                                "cause": {
+                                  "type": "string"
+                                },
+                                "fix": {
+                                  "type": "string"
+                                },
+                                "observed": {
+                                  "type": "object",
+                                  "required": [
+                                    "nameservers"
+                                  ],
+                                  "properties": {
+                                    "nameservers": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string"
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "waitEstimate": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "required": [
+                            "reason",
+                            "secondsRemaining"
+                          ],
+                          "properties": {
+                            "reason": {
+                              "default": "first_check",
+                              "type": "string",
+                              "enum": [
+                                "first_check",
+                                "negative_cache",
+                                "provider_publishing"
+                              ]
+                            },
+                            "secondsRemaining": {
+                              "type": "number"
+                            }
+                          }
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "firstVerifiedAt": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "lastConfirmedAt": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "coexistence": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "required": [
+                            "maskedEmail",
+                            "provedAt"
+                          ],
+                          "properties": {
+                            "maskedEmail": {
+                              "type": "string"
+                            },
+                            "provedAt": {
+                              "type": "string"
+                            }
+                          }
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "createdAt": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Response for status 401",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "docsUrl"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "docsUrl": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Response for status 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "docsUrl"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "docsUrl": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "operationId": "postApiDomainsByIdRestore"
+      }
+    }
+  },
+  "components": {
+    "schemas": {}
+  }
+}

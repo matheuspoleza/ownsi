@@ -10,6 +10,7 @@ import type { Clock } from "./shared/clock.ts"
 import { systemClock } from "./shared/clock.ts"
 import { createDatabase, type Database } from "./shared/database.ts"
 import { healthRoutes } from "./shared/http/health.routes.ts"
+import { openApiDocumentation } from "./shared/http/openapi.ts"
 import { sessionPlugin } from "./shared/http/session.ts"
 import { createSendMagicLink, type SendMagicLink } from "./shared/mailer.ts"
 
@@ -38,5 +39,7 @@ export function createApp(config: AppConfig, overrides: AppOverrides = {}) {
     .use(dnsApp(dns))
     .use(claimsApp(claims, session))
 
-  return new Elysia().use(openapi()).use(api).mount(auth.handler)
+  const document = openapi({ documentation: openApiDocumentation(config.appUrl) })
+
+  return new Elysia().use(document).use(api).mount(auth.handler)
 }

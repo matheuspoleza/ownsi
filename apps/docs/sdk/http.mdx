@@ -1,0 +1,108 @@
+---
+title: "Any other language"
+description: "There is no SDK to install. The OpenAPI document is the contract, and you can generate a client from it."
+icon: "terminal"
+---
+
+Outside TypeScript there is no hand-written SDK, and there does not need to be one. The
+[OpenAPI document](/api-reference/introduction) is emitted from the running server, so a generated
+client is as current as the reference on this site.
+
+## The document
+
+```text
+https://ownsi.dev/openapi/json
+```
+
+The same document backs every endpoint page under **Endpoints**, and can be downloaded from the
+menu at the top of any of them.
+
+<Note>
+  The API is internal today — same origin, session cookie. A generated client works, but you have
+  to bring your own session. See [Authentication](/api-reference/authentication).
+</Note>
+
+## Generating a client
+
+<CodeGroup>
+```bash Python
+openapi-python-client generate --url https://ownsi.dev/openapi/json
+```
+
+```bash Go
+oapi-codegen -package ownsi https://ownsi.dev/openapi/json > ownsi.go
+```
+
+```bash Rust
+openapi-generator generate -i https://ownsi.dev/openapi/json -g rust -o ./ownsi
+```
+
+```bash Anything else
+npx @openapitools/openapi-generator-cli generate \
+  -i https://ownsi.dev/openapi/json \
+  -g <your-language> -o ./ownsi
+```
+</CodeGroup>
+
+<Warning>
+  Most generators handle the request/response shapes fine but do not model `GET /api/zones/:name`
+  as a stream — they will hand you the whole body at once, or nothing. If you need the frames as
+  they arrive, read that one endpoint by hand: it is plain server-sent events over a normal
+  response body.
+</Warning>
+
+## By hand
+
+The whole API is JSON over HTTP with a cookie. There is nothing to install.
+
+<CodeGroup>
+```bash Read a zone
+curl -N https://ownsi.dev/api/zones/acme.com
+```
+
+```bash Claim a domain
+curl -X POST https://ownsi.dev/api/domains \
+  -H "content-type: application/json" \
+  -H "Idempotency-Key: $(uuidgen)" \
+  -b "$SESSION_COOKIE" \
+  -d '{"domain":"acme.com"}'
+```
+
+```bash Read a claim
+curl https://ownsi.dev/api/domains/$CLAIM_ID -b "$SESSION_COOKIE"
+```
+
+```bash Force a check
+curl -X POST https://ownsi.dev/api/domains/$CLAIM_ID/verify -b "$SESSION_COOKIE"
+```
+</CodeGroup>
+
+## Two things to get right in any language
+
+<AccordionGroup>
+  <Accordion title="Narrow on the discriminant before reading the payload" icon="code-branch">
+    `diagnosis.observed` has a different shape for each of the twelve `code` values, and a zone
+    frame's `data` has a different shape per `step`. In a language without unions, that is a switch
+    on the tag before you touch the rest.
+
+    ```python
+    match diagnosis["code"]:
+        case "negative_cache":
+            wait(diagnosis["observed"]["secondsRemaining"])
+        case "record_at_apex":
+            show(diagnosis["observed"]["name"], diagnosis["observed"]["value"])
+        case _:
+            show(diagnosis["fix"])
+    ```
+
+    Falling through to `fix` is always safe: every diagnosis has one.
+  </Accordion>
+
+  <Accordion title="Retry only what is worth retrying" icon="rotate">
+    `unresolvable` (502) and `rate_limited` (429) are worth a backoff. Nothing else is — see
+    [the table](/errors#which-ones-are-worth-retrying).
+
+    On 429, honour `Retry-After`. Polling `verify` in a loop does not make DNS answer faster; the
+    claim's own `waitEstimate.secondsRemaining` is the honest interval.
+  </Accordion>
+</AccordionGroup>

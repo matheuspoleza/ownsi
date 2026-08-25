@@ -1,0 +1,99 @@
+---
+title: "What a diagnosis is"
+description: "Why 'not verified' is not an answer, and how to render the one ownsi gives instead."
+icon: "circle-question"
+---
+
+When a check does not find the token, the claim comes back with a `diagnosis`: a named code, the
+cause in one sentence, the fix in one sentence, and the evidence the probe matched on.
+
+```json
+{
+  "code": "record_at_apex",
+  "cause": "The token is on acme.com itself, not on _ownsi-challenge.acme.com.",
+  "fix": "Move the record to the _ownsi-challenge host and leave the records on acme.com alone.",
+  "observed": { "name": "acme.com", "value": "ownsi_v1_9f3a2c8d1e4b7a6053c21f8e4d7b0a95" }
+}
+```
+
+Twelve codes, each matching one specific shape of wrongness. [The full catalogue is
+here](/diagnostics/catalogue).
+
+## The fields
+
+<ResponseField name="code" type="string" required>
+  A stable identifier. Branch on this — it will not be reworded. One of the twelve in the
+  catalogue.
+</ResponseField>
+
+<ResponseField name="cause" type="string" required>
+  One sentence saying what is actually true right now, with the real names and values in it. Render
+  it; do not match on it.
+</ResponseField>
+
+<ResponseField name="fix" type="string" required>
+  One sentence saying what to change. For the cases where nothing needs changing — `negative_cache`
+  — it says so and gives the wait.
+</ResponseField>
+
+<ResponseField name="observed" type="object" required>
+  The evidence the probe matched on, and its shape depends on `code`. `record_at_apex` carries
+  `{ name, value }`; `servfail` carries `{ resolvers }`; `negative_cache` carries
+  `{ secondsRemaining }`.
+</ResponseField>
+
+<Warning>
+  `observed` is a tagged union keyed on `code`. Narrow on `code` before reading it — there is no
+  field common to all twelve.
+</Warning>
+
+## Where a diagnosis comes from
+
+The probes run over an observation that has already been collected — recursive resolvers first,
+then the authoritative nameservers if the answer was negative. No probe issues a query of its own,
+which is why a claim can carry a diagnosis without any extra DNS traffic when you read it back.
+
+See [How verification works](/concepts/verification) for the four steps.
+
+## Rendering one
+
+The whole "what now" message for a pending claim is two fields:
+
+```ts
+const whatNow = (claim: Claim) =>
+  claim.diagnosis
+    ? { title: claim.diagnosis.cause, action: claim.diagnosis.fix }
+    : { title: "Waiting for DNS", action: waitSentence(claim.waitEstimate) }
+```
+
+A claim that is not proved always carries one or the other. `diagnosis` means something has to
+change; `waitEstimate` means nothing does.
+
+<Note>
+  `cause` and `fix` are product copy and are improved regularly. They are safe to render verbatim
+  and unsafe to match on. If you need to key behaviour off a case, key it off `code`.
+</Note>
+
+## The three groups
+
+The twelve codes fall into three groups, and it is worth styling them differently:
+
+<CardGroup cols={3}>
+  <Card title="You wrote it wrong" icon="pen">
+    `domain_appended`, `record_at_apex`, `value_formatted`, `record_on_www`, `no_matching_record`,
+    `record_absent`, `cname_conflict`
+
+    Actionable now. Show `fix` as the primary action.
+  </Card>
+  <Card title="Just wait" icon="hourglass">
+    `negative_cache`, `not_published`
+
+    Nothing to do. Showing a fix here is the mistake this product exists to avoid.
+  </Card>
+  <Card title="Your provider is broken" icon="triangle-exclamation">
+    `servfail`, `lame_delegation`, `foreign_token`
+
+    Real problems, but not with the record. `servfail` is DNSSEC; `lame_delegation` is the
+    delegation itself; `foreign_token` is another account.
+  </Card>
+</CardGroup>

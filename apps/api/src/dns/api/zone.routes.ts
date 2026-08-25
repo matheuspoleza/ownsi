@@ -37,6 +37,7 @@ export function zoneRoutes(readZone: ReadZone) {
         502: ErrorResponse,
       },
       detail: {
+        tags: ["Zones"],
         summary: "Read a zone",
         description:
           "Streams the reading in the order DNS answers it: the delegation first, so the " +

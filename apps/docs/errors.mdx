@@ -1,0 +1,88 @@
+---
+title: "Error codes"
+description: "Every code the API can return, what causes it, and whether retrying helps."
+icon: "triangle-exclamation"
+---
+
+Every failure is the same envelope, and `docsUrl` on it points at the anchor on this page.
+
+```json
+{
+  "error": {
+    "code": "no_delegation",
+    "message": "No nameservers are delegated for acme.com.",
+    "docsUrl": "https://ownsi.dev/docs/errors#no_delegation"
+  }
+}
+```
+
+Branch on `code`. It is an identifier and will not be reworded. `message` is written for a person and
+may change.
+
+<Note>
+  These are **transport** errors — the request could not be answered. They are a different thing
+  from a [diagnosis](/diagnostics/catalogue), which is a successful `200` telling you what is wrong
+  with a DNS record.
+</Note>
+
+## invalid_domain
+
+**400.** What you sent is not a domain name that can be read or claimed — empty, not a hostname, or
+longer than 253 characters.
+
+Retrying does not help. The `message` says which of the three it was.
+
+## no_delegation
+
+**404.** The name resolves to no nameservers at all. Usually the domain is not registered, or it was
+registered minutes ago and the registry has not published the delegation yet.
+
+Retrying does not help until the registration goes through.
+
+## unresolvable
+
+**502.** ownsi could not reach DNS to read the zone. This is ours, not yours.
+
+<Check>Safe to retry, with a backoff.</Check>
+
+## unauthenticated
+
+**401.** No valid session on the request. Everything under `/api/domains` needs one; see
+[Authentication](/api-reference/authentication).
+
+Retrying the same request does not help. Sign in and retry.
+
+## already_claimed
+
+**409.** The domain is already on your list, with the token it was issued. This is not a conflict
+with another account — [that is coexistence](/concepts/claim-lifecycle#coexistence) and it is not an
+error.
+
+Use the claim you already have. The token on it is the one that will verify.
+
+## claim_not_found
+
+**404.** No claim with that id belongs to your account. The same code is returned whether the claim
+does not exist or belongs to someone else, deliberately — an id lookup should not confirm that
+someone else's claim exists.
+
+## rate_limited
+
+**429.** Too many requests. Carries a `Retry-After` header in seconds.
+
+Enforced per IP on the public surfaces — reading a zone, and public proof pages — and per claim on
+`POST /api/domains/:id/verify`.
+
+<Check>Safe to retry after `Retry-After`. Forcing checks in a loop does not make DNS answer faster.</Check>
+
+## Which ones are worth retrying
+
+| Code | Status | Retry |
+|---|---|---|
+| `invalid_domain` | 400 | No — fix the input. |
+| `no_delegation` | 404 | No — the domain is not delegated. |
+| `unresolvable` | 502 | Yes, with backoff. |
+| `unauthenticated` | 401 | No — sign in first. |
+| `already_claimed` | 409 | No — use the existing claim. |
+| `claim_not_found` | 404 | No. |
+| `rate_limited` | 429 | Yes, after `Retry-After`. |

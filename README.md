@@ -9,6 +9,7 @@ apps/
   api/          Bun + Elysia · one folder per bounded context — see apps/api/README.md
   web/          Vite + React 19 + TanStack + Tailwind 4
     worker/       Cloudflare Worker: static assets + /api and /p proxy
+  docs/         Mintlify · the public site — see apps/docs/README.md
 packages/
   db/           Prisma 7 + Neon (adapter-pg)
   emails/       React Email
@@ -19,6 +20,11 @@ packages/
 Backend rules live in [`CLAUDE.md`](CLAUDE.md), their reasoning in
 [`docs/backend-architecture.md`](docs/backend-architecture.md), and the map of the API in
 [`apps/api/README.md`](apps/api/README.md).
+
+Two kinds of documentation, and they do not overlap. `docs/` is internal — the PRD, the
+architecture reasoning, the design research. [`apps/docs/`](apps/docs/README.md) is the public
+site: quickstart, concepts, the API reference and the diagnostics catalogue, with the reference
+and the catalogue generated from `apps/api` so they cannot drift.
 
 ## Running locally
 
@@ -39,6 +45,7 @@ a single origin — the same shape the Worker gives us in production (PRD §3.7)
 | Front end | http://localhost:5173 | Vite dev server |
 | API | http://localhost:3000/api/health | Elysia |
 | API docs | http://localhost:3000/openapi | generated from each route's `response` |
+| Public docs | http://localhost:3000 | Mintlify, via `bun run dev:docs` — not at the same time as the API |
 | Postgres | localhost:5432 | `ownsi` / `ownsi` / `ownsi` |
 
 ## Commands
@@ -47,6 +54,8 @@ a single origin — the same shape the Worker gives us in production (PRD §3.7)
 |---|---|
 | `bun run setup` | infra + migrate + seed, from scratch |
 | `bun run dev` | api and web in parallel |
+| `bun run dev:docs` | the Mintlify site, after regenerating what is generated |
+| `bun run docs:emit` | rewrite `openapi.json` and the diagnostics catalogue from the code |
 | `bun run infra:up` / `infra:down` / `infra:logs` | docker compose |
 | `bun run db:migrate` / `db:seed` / `db:reset` / `db:studio` | Prisma |
 | `bun run build` | build every package |
