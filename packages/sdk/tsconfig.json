@@ -1,0 +1,9 @@
+{
+  "extends": "@ownsi/tsconfig/bun.json",
+  "compilerOptions": {
+    "lib": ["ESNext", "DOM"],
+    "jsx": "react-jsx"
+  },
+  "include": ["src", "test"],
+  "exclude": ["node_modules"]
+}

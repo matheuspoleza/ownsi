@@ -1,0 +1,83 @@
+# @ownsi/sdk
+
+The client for the ownsi API. A thin layer over the Eden client, typed off the same `App` the
+server exports — so a renamed route is a type error here rather than a runtime surprise.
+
+```ts
+import { createOwnsi } from "@ownsi/sdk"
+
+const ownsi = createOwnsi({ baseUrl: window.location.origin })
+
+const domain = await ownsi.domains.findOrCreate("acme.com")
+const claim = await domain.claim()
+
+claim.record          // { host, name, type, value } — what to write in the DNS panel
+claim.token           // immutable for the life of the claim
+
+const verification = await claim.verification()
+verification.diagnosis?.fix ?? verification.waitEstimate
+```
+
+## Why it exists
+
+The API is split along its seams: a domain is a name, a claim is an episode, a verification is
+a process, and each is its own resource. That is right for the backend and tedious for a caller,
+who wanted to say *claim this domain* and got three round trips and two ids to carry.
+
+The seam stays where it is and the recomposition happens here, where it costs the backend
+nothing. `domain.claim()` is one call. `claim.recheck()` knows which verification to run.
+
+## What it hands back
+
+Every read answers with a handle: the fields the API sent, plus the acts reachable from them.
+
+| | |
+| --- | --- |
+| `ownsi.domains` | `findOrCreate(name)` · `get(id)` · `list()` |
+| a `Domain` | `.claim()` · `.claims()` · `.archive()` · `.delete()` · `.refresh()` |
+| `ownsi.claims` | `create(domainId)` · `get(id)` · `list({ domainId? })` |
+| a `Claim` | `.record` · `.verification()` · `.recheck()` · `.cancel()` · `.refresh()` |
+| `ownsi.verifications` | `get(id)` |
+| a `Verification` | `.run()` · `.attempts()` · `.refresh()` |
+| `ownsi.zones` | `read(name, signal?)` — public, streamed, writes nothing |
+
+`ownsi.api` is the Eden client underneath, for a route this package does not cover yet.
+
+`claim.record` is singular because there is one record to write, and it is `null` once the claim
+has ended — there is nothing left to put in a panel. It comes from the claim alone, so the
+*write this TXT record* screen renders with no verification loaded.
+
+## Errors
+
+Everything throws an `OwnsiError`, which carries the API's own `code` and `docsUrl` untouched.
+
+```ts
+import { isOwnsiError, RETRYABLE } from "@ownsi/sdk"
+
+try {
+  await domain.claim()
+} catch (error) {
+  if (isOwnsiError(error) && error.code === "already_claimed") { ... }
+}
+```
+
+`RETRYABLE` is the set worth trying again — and `unreachable` is in it. That code is the one the
+API never sends: it means no answer arrived, or the answer was not ours. A request that never
+arrived and a request that failed are both our side of the line, so both read as `unreachable`
+rather than as something about somebody's domain.
+
+## Auth is not here
+
+better-auth publishes its own typed client, and wrapping it would buy a second name for every
+method and nothing else. `apps/web` builds it directly in `src/api/auth.client.ts`. The same
+argument the API makes for not wrapping better-auth's server API applies on this side.
+
+## Tests
+
+```sh
+bun test
+```
+
+Against a stub `fetch` that records the requests and answers with canned bodies. What is under
+test here is the shaping and the error mapping — the API's behaviour has its own 215 tests, and
+asserting it twice would only mean two places to update.

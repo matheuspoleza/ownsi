@@ -182,15 +182,30 @@ application code, where nothing generates files for us.
 
 `api/` is the only place that knows a server exists.
 
-`eden.client.ts` builds an Eden Treaty client typed straight off `@ownsi/api`'s exported
-`App` type. There is no codegen and no generated SDK: the front end compiles against the
-server's actual routes, so a changed response shape is a type error here rather than a
-runtime surprise. This is also why `CLAUDE.md` insists the API never breaks an Elysia method
-chain — a broken chain degrades these types silently.
+`ownsi.client.ts` is the whole of it — one call to `createOwnsi` from `@ownsi/sdk`, given
+`window.location.origin`. Everything else in `api/` binds that client to what a page needs.
 
-`zone.api.ts` and `auth.api.ts` currently return fixtures behind a delay. They are real
-modules with real types, so the screens are walkable end to end without the API running, and
-wiring the real calls touches those two files and nothing else.
+The SDK is a thin layer over an Eden Treaty client typed straight off `@ownsi/api`'s exported
+`App` type. There is no codegen and nothing generated to keep in sync: the front end compiles
+against the server's actual routes, so a changed response shape is a type error here rather
+than a runtime surprise. This is also why `CLAUDE.md` insists the API never breaks an Elysia
+method chain — a broken chain degrades these types silently.
+
+### Why a package and not a folder
+
+The API is split along its seams — a domain is a name, a claim is an episode, a verification
+is a process — and each is its own resource. That is right for the backend and tedious for a
+caller, who wanted to say *claim this domain* and got three round trips and two ids to carry.
+The recomposition has to live somewhere, and putting it in `apps/web/src/api/` would mean the
+next thing that talks to ownsi rebuilds it.
+
+So `domain.claim()` is one call, `claim.recheck()` knows which verification to run, and the
+web app stops knowing there are three resources. Everything throws an `OwnsiError` carrying
+the API's own `code`, which is what lets a `retry` predicate read as
+`RETRYABLE.has(error.code)` instead of matching on a message.
+
+Auth stays out of it. better-auth publishes its own typed client, and `auth.client.ts` builds
+it directly; wrapping it would buy a second name for every method and nothing else.
 
 ## What enforces what
 

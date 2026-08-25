@@ -1,7 +1,7 @@
-import type { ZoneFailure } from "../../api/zone.api.ts"
+import type { OwnsiError } from "../../api/zone.api.ts"
 
 export interface HeroSubtitleInput {
-  failure: ZoneFailure | null
+  failure: OwnsiError | null
   isReading: boolean
   publishingMinutes: number | null | undefined
 }

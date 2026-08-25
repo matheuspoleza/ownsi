@@ -30,8 +30,10 @@ src/
   move it, do not reach across.
 - Nothing under `components/`, `hooks/`, `lib/` or `api/` ever imports from `pages/`. The
   arrow points one way, always.
-- `api/` is the only place that knows a server exists. The Eden client is typed off the
-  API's exported `App` type, so a changed route is a type error here and nowhere else.
+- `api/` is the only place that knows a server exists, and what it holds is one line:
+  `createOwnsi({ baseUrl: window.location.origin })` from `@ownsi/sdk`. A `*.api.ts` binds
+  that client to what a page needs; a page never builds one. The SDK is typed off the API's
+  exported `App` type, so a changed route is a type error here and nowhere else.
 
 ## What a file is called
 

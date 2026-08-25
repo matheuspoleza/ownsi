@@ -44,7 +44,7 @@
       "name": "@ownsi/web",
       "version": "0.0.0",
       "dependencies": {
-        "@elysiajs/eden": "^1.4.0",
+        "@ownsi/sdk": "workspace:*",
         "@ownsi/ui": "workspace:*",
         "@tanstack/react-query": "^5.90.0",
         "@tanstack/react-router": "^1.132.0",
@@ -92,6 +92,19 @@
         "@ownsi/tsconfig": "workspace:*",
         "@types/react": "^19.2.0",
         "react-email": "^4.0.0",
+        "typescript": "^5.9.0",
+      },
+    },
+    "packages/sdk": {
+      "name": "@ownsi/sdk",
+      "version": "0.0.0",
+      "dependencies": {
+        "@elysiajs/eden": "^1.4.0",
+      },
+      "devDependencies": {
+        "@ownsi/api": "workspace:*",
+        "@ownsi/tsconfig": "workspace:*",
+        "@types/bun": "latest",
         "typescript": "^5.9.0",
       },
     },
@@ -544,6 +557,8 @@
     "@ownsi/docs": ["@ownsi/docs@workspace:apps/docs"],
 
     "@ownsi/emails": ["@ownsi/emails@workspace:packages/emails"],
+
+    "@ownsi/sdk": ["@ownsi/sdk@workspace:packages/sdk"],
 
     "@ownsi/tsconfig": ["@ownsi/tsconfig@workspace:packages/tsconfig"],
 
