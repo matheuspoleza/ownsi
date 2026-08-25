@@ -33,6 +33,7 @@ export type DemoDomain = {
 export const DEMO_TOKEN = "ownsi_v1_9f3a1c7d5e2b48a0c6f1d93b7e4a2058"
 
 const FOREIGN_TOKEN = "ownsi_v1_1b8e0d4a37c95f26ae80b41d5c93f7e2"
+const PREVIOUS_TOKEN = "ownsi_v1_4c07e9a2d61b83f5029ae7c4b1d6083f"
 
 const CLOUDFLARE = ["kate.ns.cloudflare.com", "rob.ns.cloudflare.com"] as const
 const GODADDY = ["ns17.domaincontrol.com", "ns18.domaincontrol.com"] as const
@@ -99,6 +100,22 @@ export const DEMO_DOMAINS: readonly DemoDomain[] = [
     nameservers: ROUTE53,
     claim: stuck({ code: "foreign_token", observed: { value: FOREIGN_TOKEN } }),
     ...alone,
+  },
+  {
+    domain: "expired-token.ownsi.dev",
+    shows: "Claimed again, with the last claim's record still sitting in the zone.",
+    nameservers: VERCEL,
+    claim: stuck({ code: "expired_token", observed: { value: PREVIOUS_TOKEN } }),
+    history: [
+      {
+        state: "expired",
+        check: { outcome: "absent", diagnosis: MISSING },
+        openedDaysAgo: 12,
+        endedDaysAgo: 5,
+      },
+    ],
+    archivedDaysAgo: null,
+    coexistence: null,
   },
   {
     domain: "value-formatted.ownsi.dev",

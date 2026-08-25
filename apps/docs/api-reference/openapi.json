@@ -568,6 +568,38 @@
                                       ],
                                       "properties": {
                                         "code": {
+                                          "const": "expired_token",
+                                          "type": "string"
+                                        },
+                                        "cause": {
+                                          "type": "string"
+                                        },
+                                        "fix": {
+                                          "type": "string"
+                                        },
+                                        "observed": {
+                                          "type": "object",
+                                          "required": [
+                                            "value"
+                                          ],
+                                          "properties": {
+                                            "value": {
+                                              "type": "string"
+                                            }
+                                          }
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "type": "object",
+                                      "required": [
+                                        "code",
+                                        "cause",
+                                        "fix",
+                                        "observed"
+                                      ],
+                                      "properties": {
+                                        "code": {
                                           "const": "value_formatted",
                                           "type": "string"
                                         },
@@ -1063,6 +1095,38 @@
                                       "properties": {
                                         "code": {
                                           "const": "foreign_token",
+                                          "type": "string"
+                                        },
+                                        "cause": {
+                                          "type": "string"
+                                        },
+                                        "fix": {
+                                          "type": "string"
+                                        },
+                                        "observed": {
+                                          "type": "object",
+                                          "required": [
+                                            "value"
+                                          ],
+                                          "properties": {
+                                            "value": {
+                                              "type": "string"
+                                            }
+                                          }
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "type": "object",
+                                      "required": [
+                                        "code",
+                                        "cause",
+                                        "fix",
+                                        "observed"
+                                      ],
+                                      "properties": {
+                                        "code": {
+                                          "const": "expired_token",
                                           "type": "string"
                                         },
                                         "cause": {
@@ -1627,6 +1691,38 @@
                                         ],
                                         "properties": {
                                           "code": {
+                                            "const": "expired_token",
+                                            "type": "string"
+                                          },
+                                          "cause": {
+                                            "type": "string"
+                                          },
+                                          "fix": {
+                                            "type": "string"
+                                          },
+                                          "observed": {
+                                            "type": "object",
+                                            "required": [
+                                              "value"
+                                            ],
+                                            "properties": {
+                                              "value": {
+                                                "type": "string"
+                                              }
+                                            }
+                                          }
+                                        }
+                                      },
+                                      {
+                                        "type": "object",
+                                        "required": [
+                                          "code",
+                                          "cause",
+                                          "fix",
+                                          "observed"
+                                        ],
+                                        "properties": {
+                                          "code": {
                                             "const": "value_formatted",
                                             "type": "string"
                                           },
@@ -2122,6 +2218,38 @@
                                         "properties": {
                                           "code": {
                                             "const": "foreign_token",
+                                            "type": "string"
+                                          },
+                                          "cause": {
+                                            "type": "string"
+                                          },
+                                          "fix": {
+                                            "type": "string"
+                                          },
+                                          "observed": {
+                                            "type": "object",
+                                            "required": [
+                                              "value"
+                                            ],
+                                            "properties": {
+                                              "value": {
+                                                "type": "string"
+                                              }
+                                            }
+                                          }
+                                        }
+                                      },
+                                      {
+                                        "type": "object",
+                                        "required": [
+                                          "code",
+                                          "cause",
+                                          "fix",
+                                          "observed"
+                                        ],
+                                        "properties": {
+                                          "code": {
+                                            "const": "expired_token",
                                             "type": "string"
                                           },
                                           "cause": {
@@ -2886,6 +3014,38 @@
                                             ],
                                             "properties": {
                                               "code": {
+                                                "const": "expired_token",
+                                                "type": "string"
+                                              },
+                                              "cause": {
+                                                "type": "string"
+                                              },
+                                              "fix": {
+                                                "type": "string"
+                                              },
+                                              "observed": {
+                                                "type": "object",
+                                                "required": [
+                                                  "value"
+                                                ],
+                                                "properties": {
+                                                  "value": {
+                                                    "type": "string"
+                                                  }
+                                                }
+                                              }
+                                            }
+                                          },
+                                          {
+                                            "type": "object",
+                                            "required": [
+                                              "code",
+                                              "cause",
+                                              "fix",
+                                              "observed"
+                                            ],
+                                            "properties": {
+                                              "code": {
                                                 "const": "value_formatted",
                                                 "type": "string"
                                               },
@@ -3381,6 +3541,38 @@
                                             "properties": {
                                               "code": {
                                                 "const": "foreign_token",
+                                                "type": "string"
+                                              },
+                                              "cause": {
+                                                "type": "string"
+                                              },
+                                              "fix": {
+                                                "type": "string"
+                                              },
+                                              "observed": {
+                                                "type": "object",
+                                                "required": [
+                                                  "value"
+                                                ],
+                                                "properties": {
+                                                  "value": {
+                                                    "type": "string"
+                                                  }
+                                                }
+                                              }
+                                            }
+                                          },
+                                          {
+                                            "type": "object",
+                                            "required": [
+                                              "code",
+                                              "cause",
+                                              "fix",
+                                              "observed"
+                                            ],
+                                            "properties": {
+                                              "code": {
+                                                "const": "expired_token",
                                                 "type": "string"
                                               },
                                               "cause": {
@@ -3945,6 +4137,38 @@
                                               ],
                                               "properties": {
                                                 "code": {
+                                                  "const": "expired_token",
+                                                  "type": "string"
+                                                },
+                                                "cause": {
+                                                  "type": "string"
+                                                },
+                                                "fix": {
+                                                  "type": "string"
+                                                },
+                                                "observed": {
+                                                  "type": "object",
+                                                  "required": [
+                                                    "value"
+                                                  ],
+                                                  "properties": {
+                                                    "value": {
+                                                      "type": "string"
+                                                    }
+                                                  }
+                                                }
+                                              }
+                                            },
+                                            {
+                                              "type": "object",
+                                              "required": [
+                                                "code",
+                                                "cause",
+                                                "fix",
+                                                "observed"
+                                              ],
+                                              "properties": {
+                                                "code": {
                                                   "const": "value_formatted",
                                                   "type": "string"
                                                 },
@@ -4440,6 +4664,38 @@
                                               "properties": {
                                                 "code": {
                                                   "const": "foreign_token",
+                                                  "type": "string"
+                                                },
+                                                "cause": {
+                                                  "type": "string"
+                                                },
+                                                "fix": {
+                                                  "type": "string"
+                                                },
+                                                "observed": {
+                                                  "type": "object",
+                                                  "required": [
+                                                    "value"
+                                                  ],
+                                                  "properties": {
+                                                    "value": {
+                                                      "type": "string"
+                                                    }
+                                                  }
+                                                }
+                                              }
+                                            },
+                                            {
+                                              "type": "object",
+                                              "required": [
+                                                "code",
+                                                "cause",
+                                                "fix",
+                                                "observed"
+                                              ],
+                                              "properties": {
+                                                "code": {
+                                                  "const": "expired_token",
                                                   "type": "string"
                                                 },
                                                 "cause": {
@@ -5144,6 +5400,38 @@
                                       ],
                                       "properties": {
                                         "code": {
+                                          "const": "expired_token",
+                                          "type": "string"
+                                        },
+                                        "cause": {
+                                          "type": "string"
+                                        },
+                                        "fix": {
+                                          "type": "string"
+                                        },
+                                        "observed": {
+                                          "type": "object",
+                                          "required": [
+                                            "value"
+                                          ],
+                                          "properties": {
+                                            "value": {
+                                              "type": "string"
+                                            }
+                                          }
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "type": "object",
+                                      "required": [
+                                        "code",
+                                        "cause",
+                                        "fix",
+                                        "observed"
+                                      ],
+                                      "properties": {
+                                        "code": {
                                           "const": "value_formatted",
                                           "type": "string"
                                         },
@@ -5639,6 +5927,38 @@
                                       "properties": {
                                         "code": {
                                           "const": "foreign_token",
+                                          "type": "string"
+                                        },
+                                        "cause": {
+                                          "type": "string"
+                                        },
+                                        "fix": {
+                                          "type": "string"
+                                        },
+                                        "observed": {
+                                          "type": "object",
+                                          "required": [
+                                            "value"
+                                          ],
+                                          "properties": {
+                                            "value": {
+                                              "type": "string"
+                                            }
+                                          }
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "type": "object",
+                                      "required": [
+                                        "code",
+                                        "cause",
+                                        "fix",
+                                        "observed"
+                                      ],
+                                      "properties": {
+                                        "code": {
+                                          "const": "expired_token",
                                           "type": "string"
                                         },
                                         "cause": {
@@ -6203,6 +6523,38 @@
                                         ],
                                         "properties": {
                                           "code": {
+                                            "const": "expired_token",
+                                            "type": "string"
+                                          },
+                                          "cause": {
+                                            "type": "string"
+                                          },
+                                          "fix": {
+                                            "type": "string"
+                                          },
+                                          "observed": {
+                                            "type": "object",
+                                            "required": [
+                                              "value"
+                                            ],
+                                            "properties": {
+                                              "value": {
+                                                "type": "string"
+                                              }
+                                            }
+                                          }
+                                        }
+                                      },
+                                      {
+                                        "type": "object",
+                                        "required": [
+                                          "code",
+                                          "cause",
+                                          "fix",
+                                          "observed"
+                                        ],
+                                        "properties": {
+                                          "code": {
                                             "const": "value_formatted",
                                             "type": "string"
                                           },
@@ -6698,6 +7050,38 @@
                                         "properties": {
                                           "code": {
                                             "const": "foreign_token",
+                                            "type": "string"
+                                          },
+                                          "cause": {
+                                            "type": "string"
+                                          },
+                                          "fix": {
+                                            "type": "string"
+                                          },
+                                          "observed": {
+                                            "type": "object",
+                                            "required": [
+                                              "value"
+                                            ],
+                                            "properties": {
+                                              "value": {
+                                                "type": "string"
+                                              }
+                                            }
+                                          }
+                                        }
+                                      },
+                                      {
+                                        "type": "object",
+                                        "required": [
+                                          "code",
+                                          "cause",
+                                          "fix",
+                                          "observed"
+                                        ],
+                                        "properties": {
+                                          "code": {
+                                            "const": "expired_token",
                                             "type": "string"
                                           },
                                           "cause": {
@@ -7433,6 +7817,38 @@
                                       ],
                                       "properties": {
                                         "code": {
+                                          "const": "expired_token",
+                                          "type": "string"
+                                        },
+                                        "cause": {
+                                          "type": "string"
+                                        },
+                                        "fix": {
+                                          "type": "string"
+                                        },
+                                        "observed": {
+                                          "type": "object",
+                                          "required": [
+                                            "value"
+                                          ],
+                                          "properties": {
+                                            "value": {
+                                              "type": "string"
+                                            }
+                                          }
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "type": "object",
+                                      "required": [
+                                        "code",
+                                        "cause",
+                                        "fix",
+                                        "observed"
+                                      ],
+                                      "properties": {
+                                        "code": {
                                           "const": "value_formatted",
                                           "type": "string"
                                         },
@@ -7928,6 +8344,38 @@
                                       "properties": {
                                         "code": {
                                           "const": "foreign_token",
+                                          "type": "string"
+                                        },
+                                        "cause": {
+                                          "type": "string"
+                                        },
+                                        "fix": {
+                                          "type": "string"
+                                        },
+                                        "observed": {
+                                          "type": "object",
+                                          "required": [
+                                            "value"
+                                          ],
+                                          "properties": {
+                                            "value": {
+                                              "type": "string"
+                                            }
+                                          }
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "type": "object",
+                                      "required": [
+                                        "code",
+                                        "cause",
+                                        "fix",
+                                        "observed"
+                                      ],
+                                      "properties": {
+                                        "code": {
+                                          "const": "expired_token",
                                           "type": "string"
                                         },
                                         "cause": {
@@ -8492,6 +8940,38 @@
                                         ],
                                         "properties": {
                                           "code": {
+                                            "const": "expired_token",
+                                            "type": "string"
+                                          },
+                                          "cause": {
+                                            "type": "string"
+                                          },
+                                          "fix": {
+                                            "type": "string"
+                                          },
+                                          "observed": {
+                                            "type": "object",
+                                            "required": [
+                                              "value"
+                                            ],
+                                            "properties": {
+                                              "value": {
+                                                "type": "string"
+                                              }
+                                            }
+                                          }
+                                        }
+                                      },
+                                      {
+                                        "type": "object",
+                                        "required": [
+                                          "code",
+                                          "cause",
+                                          "fix",
+                                          "observed"
+                                        ],
+                                        "properties": {
+                                          "code": {
                                             "const": "value_formatted",
                                             "type": "string"
                                           },
@@ -8987,6 +9467,38 @@
                                         "properties": {
                                           "code": {
                                             "const": "foreign_token",
+                                            "type": "string"
+                                          },
+                                          "cause": {
+                                            "type": "string"
+                                          },
+                                          "fix": {
+                                            "type": "string"
+                                          },
+                                          "observed": {
+                                            "type": "object",
+                                            "required": [
+                                              "value"
+                                            ],
+                                            "properties": {
+                                              "value": {
+                                                "type": "string"
+                                              }
+                                            }
+                                          }
+                                        }
+                                      },
+                                      {
+                                        "type": "object",
+                                        "required": [
+                                          "code",
+                                          "cause",
+                                          "fix",
+                                          "observed"
+                                        ],
+                                        "properties": {
+                                          "code": {
+                                            "const": "expired_token",
                                             "type": "string"
                                           },
                                           "cause": {
@@ -9756,6 +10268,38 @@
                                       ],
                                       "properties": {
                                         "code": {
+                                          "const": "expired_token",
+                                          "type": "string"
+                                        },
+                                        "cause": {
+                                          "type": "string"
+                                        },
+                                        "fix": {
+                                          "type": "string"
+                                        },
+                                        "observed": {
+                                          "type": "object",
+                                          "required": [
+                                            "value"
+                                          ],
+                                          "properties": {
+                                            "value": {
+                                              "type": "string"
+                                            }
+                                          }
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "type": "object",
+                                      "required": [
+                                        "code",
+                                        "cause",
+                                        "fix",
+                                        "observed"
+                                      ],
+                                      "properties": {
+                                        "code": {
                                           "const": "value_formatted",
                                           "type": "string"
                                         },
@@ -10251,6 +10795,38 @@
                                       "properties": {
                                         "code": {
                                           "const": "foreign_token",
+                                          "type": "string"
+                                        },
+                                        "cause": {
+                                          "type": "string"
+                                        },
+                                        "fix": {
+                                          "type": "string"
+                                        },
+                                        "observed": {
+                                          "type": "object",
+                                          "required": [
+                                            "value"
+                                          ],
+                                          "properties": {
+                                            "value": {
+                                              "type": "string"
+                                            }
+                                          }
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "type": "object",
+                                      "required": [
+                                        "code",
+                                        "cause",
+                                        "fix",
+                                        "observed"
+                                      ],
+                                      "properties": {
+                                        "code": {
+                                          "const": "expired_token",
                                           "type": "string"
                                         },
                                         "cause": {
@@ -10815,6 +11391,38 @@
                                         ],
                                         "properties": {
                                           "code": {
+                                            "const": "expired_token",
+                                            "type": "string"
+                                          },
+                                          "cause": {
+                                            "type": "string"
+                                          },
+                                          "fix": {
+                                            "type": "string"
+                                          },
+                                          "observed": {
+                                            "type": "object",
+                                            "required": [
+                                              "value"
+                                            ],
+                                            "properties": {
+                                              "value": {
+                                                "type": "string"
+                                              }
+                                            }
+                                          }
+                                        }
+                                      },
+                                      {
+                                        "type": "object",
+                                        "required": [
+                                          "code",
+                                          "cause",
+                                          "fix",
+                                          "observed"
+                                        ],
+                                        "properties": {
+                                          "code": {
                                             "const": "value_formatted",
                                             "type": "string"
                                           },
@@ -11310,6 +11918,38 @@
                                         "properties": {
                                           "code": {
                                             "const": "foreign_token",
+                                            "type": "string"
+                                          },
+                                          "cause": {
+                                            "type": "string"
+                                          },
+                                          "fix": {
+                                            "type": "string"
+                                          },
+                                          "observed": {
+                                            "type": "object",
+                                            "required": [
+                                              "value"
+                                            ],
+                                            "properties": {
+                                              "value": {
+                                                "type": "string"
+                                              }
+                                            }
+                                          }
+                                        }
+                                      },
+                                      {
+                                        "type": "object",
+                                        "required": [
+                                          "code",
+                                          "cause",
+                                          "fix",
+                                          "observed"
+                                        ],
+                                        "properties": {
+                                          "code": {
+                                            "const": "expired_token",
                                             "type": "string"
                                           },
                                           "cause": {
@@ -12079,6 +12719,38 @@
                                       ],
                                       "properties": {
                                         "code": {
+                                          "const": "expired_token",
+                                          "type": "string"
+                                        },
+                                        "cause": {
+                                          "type": "string"
+                                        },
+                                        "fix": {
+                                          "type": "string"
+                                        },
+                                        "observed": {
+                                          "type": "object",
+                                          "required": [
+                                            "value"
+                                          ],
+                                          "properties": {
+                                            "value": {
+                                              "type": "string"
+                                            }
+                                          }
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "type": "object",
+                                      "required": [
+                                        "code",
+                                        "cause",
+                                        "fix",
+                                        "observed"
+                                      ],
+                                      "properties": {
+                                        "code": {
                                           "const": "value_formatted",
                                           "type": "string"
                                         },
@@ -12574,6 +13246,38 @@
                                       "properties": {
                                         "code": {
                                           "const": "foreign_token",
+                                          "type": "string"
+                                        },
+                                        "cause": {
+                                          "type": "string"
+                                        },
+                                        "fix": {
+                                          "type": "string"
+                                        },
+                                        "observed": {
+                                          "type": "object",
+                                          "required": [
+                                            "value"
+                                          ],
+                                          "properties": {
+                                            "value": {
+                                              "type": "string"
+                                            }
+                                          }
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "type": "object",
+                                      "required": [
+                                        "code",
+                                        "cause",
+                                        "fix",
+                                        "observed"
+                                      ],
+                                      "properties": {
+                                        "code": {
+                                          "const": "expired_token",
                                           "type": "string"
                                         },
                                         "cause": {
@@ -13138,6 +13842,38 @@
                                         ],
                                         "properties": {
                                           "code": {
+                                            "const": "expired_token",
+                                            "type": "string"
+                                          },
+                                          "cause": {
+                                            "type": "string"
+                                          },
+                                          "fix": {
+                                            "type": "string"
+                                          },
+                                          "observed": {
+                                            "type": "object",
+                                            "required": [
+                                              "value"
+                                            ],
+                                            "properties": {
+                                              "value": {
+                                                "type": "string"
+                                              }
+                                            }
+                                          }
+                                        }
+                                      },
+                                      {
+                                        "type": "object",
+                                        "required": [
+                                          "code",
+                                          "cause",
+                                          "fix",
+                                          "observed"
+                                        ],
+                                        "properties": {
+                                          "code": {
                                             "const": "value_formatted",
                                             "type": "string"
                                           },
@@ -13633,6 +14369,38 @@
                                         "properties": {
                                           "code": {
                                             "const": "foreign_token",
+                                            "type": "string"
+                                          },
+                                          "cause": {
+                                            "type": "string"
+                                          },
+                                          "fix": {
+                                            "type": "string"
+                                          },
+                                          "observed": {
+                                            "type": "object",
+                                            "required": [
+                                              "value"
+                                            ],
+                                            "properties": {
+                                              "value": {
+                                                "type": "string"
+                                              }
+                                            }
+                                          }
+                                        }
+                                      },
+                                      {
+                                        "type": "object",
+                                        "required": [
+                                          "code",
+                                          "cause",
+                                          "fix",
+                                          "observed"
+                                        ],
+                                        "properties": {
+                                          "code": {
+                                            "const": "expired_token",
                                             "type": "string"
                                           },
                                           "cause": {

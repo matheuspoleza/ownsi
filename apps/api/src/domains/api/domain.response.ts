@@ -20,6 +20,7 @@ export const DiagnosisResponse = t.Union([
   diagnosisOf("domain_appended", t.Object({ name: t.String() })),
   diagnosisOf("record_at_apex", t.Object({ name: t.String(), value: t.String() })),
   diagnosisOf("foreign_token", t.Object({ value: t.String() })),
+  diagnosisOf("expired_token", t.Object({ value: t.String() })),
   diagnosisOf("value_formatted", t.Object({ value: t.String() })),
   diagnosisOf("no_matching_record", t.Object({ values: t.Array(t.String()) })),
   diagnosisOf("cname_conflict", t.Object({ target: t.String() })),
@@ -150,6 +151,8 @@ export function toDiagnosisResponse(
     case "record_at_apex":
       return { code, ...explanation, observed }
     case "foreign_token":
+      return { code, ...explanation, observed }
+    case "expired_token":
       return { code, ...explanation, observed }
     case "value_formatted":
       return { code, ...explanation, observed }

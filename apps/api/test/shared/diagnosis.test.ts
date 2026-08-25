@@ -66,7 +66,12 @@ describe("the diagnostics catalogue", () => {
   })
 
   test("the fix carries the token whenever the token is what to write", () => {
-    for (const code of ["foreign_token", "value_formatted", "record_absent"] as const) {
+    for (const code of [
+      "foreign_token",
+      "expired_token",
+      "value_formatted",
+      "record_absent",
+    ] as const) {
       expect(explanationOf(findByCode(code)).fix).toContain(DEMO_TOKEN)
     }
   })

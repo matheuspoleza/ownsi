@@ -38,7 +38,7 @@ src/
     clock.ts           injected so tests state the time instead of waiting for it
     result.ts          Result, and the exhaustiveness guard for tagged unions
     domain-name.ts     parse, normalise, punycode and the public suffix list
-    diagnosis.ts       the 12 codes, and the cause and fix each one reads as
+    diagnosis.ts       the 13 codes, and the cause and fix each one reads as
     claim-lifecycle.ts the four states, the status derived from them, the check outcome
     demo.ts            one domain per screen: the fake's seed, the docs, the video
 

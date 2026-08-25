@@ -22,7 +22,7 @@ here](/diagnostics/catalogue).
 ## The fields
 
 <ResponseField name="code" type="string" required>
-  A stable identifier. Branch on this — it will not be reworded. One of the twelve in the
+  A stable identifier. Branch on this — it will not be reworded. One of the thirteen in the
   catalogue.
 </ResponseField>
 
@@ -44,7 +44,7 @@ here](/diagnostics/catalogue).
 
 <Warning>
   `observed` is a tagged union keyed on `code`. Narrow on `code` before reading it — there is no
-  field common to all twelve.
+  field common to all thirteen.
 </Warning>
 
 ## Where a diagnosis comes from
@@ -76,14 +76,15 @@ change; `waitEstimate` means nothing does.
 
 ## The three groups
 
-The twelve codes fall into three groups, and it is worth styling them differently:
+The thirteen codes fall into three groups, and it is worth styling them differently:
 
 <CardGroup cols={3}>
   <Card title="You wrote it wrong" icon="pen">
     `domain_appended`, `record_at_apex`, `value_formatted`, `record_on_www`, `no_matching_record`,
-    `record_absent`, `cname_conflict`
+    `record_absent`, `cname_conflict`, `expired_token`
 
-    Actionable now. Show `fix` as the primary action.
+    Actionable now. Show `fix` as the primary action. `expired_token` is the cheapest of them:
+    the record is already in the right place and only its value is stale.
   </Card>
   <Card title="Just wait" icon="hourglass">
     `negative_cache`, `not_published`

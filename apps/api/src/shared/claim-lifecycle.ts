@@ -41,6 +41,7 @@ const WHILE_PENDING: Record<DiagnosisCode, Exclude<PendingStatus, "pending">> = 
   domain_appended: "needs_attention",
   record_at_apex: "needs_attention",
   foreign_token: "needs_attention",
+  expired_token: "needs_attention",
   value_formatted: "needs_attention",
   no_matching_record: "needs_attention",
   cname_conflict: "needs_attention",

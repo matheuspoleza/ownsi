@@ -6,6 +6,7 @@ export const DIAGNOSIS_CODES = [
   "domain_appended",
   "record_at_apex",
   "foreign_token",
+  "expired_token",
   "value_formatted",
   "no_matching_record",
   "cname_conflict",
@@ -30,6 +31,7 @@ export type Diagnosis =
       readonly observed: { readonly name: string; readonly value: string }
     }
   | { readonly code: "foreign_token"; readonly observed: { readonly value: string } }
+  | { readonly code: "expired_token"; readonly observed: { readonly value: string } }
   | { readonly code: "value_formatted"; readonly observed: { readonly value: string } }
   | {
       readonly code: "no_matching_record"
@@ -85,6 +87,11 @@ export function explain(diagnosis: Diagnosis, challenge: Challenge): Explanation
       return {
         cause: `${host} already carries an ownsi token, and it is not the one issued for this claim.`,
         fix: `Replace its value with ${token}.`,
+      }
+    case "expired_token":
+      return {
+        cause: `${host} carries the token from an earlier claim of yours, and that claim has ended.`,
+        fix: `Change its value to ${token}. The record is already in the right place, so this is one edit rather than a new record.`,
       }
     case "value_formatted":
       return {
