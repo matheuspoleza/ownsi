@@ -55,6 +55,7 @@ export function claimRoutes(handlers: ClaimHandlers, session: SessionPlugin) {
           409: ErrorResponse,
         },
         detail: {
+          tags: ["Domains"],
           summary: "Claim a domain",
           description:
             "Issues the token for this account and returns the record to create. The token " +
@@ -68,7 +69,7 @@ export function claimRoutes(handlers: ClaimHandlers, session: SessionPlugin) {
       {
         session: true,
         response: { 200: ClaimListResponse, 401: ErrorResponse },
-        detail: { summary: "List the domains on this account" },
+        detail: { tags: ["Domains"], summary: "List the domains on this account" },
       },
     )
     .get(
@@ -83,6 +84,7 @@ export function claimRoutes(handlers: ClaimHandlers, session: SessionPlugin) {
         session: true,
         response: { 200: ClaimResponse, 401: ErrorResponse, 404: ErrorResponse },
         detail: {
+          tags: ["Domains"],
           summary: "Read one claim",
           description:
             "Carries the named diagnosis and the wait estimate, so the screen says which of " +
@@ -100,6 +102,7 @@ export function claimRoutes(handlers: ClaimHandlers, session: SessionPlugin) {
       {
         ...transitionSchema,
         detail: {
+          tags: ["Domains"],
           summary: "Ask for a check now",
           description:
             "Resumes a dormant claim and returns the claim as it stands. The check itself " +
@@ -117,6 +120,7 @@ export function claimRoutes(handlers: ClaimHandlers, session: SessionPlugin) {
       {
         ...transitionSchema,
         detail: {
+          tags: ["Domains"],
           summary: "Archive a domain",
           description:
             "Leaves the main list and stops being checked. Token and history are preserved, " +
@@ -134,6 +138,7 @@ export function claimRoutes(handlers: ClaimHandlers, session: SessionPlugin) {
       {
         ...transitionSchema,
         detail: {
+          tags: ["Domains"],
           summary: "Reactivate and recheck",
           description:
             "Same token as before, so a TXT record still in the zone verifies without the " +

@@ -1,0 +1,81 @@
+---
+title: "Introduction"
+description: "Base URL, conventions, and what is guaranteed to stay stable."
+icon: "code"
+---
+
+The reference under **Endpoints** is generated from the running server: every route declares its
+`params`, `body` and `response` schemas, and the OpenAPI document is emitted from those. A route
+that changes shape changes this reference in the same commit.
+
+## Base URL
+
+```text
+https://ownsi.dev/api
+```
+
+Same origin as the app. There is no separate API hostname, and no CORS preflight in the supported
+setup — the browser talks to the origin it is already on.
+
+## Conventions
+
+<AccordionGroup>
+  <Accordion title="Errors are always the same shape" icon="triangle-exclamation">
+    ```json
+    { "error": { "code": "no_delegation", "message": "No nameservers are delegated for acme.com.", "docsUrl": "https://ownsi.dev/docs/errors#no_delegation" } }
+    ```
+
+    Branch on `code`. `message` is written for a person to read and may be reworded without notice.
+    `docsUrl` resolves to [the entry on this site](/errors).
+  </Accordion>
+
+  <Accordion title="Outcomes are tagged unions" icon="code-branch">
+    A field that can be one of several shapes always carries a discriminant — `step` on a zone
+    frame, `code` on a diagnosis, `reason` on a wait estimate. There is no shape where a value you
+    should not read is merely `undefined`; if you can reach it, it is there.
+  </Accordion>
+
+  <Accordion title="Timestamps are ISO 8601, UTC" icon="clock">
+    `"2026-08-24T12:00:00.000Z"`. Durations are integer seconds in a field named `…Seconds`, or
+    integer minutes in a field named `…Minutes`.
+  </Accordion>
+
+  <Accordion title="Nullable means known-to-be-absent" icon="circle-minus">
+    `diagnosis: null` means the check ran and found nothing wrong, not that nothing is known.
+    Fields are present and null rather than omitted.
+  </Accordion>
+</AccordionGroup>
+
+## Rate limits
+
+Enforced at the edge, per IP, on the two public surfaces:
+
+| Surface | Why it is limited |
+|---|---|
+| `GET /api/zones/:name` | Unauthenticated and it queries DNS. Without a limit it is an open resolver. |
+| `GET /p/:slug` | Public proof pages. |
+
+Over the limit you get `429` with [`rate_limited`](/errors#rate_limited) and a `Retry-After`
+header in seconds.
+
+`POST /api/domains/:id/verify` is limited per claim as well as per account, because forcing checks
+in a loop does not make DNS answer faster.
+
+## Stability
+
+<Note>
+  The API is **internal today** — same origin, session cookie, no public keys. This reference
+  documents it in full because the shape it has now is the shape it will have when it opens.
+</Note>
+
+What is safe to depend on:
+
+- Error `code` values, and diagnosis `code` values. These are identifiers and will not be reworded.
+- The `record` block on a claim, and the immutability of `token` across the lifecycle.
+- The event names on the zone stream (`delegation`, `publishing`).
+
+What is not:
+
+- `message` strings, and the `cause` / `fix` sentences on a diagnosis. They are product copy and are
+  improved regularly. Render them; do not match on them.
+- The absolute set of endpoints. New ones are added; existing shapes are not silently changed.

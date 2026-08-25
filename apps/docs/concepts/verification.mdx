@@ -1,0 +1,101 @@
+---
+title: "How verification works"
+description: "Four steps, and only the first one decides. The rest exist to explain a negative."
+icon: "magnifying-glass"
+---
+
+A check is four steps. Only the first one decides whether you are proved; the other three exist so
+that a negative comes back with a reason attached.
+
+<Steps>
+  <Step title="Recursive resolvers decide" icon="scale-balanced">
+    A TXT query for `_ownsi-challenge.acme.com` goes to Google, Cloudflare and Quad9 in parallel,
+    over DNS-over-HTTPS. Majority of three wins.
+
+    Public resolvers are used rather than the authoritative nameservers because they are what the
+    rest of the internet sees. A record that only your own nameservers know about is not published
+    yet, and calling that "proved" would be proving something nobody else can check.
+  </Step>
+
+  <Step title="The authoritative nameservers explain" icon="tower-broadcast">
+    Only on a negative. ownsi walks the labels up to the real authoritative zone, queries its
+    nameservers directly over UDP/53, and reads the SOA.
+
+    This is the step that separates *"you have not created the record"* from *"you created it and
+    the internet has not caught up"*. Those look identical from a recursive resolver and need
+    completely different sentences.
+  </Step>
+
+  <Step title="Twelve probes pattern-match" icon="stethoscope">
+    The probes run over the observation already collected — no further network. Each one recognises
+    one specific shape of wrongness and produces a [diagnosis](/diagnostics/catalogue) with its own
+    `cause` and `fix`.
+  </Step>
+
+  <Step title="A pure function transitions the claim" icon="arrow-right-arrow-left">
+    `(claim, diagnosis, now)` in; the new state, the events to emit, and when to check next, out.
+    No I/O, so the whole transition table is testable without DNS.
+  </Step>
+</Steps>
+
+## The three outcomes
+
+Every attempt ends in exactly one of these, and the third is not a failure of the second.
+
+<CardGroup cols={3}>
+  <Card title="found" icon="circle-check">
+    The token is published and the majority of resolvers agree. The claim is proved.
+  </Card>
+  <Card title="absent" icon="circle-xmark">
+    Resolvers answered, and the token is not there. This is where a diagnosis is produced.
+  </Card>
+  <Card title="unresolvable" icon="circle-question">
+    We could not get a trustworthy answer. **This changes nothing** — no state transition, no
+    email, no consecutive-failure count.
+  </Card>
+</CardGroup>
+
+<Note>
+  `unresolvable` being inert is deliberate. A resolver outage on our side must never look like your
+  record disappearing, and must never send you an email telling you it did. A mass outage sends
+  zero emails.
+</Note>
+
+## When the next check happens
+
+`nextCheckAt` is derived, not a fixed interval. It comes from the claim's age, its consecutive
+failure count, and the zone's SOA MINIMUM.
+
+That last input is why the waiting screen can be specific. RFC 2308 says the SOA MINIMUM is exactly
+how long a resolver keeps caching a "does not exist". If your record was created two minutes ago in
+a zone with a 300-second MINIMUM, the resolvers are going to keep saying no for about three more
+minutes no matter how often anyone asks — so ownsi says *"resolvers forget the 'does not exist' in
+about 3 min"* and schedules itself accordingly.
+
+That is the `waitEstimate` block:
+
+```json
+{ "reason": "negative_cache", "secondsRemaining": 180 }
+```
+
+| `reason` | What is being waited on |
+|---|---|
+| `first_check` | The claim was just created; the first attempt has not run. |
+| `negative_cache` | Your nameservers have the record; resolvers are still holding a cached negative. |
+| `provider_publishing` | Your provider has not pushed the edit to its own nameservers yet. |
+
+## diagnosis or waitEstimate, never neither
+
+A claim that is not yet proved always carries one of the two, and they mean opposite things:
+
+- **`diagnosis` is set** — something about the record needs to change. `fix` says what.
+- **`waitEstimate` is set** — nothing needs to change. `secondsRemaining` says how long.
+
+Reading `diagnosis` first and falling back to `waitEstimate` gives you the whole "what now" message
+for any pending claim.
+
+## Reconfirmation
+
+Proved claims are not swept on a schedule, but an attempt that runs against one can only move
+`lastConfirmedAt` forward — it can never un-prove a domain by accident. `firstVerifiedAt` is written
+once and never again.

@@ -42,9 +42,13 @@ src/
     claim-status.ts    the status a claim shows, and the three-valued check outcome
     demo.ts            one domain per screen: the fake's seed, the docs, the video
 
+scripts/
+  emit-docs.ts       writes apps/docs' openapi.json and diagnostics catalogue
+
 test/
   architecture.test.ts   layer boundaries; fails the build when one is crossed
   conventions.test.ts    comments, classes, throwing, response schemas
+  docs.test.ts           the emitted documentation still matches the code
   dns/                   the context's own tests
 ```
 
@@ -82,6 +86,11 @@ A context never imports another context. `domain/` imports nothing that reaches 
 Run the `api-bounded-context` skill, or follow
 [`.claude/skills/api-bounded-context/SKILL.md`](../../.claude/skills/api-bounded-context/SKILL.md).
 
+Give it a `detail: { tags, summary, description }` alongside its schemas, then run
+`bun run docs:emit`. The endpoint's page on [the public site](../docs/README.md) is generated from
+that — parameters, schemas, playground, code samples — and `test/docs.test.ts` fails if you skip
+the regenerate.
+
 ## Commands
 
 ```sh
@@ -89,11 +98,17 @@ bun run dev         # watch mode, reads ../../.env
 bun test            # everything under test/
 bun run typecheck
 bun run lint
+bun run docs:emit   # rewrite apps/docs' openapi.json and diagnostics catalogue
 ```
 
 The OpenAPI document is at `/openapi` while `dev` is running, as JSON at `/openapi/json`.
 It is generated from the same schemas the routes validate against, so there is no second
 source of truth for the contract.
+
+`scripts/emit-docs.ts` writes that same document into `apps/docs`, alongside a diagnostics
+catalogue rendered from `explain()`. Both are committed, because Mintlify deploys from git;
+`test/docs.test.ts` fails when either drifts, so the published reference cannot describe a
+version of this API that no longer exists.
 
 The front end does not read that document. It imports the `App` type from `src/index.ts`
 and hands it to Eden Treaty, which turns the route tree into a typed client with no codegen

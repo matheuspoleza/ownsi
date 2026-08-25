@@ -4,7 +4,8 @@ The reasoning behind the API rules below is in
 [`docs/backend-architecture.md`](docs/backend-architecture.md). Read it before changing one.
 
 Bun workspaces + Turborepo. `apps/api` (Elysia), `apps/web` (React + Vite on Cloudflare),
-`packages/{db,emails,ui,tsconfig}`. The product spec is `docs/domain-ownership/prd.md`.
+`apps/docs` (Mintlify), `packages/{db,emails,ui,tsconfig}`. The product spec is
+`docs/domain-ownership/prd.md`.
 
 ## Comments
 
@@ -171,6 +172,34 @@ above, and fails the build on a violation.
 
 `docs/frontend-architecture.md` explains the reasoning.
 
+## Published documentation
+
+`apps/docs` is the public site, on Mintlify. MDX pages plus a `docs.json` that carries the whole
+navigation. Its own rules are in [`apps/docs/README.md`](apps/docs/README.md); these are the ones
+that reach back into the code.
+
+**Two files in `apps/docs` are generated and committed. Never edit them by hand:**
+
+| Generated file | Comes from |
+| --- | --- |
+| `api-reference/openapi.json` | the running Elysia app, via `/openapi/json` |
+| `diagnostics/catalogue.mdx` | `explain()` in `apps/api/src/shared/diagnosis.ts` |
+
+`apps/api/scripts/emit-docs.ts` writes both; `bun run docs:emit` runs it. `apps/api/test/docs.test.ts`
+fails when either drifts from the code, so a route change without a regenerate does not merge.
+
+That direction is the whole point: **the API owns its contract and the docs read it.** A page never
+restates a schema or a diagnosis sentence in prose — it links to the generated one. Adding an
+endpoint means adding the route with its `response` schemas and a `detail: { tags, summary,
+description }`, then regenerating; there is no page to write.
+
+`errors.mdx` sits at the docs root because `errorResponse()` builds `docsUrl` as
+`https://ownsi.dev/docs/errors#<code>`. Moving it breaks every error the API has ever returned. Every
+code passed to `errorResponse()` must have a `## <code>` heading there, and the test checks it.
+
+Prose pages are hand-written and follow the same voice as the rest of the repo: name the true
+thing, show the failure next to the success, no "simply" and no "just".
+
 ## Testing
 
 `bun test` in `apps/api` and `apps/web`. Tests construct their subject directly and pass
@@ -180,7 +209,8 @@ Fixtures live in the test file that uses them. A test must not depend on a defau
 into a module factory — if it does, the test can pass while ignoring its own setup.
 
 `apps/web` currently runs only the conventions guard. Hooks are the first thing worth
-covering there, and they need no DOM.
+covering there, and they need no DOM. `apps/docs` runs only its conventions guard, which is
+all a package of MDX has to prove.
 
 ## What enforces what
 
@@ -191,6 +221,8 @@ covering there, and they need no DOM.
 | Every route documents a response schema per status | `apps/api/test/conventions.test.ts` |
 | No `any`, no `!`, bounded complexity, no barrel files | Biome override on `apps/api/**` |
 | Web naming, colocation, arrow components, named props, no comments | `apps/web/test/conventions.test.ts` |
+| The published docs match the code they document | `apps/api/test/docs.test.ts` |
+| Every docs page is navigated, has frontmatter and links somewhere real | `apps/docs/test/conventions.test.ts` |
 | All of the above, on every edit | `.claude/hooks/check-api.sh`, `.claude/hooks/check-web.sh` |
 
 When a guard fires, move the code. Do not widen the rule.
@@ -199,6 +231,8 @@ When a guard fires, move the code. Do not widen the rule.
 
 ```
 bun run dev        # turbo: api + web
+bun run dev:docs   # mintlify on :3000, after regenerating what is generated
+bun run docs:emit  # regenerate openapi.json and the diagnostics catalogue
 bun run typecheck
 bun run lint       # biome
 cd apps/api && bun test

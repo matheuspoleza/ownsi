@@ -1,0 +1,88 @@
+---
+title: "The claim lifecycle"
+description: "Six statuses, what moves between them, and what archiving does and does not destroy."
+icon: "arrows-rotate"
+---
+
+A claim is one domain on one account. `status` is what the API reports; it is derived, so a new rule
+about when a claim counts as stuck never becomes a database migration.
+
+## The six statuses
+
+| `status` | What it means | What you should show |
+|---|---|---|
+| `pending` | Claimed, not checked yet, or checked and simply not there yet. | The record to create. |
+| `propagating` | Your own nameservers have the record; resolvers do not yet. | A wait, with `waitEstimate`. |
+| `needs_attention` | A check found something wrong that only you can fix. | `diagnosis.fix`. |
+| `paused` | Nothing has changed for long enough that ownsi stopped checking. | A "check again" action. |
+| `proved` | Verified. `firstVerifiedAt` is set and never moves. | The proof, and `lastConfirmedAt`. |
+| `archived` | Off the main list by your choice. Not checked, not counted. | A "reactivate" action. |
+
+`propagating` and `needs_attention` are the split that matters. Both are "not verified"; one is your
+problem and one is not, and telling someone to fix a record that is already correct is the failure
+mode this product exists to avoid.
+
+## What moves a claim
+
+<Steps>
+  <Step title="POST /api/domains — claim">
+    Issues the token. Status `pending`, `waitEstimate` set to `first_check`.
+  </Step>
+  <Step title="POST /api/domains/:id/verify — ask for a check now">
+    Forces an attempt instead of waiting for the schedule, and resumes a `paused` claim. Rate
+    limited per claim.
+  </Step>
+  <Step title="POST /api/domains/:id/archive">
+    Leaves the main list and stops being checked. **The token and the history are preserved.**
+  </Step>
+  <Step title="POST /api/domains/:id/restore — reactivate and recheck">
+    Back to `pending` with the same token. A TXT record still sitting in the zone verifies without
+    the owner opening their DNS panel.
+  </Step>
+</Steps>
+
+## Archiving is not deleting
+
+<Check>
+  Archiving preserves the token, the timeline and the verification history. It stops the claim being
+  scheduled, and it stops it counting towards coexistence.
+</Check>
+
+That last part is the reason archiving exists as a distinct action. If a team stops using a domain
+but the claim keeps counting, a second team claiming the same domain sees a conflict with a claim
+nobody is maintaining. Archiving clears the way without destroying the evidence that the domain was
+once proved.
+
+## Coexistence
+
+Two accounts can each prove the same domain. That is not a bug and not a race — both created the
+record, both were verified, and neither has more right to the name than the other.
+
+When it happens, the claim carries:
+
+```json
+{
+  "coexistence": {
+    "maskedEmail": "m•••@acme.com",
+    "provedAt": "2026-08-01T09:14:00.000Z"
+  }
+}
+```
+
+The local part is masked and the domain is not, which is enough for someone to recognise a
+colleague and not enough to harvest an address.
+
+Claiming a domain that is **already on your own list** is a different thing entirely — that is
+[`already_claimed`](/errors#already_claimed), a 409, and the fix is to use the claim you already
+have rather than issue a second token.
+
+## Dates
+
+| Field | Written | Meaning |
+|---|---|---|
+| `createdAt` | On claim | When you added the domain. |
+| `firstVerifiedAt` | Once, ever | The first time the token was found. Never rewritten. |
+| `lastConfirmedAt` | Every confirming check | The last time it was still there. Only moves forward. |
+
+The proof is these two dates on the claim, not a separate object. "Proved on the 1st, still true as
+of this morning" is the whole statement.

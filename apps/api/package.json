@@ -12,7 +12,8 @@
     "build": "bun build src/index.ts --target bun --outdir dist",
     "test": "bun test",
     "typecheck": "tsc --noEmit",
-    "lint": "biome check ."
+    "lint": "biome check .",
+    "docs:emit": "bun scripts/emit-docs.ts"
   },
   "dependencies": {
     "@elysiajs/openapi": "^1.4.0",

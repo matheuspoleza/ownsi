@@ -30,6 +30,16 @@
         "typescript": "^5.9.0",
       },
     },
+    "apps/docs": {
+      "name": "@ownsi/docs",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@ownsi/api": "workspace:*",
+        "@ownsi/tsconfig": "workspace:*",
+        "@types/bun": "latest",
+        "typescript": "^5.9.0",
+      },
+    },
     "apps/web": {
       "name": "@ownsi/web",
       "version": "0.0.0",
@@ -530,6 +540,8 @@
     "@ownsi/api": ["@ownsi/api@workspace:apps/api"],
 
     "@ownsi/db": ["@ownsi/db@workspace:packages/db"],
+
+    "@ownsi/docs": ["@ownsi/docs@workspace:apps/docs"],
 
     "@ownsi/emails": ["@ownsi/emails@workspace:packages/emails"],
 

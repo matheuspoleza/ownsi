@@ -1,0 +1,117 @@
+---
+title: "Show a provider before sign-in"
+description: "Turn the streaming zone read into the screen a logged-out visitor sees first."
+icon: "globe"
+---
+
+The zone read exists so that the first screen can be specific. Instead of "add a TXT record", it can
+say "in Cloudflare, go to DNS → Records, and this usually publishes in about a minute".
+
+This guide builds that screen.
+
+## The shape of the hook
+
+The read streams two frames, and the first one is the useful one. Render as soon as it lands rather
+than waiting for both.
+
+```ts hooks/useZoneRead.ts
+export const useZoneRead = (name: string) => {
+  const [delegation, setDelegation] = useState<ZoneDelegation | null>(null)
+  const [publishing, setPublishing] = useState<ZonePublishing | null>(null)
+  const [failure, setFailure] = useState<ZoneFailure | null>(null)
+
+  useEffect(() => {
+    const controller = new AbortController()
+
+    read(name, controller.signal, { setDelegation, setPublishing }).catch(setFailure)
+
+    return () => controller.abort()
+  }, [name])
+
+  return { delegation, publishing, failure }
+}
+```
+
+Aborting on unmount matters: the server stops the lookup when the request is aborted, so a visitor
+who types a second domain does not leave the first read running.
+
+## Consuming the frames
+
+```ts
+const read = async (name: string, signal: AbortSignal, on: Handlers) => {
+  const { data, error } = await api.zones({ name }).get({ fetch: { signal } })
+  if (error) throw asZoneFailure(error)
+
+  for await (const frame of data) {
+    if (frame.event === "delegation") on.setDelegation(frame.data)
+    if (frame.event === "publishing") on.setPublishing(frame.data)
+  }
+}
+```
+
+## What to render, in order
+
+<Steps>
+  <Step title="Nothing yet — a skeleton">
+    Both frames are null. This is short; do not put a spinner with a paragraph of text under it.
+  </Step>
+  <Step title="Delegation lands — name the provider">
+    You now have `provider` and `nameservers`. This is the moment the screen becomes worth reading:
+    show the provider's own wording for the fields, and its own screenshot if you have one.
+
+    ```tsx
+    {delegation && <ProviderInstructions provider={delegation.provider} />}
+    ```
+
+    `provider` is `other` for anything unrecognised. That is a normal answer — fall back to generic
+    instructions naming the nameservers you did find, which is still more than most products show.
+  </Step>
+  <Step title="Publishing lands — set the expectation">
+    ```tsx
+    {publishing && (
+      <p>
+        {publishing.publishingMinutes !== null &&
+          `Edits in this panel usually publish in about ${publishing.publishingMinutes} min. `}
+        {publishing.negativeCacheTtlSeconds !== null &&
+          `Resolvers may keep saying "not found" for up to ${Math.round(publishing.negativeCacheTtlSeconds / 60)} min after that.`}
+      </p>
+    )}
+    ```
+
+    Both numbers are nullable. Render the sentence for whichever you have.
+  </Step>
+</Steps>
+
+## Say what you normalised
+
+`domain.normalisations` is an array of what was done to the input. Showing it prevents the worst
+kind of confusion — reading a different name than the one the person typed, silently.
+
+```tsx
+{delegation?.domain.normalisations.length > 0 && (
+  <Hint>Reading {delegation.domain.unicode} — we removed the {delegation.domain.normalisations.join(", ")}.</Hint>
+)}
+```
+
+Handle `isPublicSuffix` separately: `co.uk` is not a domain anyone can own, and the right message is
+"that is a public suffix, try the name in front of it", not a DNS error.
+
+## Failures
+
+Three, and only one of them is worth a retry button.
+
+```ts
+const RETRYABLE = new Set(["unresolvable", "unreachable"])
+```
+
+| Code | What to say |
+|---|---|
+| `invalid_domain` | The message from the API — it says which of empty / not-a-hostname / too-long it was. |
+| `no_delegation` | "No nameservers are delegated for this name." Usually unregistered. No retry. |
+| `unresolvable` | "This one is on us." Offer a retry. |
+| `rate_limited` | Honour `Retry-After`. Do not auto-retry in a loop. |
+
+<Note>
+  A network failure reaching ownsi at all is a fourth case your client owns, not one the API
+  returns. Give it its own code so the retry logic can treat it like `unresolvable`.
+</Note>

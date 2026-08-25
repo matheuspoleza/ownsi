@@ -22,3 +22,6 @@ packages/db/generated/
 .DS_Store
 .idea/
 *.log
+
+# mintlify
+apps/docs/.mint/

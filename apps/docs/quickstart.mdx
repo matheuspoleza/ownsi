@@ -1,0 +1,118 @@
+---
+title: "Quickstart"
+description: "Read a zone, claim a domain, create the record, and watch it turn proved."
+icon: "rocket"
+---
+
+Four calls, in the order the product makes them. Everything runs against the same origin as the
+app, so a browser session is all the credentials you need.
+
+<Steps>
+  <Step title="Read the zone before you sign anyone in">
+    This is the only public endpoint. It streams, so the provider lands on screen before the
+    publishing estimate does.
+
+    <CodeGroup>
+    ```ts TypeScript
+    import { treaty } from "@elysiajs/eden"
+    import type { App } from "@ownsi/api"
+
+    const api = treaty<App>("https://ownsi.dev").api
+
+    const { data } = await api.zones({ name: "acme.com" }).get()
+
+    for await (const frame of data ?? []) {
+      console.log(frame.event, frame.data)
+    }
+    ```
+
+    ```bash curl
+    curl -N https://ownsi.dev/api/zones/acme.com
+    ```
+    </CodeGroup>
+
+    ```text Two events, in this order
+    event: delegation
+    data: {"step":"delegation","name":"acme.com","provider":"cloudflare","nameservers":["dana.ns.cloudflare.com","rick.ns.cloudflare.com"],"cached":false,...}
+
+    event: publishing
+    data: {"step":"publishing","publishingMinutes":1,"negativeCacheTtlSeconds":300}
+    ```
+
+    Knowing the provider is what lets the next screen say "in Cloudflare, go to DNS → Records"
+    instead of "add a TXT record somewhere".
+  </Step>
+
+  <Step title="Claim the domain">
+    Now a session is required. The response carries the record to create.
+
+    <CodeGroup>
+    ```ts TypeScript
+    const { data: claim } = await api.domains.post({ domain: "acme.com" })
+
+    console.log(claim?.record)
+    // { host: "_ownsi-challenge", name: "_ownsi-challenge.acme.com",
+    //   type: "TXT", value: "ownsi_v1_9f3a2c8d1e4b7a6053c21f8e4d7b0a95" }
+    ```
+
+    ```bash curl
+    curl -X POST https://ownsi.dev/api/domains \
+      -H "content-type: application/json" \
+      -b "$SESSION_COOKIE" \
+      -d '{"domain":"acme.com"}'
+    ```
+    </CodeGroup>
+
+    <Warning>
+      Put **only** `_ownsi-challenge` in your panel's Host field. Most panels append the domain
+      themselves; typing the full name is the single most common way to end up with
+      [`domain_appended`](/diagnostics/catalogue#domain_appended).
+    </Warning>
+  </Step>
+
+  <Step title="Create the record in your DNS panel">
+    | Field | Value |
+    |---|---|
+    | Type | `TXT` |
+    | Host / Name | `_ownsi-challenge` |
+    | Value | the `record.value` from the previous step, verbatim |
+    | TTL | whatever your panel defaults to |
+
+    No quotes, no trailing spaces. If your panel adds quotes on save, that is
+    [`value_formatted`](/diagnostics/catalogue#value_formatted) and the fix is to retype the value.
+  </Step>
+
+  <Step title="Read the claim back">
+    ownsi rechecks on its own. Poll the claim, or force an attempt with
+    `POST /api/domains/:id/verify`.
+
+    <CodeGroup>
+    ```ts TypeScript
+    const { data: checked } = await api.domains({ id: claim.id }).get()
+
+    if (checked?.status === "proved") console.log("proved at", checked.firstVerifiedAt)
+    else console.log(checked?.diagnosis?.fix ?? checked?.waitEstimate)
+    ```
+
+    ```bash curl
+    curl https://ownsi.dev/api/domains/dom_01H8X -b "$SESSION_COOKIE"
+    ```
+    </CodeGroup>
+
+    While it is not proved you get one of two blocks, never both empty:
+
+    - `diagnosis` — something about the record is wrong, and `fix` says what to change.
+    - `waitEstimate` — nothing is wrong, DNS just has not caught up. `secondsRemaining` is how long.
+  </Step>
+</Steps>
+
+## Next
+
+<CardGroup cols={2}>
+  <Card title="The claim lifecycle" icon="arrows-rotate" href="/concepts/claim-lifecycle">
+    What the six statuses mean, and what archiving does to the token.
+  </Card>
+  <Card title="Diagnostics catalogue" icon="stethoscope" href="/diagnostics/catalogue">
+    The twelve codes, with the exact sentences the API returns.
+  </Card>
+</CardGroup>

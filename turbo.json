@@ -5,17 +5,21 @@
   "globalEnv": ["NODE_ENV"],
   "tasks": {
     "build": {
-      "dependsOn": ["^build", "db:generate"],
+      "dependsOn": ["^build", "db:generate", "^docs:emit"],
       "inputs": ["$TURBO_DEFAULT$", "!**/*.test.ts", "!**/*.test.tsx"],
       "outputs": ["dist/**", ".output/**"]
     },
     "dev": {
-      "dependsOn": ["^db:generate"],
+      "dependsOn": ["^db:generate", "^docs:emit"],
       "cache": false,
       "persistent": true
     },
+    "docs:emit": {
+      "dependsOn": ["^db:generate"],
+      "cache": false
+    },
     "test": {
-      "dependsOn": ["^build"],
+      "dependsOn": ["^build", "db:generate", "^db:generate"],
       "outputs": []
     },
     "lint": {

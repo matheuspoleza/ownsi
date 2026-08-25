@@ -1,0 +1,68 @@
+---
+title: "ownsi"
+sidebarTitle: "Introduction"
+description: "Prove what's yours. One TXT record, and an answer that tells you what is wrong when it is not there yet."
+icon: "house"
+mode: "wide"
+---
+
+ownsi proves that a domain belongs to you. You add one TXT record, we read DNS, and you get one of
+three answers — proved, not yet, or here is exactly what is wrong with the record you created.
+
+That third answer is the product. Most verification flows tell you "not verified" and leave you to
+guess. ownsi names the reason: the panel appended your domain to the host, the value came back with
+quotes around it, the resolvers are still holding a cached "does not exist" for four more minutes.
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Claim a domain and read its answer, in four calls.
+  </Card>
+  <Card title="How verification works" icon="magnifying-glass" href="/concepts/verification">
+    Four steps, and only the first one decides.
+  </Card>
+  <Card title="Diagnostics catalogue" icon="stethoscope" href="/diagnostics/catalogue">
+    The twelve codes, with the cause and the fix for each.
+  </Card>
+  <Card title="API reference" icon="code" href="/api-reference/introduction">
+    Every endpoint, generated from the running server.
+  </Card>
+</CardGroup>
+
+## The two surfaces
+
+<CardGroup cols={2}>
+  <Card title="Read a zone" icon="globe" href="/concepts/zone-reading">
+    Public and unauthenticated. Give it a name and it streams what DNS says: who the nameservers
+    are, which provider they belong to, and how long that provider usually takes to publish.
+    Nothing is written, and no account is needed.
+  </Card>
+  <Card title="Claim a domain" icon="key" href="/concepts/challenge-record">
+    Belongs to an account. Issues a token, tells you the record to create, and keeps checking until
+    it finds it. The token is stable for the life of the claim.
+  </Card>
+</CardGroup>
+
+## What you can rely on
+
+<Steps>
+  <Step title="A failed lookup never carries records">
+    Outcomes are tagged unions. A DNS answer is either `{ type: "answered", records }` or
+    `{ type: "failed", reason }` — there is no shape where you can read records off a lookup that
+    did not happen.
+  </Step>
+  <Step title="Errors carry a stable code">
+    Every failure is `{ error: { code, message, docsUrl } }`. Branch on `code`; the `message` is
+    written for a person and may be reworded. `docsUrl` links to [the entry on this
+    site](/errors).
+  </Step>
+  <Step title="The token survives the lifecycle">
+    Archiving, restoring and rechecking all preserve it. A record still in the zone verifies
+    without the owner reopening their DNS panel.
+  </Step>
+</Steps>
+
+<Note>
+  The API is internal today: same origin as the app, session cookie, no public keys. It is
+  documented here in full anyway, because the shape it will have when it opens is the shape it has
+  now. See [Authentication](/api-reference/authentication) for what changes when it does.
+</Note>

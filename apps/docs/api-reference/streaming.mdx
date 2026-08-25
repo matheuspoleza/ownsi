@@ -1,0 +1,122 @@
+---
+title: "Streaming responses"
+description: "The zone read yields server-sent events. How to consume it, and how failures arrive."
+icon: "wave-square"
+---
+
+`GET /api/zones/:name` is the one streaming endpoint. It yields server-sent events so the provider
+can be on screen before the publishing estimate is known.
+
+## The frames
+
+Two events, always in this order, and the second may be the last thing you get.
+
+<ResponseField name="delegation" type="event">
+  Who answers for the name, and which provider that is.
+
+  ```json
+  {
+    "step": "delegation",
+    "name": "acme.com",
+    "domain": {
+      "ascii": "acme.com",
+      "unicode": "acme.com",
+      "normalisations": [],
+      "isPublicSuffix": false
+    },
+    "nameservers": ["dana.ns.cloudflare.com", "rick.ns.cloudflare.com"],
+    "provider": "cloudflare",
+    "observedAt": "2026-08-24T12:00:00.000Z",
+    "cached": false
+  }
+  ```
+</ResponseField>
+
+<ResponseField name="publishing" type="event">
+  How long publishing is likely to take. Either number may be `null` when the zone does not say.
+
+  ```json
+  {
+    "step": "publishing",
+    "publishingMinutes": 1,
+    "negativeCacheTtlSeconds": 300
+  }
+  ```
+</ResponseField>
+
+`provider` is one of `cloudflare`, `route53`, `godaddy`, `namecheap`, `google-domains`, `vercel` or
+`other`. Treat `other` as a normal answer — it means the nameservers are not one we recognise, not
+that the read failed.
+
+## Consuming it
+
+<CodeGroup>
+```ts Eden Treaty
+import { treaty } from "@elysiajs/eden"
+import type { App } from "@ownsi/api"
+
+const api = treaty<App>("https://ownsi.dev").api
+
+const { data, error } = await api.zones({ name: "acme.com" }).get()
+if (error) throw error
+
+for await (const frame of data) {
+  if (frame.event === "delegation") showProvider(frame.data.provider)
+  if (frame.event === "publishing") showWait(frame.data.negativeCacheTtlSeconds)
+}
+```
+
+```ts fetch
+const response = await fetch("https://ownsi.dev/api/zones/acme.com")
+if (!response.ok) throw new Error((await response.json()).error.code)
+
+const reader = response.body.pipeThrough(new TextDecoderStream()).getReader()
+for (;;) {
+  const { value, done } = await reader.read()
+  if (done) break
+  console.log(value)
+}
+```
+
+```bash curl
+curl -N https://ownsi.dev/api/zones/acme.com
+```
+</CodeGroup>
+
+<Warning>
+  `EventSource` will reconnect on its own when the stream ends, which for this endpoint means
+  re-reading the zone forever. Use `fetch` or the Eden client, both of which treat the end of the
+  stream as the end.
+</Warning>
+
+## Cancelling
+
+The server stops work when the request is aborted, so cancelling a read that is no longer on screen
+actually saves the lookup.
+
+```ts
+const controller = new AbortController()
+
+await api.zones({ name }).get({ fetch: { signal: controller.signal } })
+
+controller.abort()
+```
+
+## Failures do not arrive as frames
+
+If the read fails, it fails as an HTTP status with the normal error envelope — `400`, `404` or
+`502`, per [Reading a zone](/concepts/zone-reading#failures). The stream never carries a
+half-read zone, and there is no error event to handle inside the loop.
+
+```json 404
+{
+  "error": {
+    "code": "no_delegation",
+    "message": "No nameservers are delegated for acme.com.",
+    "docsUrl": "https://ownsi.dev/docs/errors#no_delegation"
+  }
+}
+```
+
+`unresolvable` and `rate_limited` are worth retrying; `invalid_domain` and `no_delegation` are not
+— nothing about retrying will change the answer.

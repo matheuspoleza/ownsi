@@ -1,0 +1,19 @@
+{
+  "name": "@ownsi/docs",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "npx --yes mint@latest dev",
+    "links": "npx --yes mint@latest broken-links",
+    "test": "bun test",
+    "lint": "biome check test",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@ownsi/api": "workspace:*",
+    "@ownsi/tsconfig": "workspace:*",
+    "@types/bun": "latest",
+    "typescript": "^5.9.0"
+  }
+}

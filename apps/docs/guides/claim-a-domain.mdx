@@ -1,0 +1,132 @@
+---
+title: "Build the waiting screen"
+description: "From claim to proved: what to poll, what to show, and how to tell a wait from a mistake."
+icon: "hourglass"
+---
+
+The screen between "I created the record" and "proved" is where most verification flows lose people.
+This guide builds one that says something true at every moment.
+
+## Claim, and show the record
+
+```ts
+const { data: claim, error } = await api.domains.post({ domain })
+
+if (error?.status === 409) return useExistingClaim()
+if (error) return showError(error.value.error.message)
+```
+
+The `record` block is what to render — `host`, `name`, `type` and `value`.
+
+```tsx
+<Field label="Type" value={claim.record.type} />
+<Field label="Host" value={claim.record.host} copy />
+<Field label="Value" value={claim.record.value} copy />
+```
+
+<Warning>
+  Copy `host`, not `name`. Almost every panel appends the zone to what you type, and a copy button
+  that hands over the fully qualified name is how people end up with
+  [`domain_appended`](/diagnostics/catalogue#domain_appended). Offer `name` as a secondary
+  "fully qualified" affordance for the panels that want it.
+</Warning>
+
+## Poll the claim
+
+```ts hooks/useClaimState.ts
+export const useClaimState = (id: string) =>
+  useQuery({
+    queryKey: ["claim", id],
+    queryFn: () => readClaim(id),
+    refetchInterval: (query) => nextPoll(query.state.data),
+  })
+
+const nextPoll = (claim?: Claim) => {
+  if (!claim || claim.status === "proved" || claim.status === "archived") return false
+  if (claim.waitEstimate) return Math.min(claim.waitEstimate.secondsRemaining, 30) * 1_000
+  return 5_000
+}
+```
+
+Deriving the interval from `waitEstimate.secondsRemaining` means the client asks roughly when there
+is something new to hear, instead of every five seconds forever.
+
+<Note>
+  `POST /api/domains/:id/verify` forces an attempt and is rate limited per claim. Wire it to a
+  button the person presses, not to a timer. Nothing about asking more often makes DNS answer
+  sooner, and the honest interval is already on the claim.
+</Note>
+
+## One message, from two fields
+
+A claim that is not proved always carries exactly one of `diagnosis` or `waitEstimate`, and they
+mean opposite things.
+
+```ts
+export const whatNow = (claim: Claim) => {
+  if (claim.status === "proved") return { kind: "done" as const }
+
+  if (claim.diagnosis) {
+    return {
+      kind: "fix" as const,
+      title: claim.diagnosis.cause,
+      action: claim.diagnosis.fix,
+      code: claim.diagnosis.code,
+    }
+  }
+
+  return {
+    kind: "wait" as const,
+    title: waitTitle(claim.waitEstimate),
+    seconds: claim.waitEstimate?.secondsRemaining ?? null,
+  }
+}
+```
+
+Render `cause` and `fix` verbatim — they already name your domain, your token and your nameservers.
+Do not pattern-match on their text; they are product copy and change. Key anything behavioural off
+`code`.
+
+## Style the three groups differently
+
+Not every diagnosis is your reader's fault, and treating them alike is the mistake worth avoiding.
+
+<CardGroup cols={3}>
+  <Card title="Fix it" icon="pen">
+    `domain_appended` · `record_at_apex` · `value_formatted` · `record_on_www` ·
+    `no_matching_record` · `record_absent` · `cname_conflict`
+
+    Primary action, prominent. `fix` is a real instruction.
+  </Card>
+  <Card title="Wait" icon="hourglass">
+    `negative_cache` · `not_published`
+
+    Calm, with the countdown. **No action button** — there is nothing to press.
+  </Card>
+  <Card title="Escalate" icon="triangle-exclamation">
+    `servfail` · `lame_delegation` · `foreign_token`
+
+    Point at the provider or the other account. Not something retyping the record will fix.
+  </Card>
+</CardGroup>
+
+## Status drives the frame around it
+
+| `status` | Frame |
+|---|---|
+| `pending` | The record, and the first-check countdown. |
+| `propagating` | "Your nameservers have it." Wait, not a fix. |
+| `needs_attention` | The diagnosis, front and centre. |
+| `paused` | A "check again" button. Nothing is being checked right now. |
+| `proved` | `firstVerifiedAt`, and `lastConfirmedAt` as "still true as of". |
+| `archived` | A "reactivate" button. Mention that the token is unchanged. |
+
+`propagating` versus `needs_attention` is the split that earns the product its keep — both are "not
+verified", but only one is your reader's problem.
+
+## Do not tell people to delete the record
+
+Leaving it in place is the supported state. `lastConfirmedAt` keeps moving because the record keeps
+being found, and [the token survives archiving and
+reactivation](/concepts/claim-lifecycle#archiving-is-not-deleting) — a domain reactivated a year
+later verifies without anyone opening a DNS panel.
