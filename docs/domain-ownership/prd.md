@@ -1,7 +1,7 @@
 ---
 feature: domain-ownership
 phase: prd
-updated: 2026-08-23
+updated: 2026-08-24
 ---
 
 # PRD — Ownsi
@@ -64,8 +64,13 @@ deliverable includes a 3–5 minute video, so the product must demo as a continu
 
 **Claiming**
 
-- Adding a domain generates a token, stable for the life of the claim, and a target record
-  `TXT _ownsi-challenge.<domain>`. The token never changes: not on recheck, not on reactivation.
+- Adding a domain generates a token and a target record `TXT _ownsi-challenge.<domain>`. The token
+  is stable for the life of that claim and changes for no reason while the claim is open.
+- **A claim is an episode, and it only runs forwards.** It ends `proved`, `expired` or `canceled`,
+  and an ended claim is history: it takes no action, is never re-checked, and its token stops being
+  accepted. Trying again means a new claim, with a new token.
+- An account may hold many claims on the same name over time, one open at a time. Together they are
+  the record of what was attempted and what came of it.
 - Input normalised on entry: `HTTP://WWW.Acme.com/path` becomes `acme.com`. Punycode/IDN, trailing
   dot, uppercase, port, path. A public suffix (`co.uk`) raises a warning, not a block.
 - Each name is independent. Proving `acme.com` grants nothing over `app.acme.com`.
@@ -91,14 +96,15 @@ deliverable includes a 3–5 minute video, so the product must demo as a continu
 - On a negative result the authoritative nameservers are queried directly over UDP/53. That
   separates *"your provider has not published it"* from *"it is negative cache, ~N minutes left"* —
   the second quantified from the SOA MINIMUM.
-- Twelve probes fire at the places the record usually ends up by mistake. Each returns
+- Thirteen probes fire at the places the record usually ends up by mistake. Each returns
   `{ code, cause, fix, observed }`, and `code` is stable and enumerable.
 
 | Probe | What it means | The fix |
 |---|---|---|
 | `_ownsi-challenge.acme.com.acme.com` | registrar auto-appended the domain | "use only `_ownsi-challenge` in the Host field" |
 | Token in a TXT at the apex | pasted in the wrong place | "move it to the `_ownsi-challenge` subhost" |
-| Right host, another token | leftover from a previous claim | "that token is not yours; replace it with…" |
+| Right host, another token | someone else's, or another name's | "that token is not yours; replace it with…" |
+| Right host, your own expired token | the previous claim's record is still there | "this one is from your last claim; change the value, not the record" |
 | Quotes / whitespace / prefix | the panel added formatting | shows exact value expected vs received |
 | N TXT records, none matching | created alongside the existing ones | lists what was found, points at the difference |
 | CNAME on the challenge host | conflicts with TXT (RFC 1034) | "remove the CNAME; one name cannot hold both" |
@@ -113,17 +119,38 @@ deliverable includes a 3–5 minute video, so the product must demo as a continu
 
 - Pending is the product's primary screen, not an edge case. It shows what is already known — does
   the authoritative have it, is there a negative cache, how long is left — not a spinner.
-- Pending never expires. Seven days of active checking on a decreasing interval, email nudges on
-  D+1 and D+3, then dormancy: checking stops, a [Resume] button revives it instantly, token intact.
+- A claim is open for seven days, checked on a decreasing interval, with email nudges on D+1 and
+  D+3 and a warning on D+6 that the window closes tomorrow. Then it expires.
+- **Expiring is not an accusation.** Not proving is never evidence against the person: it can be a
+  holiday, a broken provider, or our own failure. The screen says the window closed and that
+  starting again takes one click. It never says the domain may not be theirs.
+
+**Why a claim expires**
+
+The proof reads *"on 15 June, this account demonstrated control"*. That sentence is only true if the
+demonstration was recent. A token accepted forever breaks it: a record written in January and never
+cleaned up would keep minting fresh proofs long after control had passed to someone else. Bounding
+the token's life is what keeps the date honest.
+
+Everything follows from that one sentence:
+
+- An ended claim's token stops being accepted. The record left in the zone is inert.
+- There is no *check again*. A new date needs a new demonstration, which means a new claim, a new
+  token, and one edit in the DNS panel. Re-checking and re-claiming are the same act.
+- Seven days is chosen so nobody who did the work correctly loses it: negative caching rarely
+  exceeds a day and provider publishing is minutes to hours.
+- When the next claim runs and finds the previous claim's token still sitting on the challenge
+  host, that is not "nothing found" — it is the thirteenth probe, and it turns starting over into
+  a one-line edit.
 
 **After the proof**
 
-- Nothing re-checks a proved claim on a timer. The record may be removed the moment it is found.
+- Nothing re-checks a proved claim, on a timer or otherwise. The record may be removed the moment
+  it is found.
 - The verified screen dates its confirmation (`Confirmed 12 Mar`) rather than asserting present-tense
-  truth.
-- *Check again* is available on a proved claim and can only improve it: if the token is found, the
-  confirmation date moves forward; if it is not, the attempt is recorded as evidence and nothing
-  else changes.
+  truth. The date never moves, because the moment it describes does not.
+- Wanting a fresher date is wanting a fresh demonstration: claim the domain again. The earlier proof
+  stays true and stays in the history beside it.
 
 **Sharing the proof**
 
@@ -144,17 +171,27 @@ deliverable includes a 3–5 minute video, so the product must demo as a continu
 
 **Recovering from mistakes**
 
-- Removing a domain archives it: it leaves the main list, token and history are preserved, it stops
-  being checked, it stops counting as coexistence.
-- The add-domain field autocompletes over archived domains. Find one and the action is "Reactivate
-  and recheck" — same token, so if the TXT is still in the zone it verifies instantly and the user
-  never opens their DNS panel.
-- "Delete permanently" exists for whoever wants to genuinely disappear.
+- Getting a claim wrong is cheap: cancel it and claim again. The wrong attempt stays in the history
+  saying what went wrong, which is the point of keeping it.
+- **Archiving is about a domain, not a claim.** It says "stop involving me with this name": the
+  domain leaves the main list, an open claim on it ends, and the account stops being told when
+  someone else proves it. It is a preference, and claiming the name again lifts it.
+- **Archiving does not un-prove anything.** A proof already granted stays true, keeps its date, and
+  its proof links keep resolving. Ownsi has no way to retract a fact about a past moment and does
+  not pretend to.
+- The add-domain field autocompletes over every name the account has ever claimed, archived ones
+  included. Finding one shows what happened last time — `Proved 12 Mar`, `Expired 3 Apr` — and the
+  action is to claim it again.
+- "Delete permanently" exists for whoever wants to genuinely disappear. It is the only thing that
+  removes history.
 
 **History**
 
-- A per-claim timeline of semantic events, kept permanently.
+- A per-domain timeline: every claim the account made on that name, in order, each with how it
+  ended. Kept permanently.
+- Within a claim, a timeline of semantic events. Also permanent.
 - Raw evidence for every attempt in a separate append-only log, 30-day retention.
+- An ended claim is read-only. It offers no button, and nothing recomputes it.
 
 **Notification**
 
@@ -165,6 +202,8 @@ deliverable includes a 3–5 minute video, so the product must demo as a continu
 | Sign-in magic link | yes |
 | Proof granted | yes |
 | Pending, unresolved | nudge on D+1 and D+3, nothing more |
+| Claim about to expire | one warning on D+6, naming the fix that is outstanding |
+| Claim expired | no — D+6 already said it, and a second email would only scold |
 | Another account proved your domain | yes |
 | `unresolvable` | no — it is our failure |
 
@@ -179,7 +218,7 @@ deliverable includes a 3–5 minute video, so the product must demo as a continu
 | Any capability behind ownership | The attestation is the product |
 | Revocation, grace windows, `at_risk` | The proof is point in time; nothing decays, so nothing needs taking back |
 | Continuous monitoring of proved claims | Nothing sweeps a proof once granted |
-| Requiring the TXT record to persist | Consumable by design — the user touches DNS once |
+| Requiring the TXT record to persist | Consumable by design — one visit to the DNS panel per claim, and none at all once it is proved |
 | Arbitration: approval, transfer, freezing, eviction | Every account demonstrated real zone control. With no exclusive resource to allocate, picking a winner would be a judgement Ownsi has no standing to make |
 | Scope inheritance (`acme.com` → `app.acme.com`) | Nothing is scoped to a name, so inheritance would assert nothing |
 | Blocking public suffixes | The proof protects itself — nobody writes a TXT in the zone of `github.io` |
@@ -193,11 +232,13 @@ deliverable includes a 3–5 minute video, so the product must demo as a continu
 
 - A domain with the correct TXT goes from claimed to proved with no intervention, and the screen
   shows an estimate derived from the SOA instead of a generic "up to 72h".
-- Each of the 12 probes, on a test domain built to reproduce it, produces one sentence of cause and
+- Each of the 13 probes, on a test domain built to reproduce it, produces one sentence of cause and
   one of fix — not a log dump.
 - A simulated resolver outage produces `unresolvable` at scale without sending a single email.
-- Deleting a proved domain and reactivating it through the autocomplete returns the proof without
-  the user opening their DNS panel.
+- Archiving a proved domain and finding it again through the autocomplete shows the proof still
+  dated and still true, with no DNS panel involved and nothing re-checked.
+- A claim that expires with the token still in the zone: the next claim names that exact record and
+  asks for one value to be changed, rather than reporting that nothing was found.
 - Removing the TXT record after the proof changes nothing.
 - A second account proving the same domain: both stay proved, and the first gets an email with the
   second's masked address.
@@ -213,21 +254,36 @@ in the `Engineering` layer of `designs.pen`.*
 
 ### 3.1 Domain model
 
-`DomainClaim` is the aggregate root: one per (user, domain name). It holds the token, the state and
-the lifecycle. Verification attempts are append-only and referenced, not carried as children. The
-proof is not a separate entity — it is the pair of dates on the claim.
+`Domain` is a name, and nothing more. `Claim` is an account's attempt on that name, and it is where
+every lifecycle lives. Verification attempts are append-only and referenced, not carried as
+children. The proof is not a separate entity — it is the pair of dates on the claim.
 
 | Object | Kind | What it is |
 |---|---|---|
-| `DomainClaim` | aggregate root | user, domain, token, state, dates. `claim()`, `archive()`, `reactivate()`, `applyAttempt()` |
+| `Domain` | entity | a name, once, for everyone: `id`, `nameAscii`, `nameUnicode`. **No owner and no status.** What claims and history hang from |
+| `Claim` | aggregate root | one open per (user, domain), many over time. Token, state, dates. `claim()`, `cancel()`, `expire()`, `applyAttempt()` |
 | `DomainName` | value object | parse, normalise, punycode, public suffix list, and the list of normalisations applied |
 | `Zone` | aggregate root | one per name: nameservers, provider, SOA MINIMUM, `observedAt`. Read before sign-in, shared across claims |
 | `VerificationAttempt` | aggregate root | append-only: trigger, outcome, resolver observations, diagnosis |
 | `PublicProofLink` | aggregate root | slug, claim, expiry |
 | `Diagnosis`, `ResolverObservation`, `MaskedEmail` | value objects | produced by domain services, never entities |
 
-Coexistence is a query across claims on the same `domainAscii`, not an aggregate — there is no
-invariant linking two accounts' claims, deliberately.
+**`Domain` has no owner, and that is the whole point.** Resend's equivalent does: claiming a domain
+there transfers it and revokes the other team's access, which is correct for them, because a sending
+domain is genuinely exclusive — two teams cannot both hold DKIM for one name. An attestation is not
+exclusive. Two true sentences about the same name do not conflict, so there is nothing to allocate
+and no winner to pick. A `Domain` row is a name every account can point at.
+
+**`Domain` is not `Zone`.** A zone is keyed by the zone that *answers* — `app.acme.com` is served by
+`acme.com` — and holds DNS facts with a cache lifetime. It is machinery for reading DNS and belongs
+to that context alone; nothing else should key off it. `Domain` is identity, and it is what makes
+"every claim this account ever made on this name" a relationship instead of a string comparison.
+
+A `Domain` row is created on the first claim, never on a zone read: the pre-login read accepts
+whatever anyone types, and writing a row there would make the table a log of typos.
+
+Coexistence is a query across claims on the same `Domain`, not an aggregate — there is no invariant
+linking two accounts' claims, deliberately.
 
 ### 3.2 Data model
 
@@ -238,13 +294,22 @@ sessions               id, user_id, expires_at                -- better-auth
 zones                  name PK, nameservers text[], provider_id,
                        soa_minimum, observed_at
 
-domain_claims          id, user_id FK, domain_ascii, domain_unicode, token,
-                       state, next_check_at, consecutive_failures,
+domains                id, name_ascii UNIQUE, name_unicode, created_at
+                                                     -- a name, once, for everyone
+
+domain_archives        user_id, domain_id, archived_at
+                       PRIMARY KEY (user_id, domain_id)
+                       -- "stop involving me with this name". A preference,
+                       -- not a claim state, so it survives every claim and
+                       -- retracts none of them
+
+claims                 id, user_id FK, domain_id FK, token,
+                       state, expires_at, next_check_at, consecutive_failures,
                        last_diagnosis_code,
                        first_verified_at, last_confirmed_at,
-                       dormant_at, archived_at, created_at
-                       UNIQUE (user_id, domain_ascii)
-                       INDEX (domain_ascii)          -- coexistence
+                       ended_at, created_at
+                       UNIQUE (user_id, domain_id) WHERE state = 'pending'
+                       INDEX (domain_id)             -- coexistence
                        INDEX (state, next_check_at)  -- the queue
 
 verification_attempts  id, claim_id, trigger, outcome, resolvers jsonb,
@@ -257,37 +322,46 @@ claim_events           id, claim_id, type, payload jsonb, created_at
 proof_links            slug PK, claim_id, issued_at, expires_at, revoked_at
 ```
 
-**Internal state vs exposed status.** `state` holds `pending | proved | archived`. Everything else
-is derived, so a new rule never becomes a migration:
+**Internal state vs exposed status.** `state` holds `pending | proved | expired | canceled`, and
+only `pending` is live — the other three are terminal and never move again. Everything the screen
+says is derived, so a new rule never becomes a migration:
 
 | `state` + timestamps | `status` |
 |---|---|
 | `pending` | `pending` |
 | `pending`, authoritative has the record | `propagating` |
 | `pending`, diagnosis is a user error | `needs_attention` |
-| `pending`, `dormant_at` set | `paused` |
 | `proved` | `proved` (with `firstVerifiedAt`, `lastConfirmedAt`) |
-| `archived` | `archived` |
+| `expired` | `expired` |
+| `canceled` | `canceled` |
+
+`archived` is deliberately absent from that table. It is a fact about a (user, domain) pair, not
+about any claim, so it filters the list rather than describing a state.
 
 `last_diagnosis_code` is deliberate denormalisation: the dashboard renders a "next step" column with
 no DNS query.
 
 **Invariants, all testable:**
 
-1. `token` is immutable for the life of a claim — recheck, archive and reactivation preserve it.
-2. `outcome` has three values, and `unresolvable` changes no state and sends no email.
-3. `archived` stops being scheduled **and** stops counting towards coexistence.
-4. Applying an attempt to a `proved` claim can only move `last_confirmed_at` forward.
-5. No path sets `first_verified_at` without a `verification_attempts` row in the same transaction.
-6. At most one email per claim per event type every 24h.
+1. `token` is immutable for the life of a claim, and is accepted only while that claim is `pending`.
+   A terminal claim's token proves nothing, which is what keeps a proof's date honest.
+2. A claim only runs forwards. From `pending` to one of three terminal states, and from a terminal
+   state to nowhere. No path re-opens one.
+3. `outcome` has three values, and `unresolvable` changes no state and sends no email.
+4. Archiving cancels an open claim and stops coexistence notifications, and retracts no proof: a
+   granted proof keeps its dates and its links resolve.
+5. `first_verified_at` and `last_confirmed_at` are written once, when the proof is granted, and
+   never again. A newer proof is a newer claim.
+6. No path sets `first_verified_at` without a `verification_attempts` row in the same transaction.
+7. At most one email per claim per event type every 24h.
 
-**Semantic events:** `DomainClaimed` · `RecordFound` · `ProofGranted` · `ProofReconfirmed` ·
-`CheckFailed(code)` · `PropagationDetected` · `ClaimDormant` · `ClaimResumed` · `ClaimArchived` ·
-`ClaimReactivated` · `OtherAccountProved` · `ProofLinkIssued`. `CheckFailed` is emitted only when
-the diagnosis code changes, so a stuck claim does not flood its own timeline.
+**Semantic events:** `DomainClaimed` · `RecordFound` · `ProofGranted` · `CheckFailed(code)` ·
+`PropagationDetected` · `ClaimExpiring` · `ClaimExpired` · `ClaimCanceled` · `DomainArchived` ·
+`OtherAccountProved` · `ProofLinkIssued`. `CheckFailed` is emitted only when the diagnosis code
+changes, so a stuck claim does not flood its own timeline.
 
-One transaction writes `domain_claims` + `verification_attempts` + `claim_events`. Evidence and
-state never diverge.
+One transaction writes `claims` + `verification_attempts` + `claim_events`. Evidence and state never
+diverge.
 
 ### 3.3 HTTP API
 
@@ -296,17 +370,22 @@ Resend does not learn a second dialect.
 
 ```
 GET    /api/zones/:name             pre-login zone reading (rate limited per IP)
-POST   /api/domains                 { domain }
-GET    /api/domains
-GET    /api/domains/:id
-POST   /api/domains/:id/verify      forces an attempt (rate limited)
-POST   /api/domains/:id/archive
-POST   /api/domains/:id/restore     "reactivate and recheck"
-DELETE /api/domains/:id             delete permanently
-GET    /api/domains/:id/events      the timeline
+POST   /api/domains                 { domain } — opens a claim, returns the record to create
+GET    /api/domains                 the list, one row per domain, newest claim in front
+GET    /api/domains/:id             the domain, its open claim, and every claim before it
+POST   /api/domains/:id/verify      forces an attempt on the open claim (rate limited)
+POST   /api/domains/:id/cancel      ends the open claim
+POST   /api/domains/:id/archive     stop involving me with this name
+DELETE /api/domains/:id             delete permanently — the only thing that erases history
+GET    /api/domains/:id/events      the timeline, across every claim on this name
 POST   /api/domains/:id/proof_links
 GET    /p/:slug                     the public proof page, server-rendered
 ```
+
+The resource is the domain, and claims are its history — which is why `verify` and `cancel` address
+the domain rather than a claim id: there is at most one claim to act on, and an ended one takes no
+action at all. `restore` is gone with the backwards transition it served; claiming a name again is
+`POST /api/domains`, and that is the only way forward there has ever needed to be.
 
 Every route declares `body` / `params` / `query` **and `response`**: it pins the type on the
 frontend, stops an ORM object serialising an internal field by accident, and fills the OpenAPI
@@ -339,19 +418,24 @@ A check is four steps, and only the first decides.
    Majority of three.
 2. **Authoritative explains.** Only on a negative result: walk the labels up to the real
    authoritative zone, query its NS over UDP/53, read the SOA.
-3. **Probes run.** The 12 probes pattern-match over the `DnsObservation` already collected — no
+3. **Probes run.** The 13 probes pattern-match over the `DnsObservation` already collected — no
    further network.
 4. **Transition.** A pure function turns (claim, diagnosis, now) into the new state, the events,
    `nextCheckIn`, and the effects to dispatch.
 
 ### 3.5 Scheduling
 
-Only pending claims are scheduled. Nothing sweeps proved ones.
+Only pending claims are scheduled. Nothing sweeps a terminal one — proved, expired and canceled
+claims are history, and history does not need a clock.
 
 `next_check_at` is derived from (claim age, the zone's SOA MINIMUM, consecutive failures) and is the
 state; **Inngest is the clock**, with one `step.sleep` per pending claim, which gives second-level
 granularity with no cron tick as a floor. With the tab open the client also polls the verify
 endpoint directly, rate limited per claim.
+
+`expires_at` is set when the claim opens and needs no sweeper of its own: the scheduled check that
+wakes past it ends the claim instead of checking it, and the D+6 warning is one more scheduled step
+on the same timeline.
 
 The SOA MINIMUM (RFC 2308) states exactly how long a "does not exist" stays in negative cache, so
 `next_check_at = now() + soa.minimum` is derived rather than guessed — and turns into a UI sentence
@@ -361,34 +445,41 @@ The SOA MINIMUM (RFC 2308) states exactly how long a "does not exist" stays in n
 
 A pure core with an imperative shell around it. The diagnosis engine is the product, and the success
 criteria of Section 2 are statements about it — "a resolver outage sends zero emails", "each of the
-12 probes names its cause". Those are only cheap to assert if the engine has no I/O.
+13 probes names its cause". Those are only cheap to assert if the engine has no I/O.
+
+One folder per bounded context, each with the same four layers, plus a `shared/` for what more than
+one of them needs. Contexts never import each other.
 
 ```
 apps/api/src/
-  core/          ← pure, no I/O
-    claim.ts       DomainClaim
-    domain.ts      DomainName (parse, normalise, PSL)
-    zone.ts        Zone
-    probes.ts      the 12 probes
-    diagnose.ts    DnsObservation → Diagnosis
-    transition.ts  the state machine
-    schedule.ts    nextCheckIn(soa, age, failures)
-  app/           ← use cases; ports arrive as parameters
-    claim-domain.ts  verify-claim.ts  recover-claim.ts  issue-proof-link.ts
-  infra/         ← DoH, authoritative UDP/53, recorded fake, Prisma, Resend,
-                   Inngest, better-auth
-  http/          ← Elysia routes: validate, call a use case, map the response
-  ports.ts
+  zones/         reading a zone: nameservers, provider, SOA, publishing estimate
+  domains/       the account's claims on a name: token, state, lifecycle
+  verification/  did this token appear at this host, and if not, which failure is it
+  proof/         the public proof page and its links
+  shared/        DomainName, Result, the clock, auth, the diagnostics vocabulary
+
+  <context>/
+    domain/        types, pure functions, port definitions — no I/O
+    application/   use cases, as closures over their deps
+    api/           Elysia route factories and wire schemas
+    infra/         adapters that implement the ports
+    <context>.config.ts / .module.ts / .app.ts
 ```
 
-Nothing under `core/` imports the HTTP framework, the ORM or `node:dns`. No DI container: `Deps` is
-an argument. **The core returns effects as data; the shell executes them**, so "a resolver outage
-sends zero emails" is an assertion over an array with no SMTP mock.
+The names are the concepts, not the machinery: `zones`, not `dns`. Each context is testable at the
+line that matters — `zones` answers with no account, `verification` needs only a token and a host,
+`domains` is what survives closing the tab.
 
-The same `verifyClaim` is called by the *Check again* button and by the scheduler — the scheduler is
-an adapter, not an orchestrator.
+Nothing under `domain/` imports the HTTP framework, the ORM or `node:dns`. No DI container: deps are
+arguments, applied once at composition time. **The pure core returns effects as data; the shell
+executes them**, so "a resolver outage sends zero emails" is an assertion over an array with no SMTP
+mock.
 
-A test in CI from day 2 fails if anything under `core/` imports an adapter.
+The same verification runs from the *check now* button and from the scheduler — the scheduler is an
+adapter, not an orchestrator.
+
+`test/architecture.test.ts` fails the build when a layer or a context boundary is crossed, and it
+has done since day 2.
 
 ### 3.7 Infrastructure
 
@@ -425,12 +516,12 @@ reviewer arriving at an arbitrary hour, and a first-party cookie behind one orig
 | Token | 128 bits of randomness, per claim, never reused |
 | Another account's email | `MaskedEmail` — masked local part, visible domain |
 | Public proof page | no DNS query on open; rate limited; expires in 7 days |
-| Manual recheck | rate limited per claim |
+| Manual check | rate limited per claim |
 
 ### 3.9 Docs
 
 A `/docs` route inside the app: quickstart, how verification works, API reference, and the
-**diagnostics catalogue** — the 12 codes with their cause and fix. That last page is the one that
+**diagnostics catalogue** — the 13 codes with their cause and fix. That last page is the one that
 shows the copy *is* the product.
 
 ### 3.10 What is live
@@ -445,13 +536,15 @@ shows the copy *is* the product.
 
 `bun test`, with the weight on the pure core:
 
-- **12 probes × 1 fixture each** — a recorded `DnsObservation`, asserting on `diagnosis.code` and on
+- **13 probes × 1 fixture each** — a recorded `DnsObservation`, asserting on `diagnosis.code` and on
   the fix sentence
-- **The transition table** — `unresolvable` changes nothing; an attempt on a proved claim only moves
-  the date forward; hibernation at 7 days; reactivation preserves the token
+- **The demo catalogue** — one domain per screen, covering every status, all three outcomes and
+  every code, so the fake, the docs page and the video read from one source
+- **The transition table** — `unresolvable` changes nothing; expiry at 7 days; a terminal claim
+  accepts no attempt and its token verifies nothing; no path re-opens a claim
 - **Notification policy** — the 24h ceiling, and "a mass outage sends zero emails"
 - **`DomainName.parse`** — punycode, trailing dot, `www`, PSL, and the list of normalisations
-- **Boundary guard** — a test that fails if anything under `core/` imports an adapter
+- **Boundary guard** — a test that fails when a layer or a context boundary is crossed
 - One end-to-end smoke test on the happy path
 
 `DnsPort` has two implementations: real DoH, and a fake replaying recorded responses. The fake is
@@ -463,7 +556,7 @@ what makes the demo deterministic — the video cannot depend on live DNS.
 |---|---|---|
 | `node:dns` with `setServers` under Bun | 10 lines resolving the authoritative NS of a known domain | `dns-packet` over `Bun.udpSocket()` (~half a day) |
 | A verified domain on the Resend account for sending | confirm before anything else — it blocks magic link and every email | Google OAuth gets the reviewer in |
-| Reproducing the 12 probes | build the test zone **early** — without it the success criterion cannot be shown | — |
+| Reproducing the 13 probes | build the test zone **early** — without it the success criterion cannot be shown | — |
 | The Worker proxy adding a hop the SPA feels | measure `/api/health` through the proxy against the origin | separate hostnames and pay the CORS cost |
 
 ---
@@ -476,12 +569,12 @@ One week, one developer. Every day ends with something demonstrable and live —
 | Day | What | Done when |
 |---|---|---|
 | **D1** | Skeleton live: spikes, Bun monorepo, Elysia, blank SPA, Worker proxy, Neon, Railway | `ownsi.dev` responds and `/api/health` comes back through the proxy |
-| **D2** | Pure core: `DomainName`, `Zone`, probes, `diagnose`, `transition`, `schedule` | `bun test` covers the 12 probes and the transition table, and the boundary guard is in CI |
+| **D2** | Pure core: `DomainName`, `Zone`, probes, `diagnose`, `transition`, `schedule` | `bun test` covers the 13 probes and the transition table, and the boundary guard is in CI |
 | **D3** | Real verification: DoH quorum, authoritative path, `claimDomain`, `verifyClaim`, persistence, timeline, ~6 providers | a test domain with the right TXT goes to proved unattended; a planted mistake names the right cause |
 | **D4** | Clock and identity: Inngest per-claim scheduling, better-auth with magic link and Google, state-change emails with the 24h ceiling | I close the tab, the record propagates, the email arrives |
 | **D5** | The main flow in the browser: zone reading → sign-in → record screen with live state → proved | the whole happy path runs with no Postman |
-| **D6** | Recovery and coexistence: archive, reactivate through autocomplete, resume from dormant, coexistence email, "that wasn't me" advisory, `/p/:slug` with OG tags | I delete a proved domain, type it again, and the proof returns without opening a DNS panel |
-| **D7** | Docs and demo: `/docs`, a real test zone with the 12 failures pre-planted, the recorded DNS fake, README, and the 3–5 minute video | each of the 12 probes has a domain reproducing it live |
+| **D6** | Recovery and coexistence: expiry with its D+6 warning, cancel, archive, claim history under the autocomplete, coexistence email, "that wasn't me" advisory, `/p/:slug` with OG tags | I archive a proved domain, type it again, and the proof is still there and still dated |
+| **D7** | Docs and demo: `/docs`, a real test zone with the 13 failures pre-planted, the recorded DNS fake, README, and the 3–5 minute video | each of the 13 probes has a domain reproducing it live |
 
 **Cut ladder.** If it slips, cut bottom-up; what is above is never sacrificed for what is below.
 
@@ -489,7 +582,7 @@ One week, one developer. Every day ends with something demonstrable and live —
 2. The public proof page (the proof becomes an internal screen)
 3. The "that wasn't me" advisory (the coexistence email survives)
 4. Mapped providers: from 6 to 3 plus a generic fallback
-5. Probes: from 12 to the 6 most frequent
+5. Probes: from 13 to the 6 most frequent
 
-**Never cut:** the three-valued outcome, the named diagnosis, the pending screen, and recovery
-through reactivation. Those are the four the brief asks for by name.
+**Never cut:** the three-valued outcome, the named diagnosis, the pending screen, and starting over
+without losing what happened. Those are the four the brief asks for by name.

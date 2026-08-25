@@ -1,5 +1,7 @@
 import { openapi } from "@elysiajs/openapi"
 import { Elysia } from "elysia"
+import { claimsApp } from "./claims/claims.app.ts"
+import { type ClaimsModuleOverrides, createClaimsModule } from "./claims/claims.module.ts"
 import type { AppConfig } from "./config.ts"
 import { dnsApp } from "./dns/dns.app.ts"
 import { createDnsModule, type DnsModuleOverrides } from "./dns/dns.module.ts"
@@ -16,6 +18,7 @@ export type AppOverrides = {
   readonly clock?: Clock
   readonly sendMagicLink?: SendMagicLink
   readonly dns?: DnsModuleOverrides
+  readonly claims?: ClaimsModuleOverrides
 }
 
 export function createApp(config: AppConfig, overrides: AppOverrides = {}) {
@@ -25,11 +28,15 @@ export function createApp(config: AppConfig, overrides: AppOverrides = {}) {
 
   const auth = createAuth({ config: config.auth, database, sendMagicLink })
   const dns = createDnsModule({ config: config.dns, database, clock }, overrides.dns)
+  const claims = createClaimsModule({ config: config.claims, clock }, overrides.claims)
+
+  const session = sessionPlugin(createCheckSession(auth))
 
   const api = new Elysia({ prefix: "/api" })
-    .use(sessionPlugin(createCheckSession(auth)))
+    .use(session)
     .use(healthRoutes(database))
     .use(dnsApp(dns))
+    .use(claimsApp(claims, session))
 
   return new Elysia().use(openapi()).use(api).mount(auth.handler)
 }

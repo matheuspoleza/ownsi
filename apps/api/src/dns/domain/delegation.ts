@@ -1,5 +1,5 @@
+import { type DomainName, zoneCandidates } from "../../shared/domain-name.ts"
 import type { AnsweredDns, RecordType } from "./dns.ts"
-import { type DomainName, zoneCandidates } from "./domain-name.ts"
 import type { DnsResolver } from "./ports.ts"
 
 export type Delegation =

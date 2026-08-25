@@ -83,6 +83,7 @@ const CONFIG: AppConfig = {
     zoneCacheTtlSeconds: 300,
     soaBudgetMs: 2_500,
   },
+  claims: { driver: "demo" },
 }
 
 describe("the README map", () => {

@@ -1,5 +1,5 @@
 import { getDomain, getPublicSuffix } from "tldts"
-import { err, ok, type Result } from "../../shared/result.ts"
+import { err, ok, type Result } from "./result.ts"
 
 export type Normalisation =
   | "lowercased"

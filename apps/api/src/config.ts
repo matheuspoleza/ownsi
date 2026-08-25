@@ -1,3 +1,4 @@
+import type { ClaimsConfig } from "./claims/claims.config.ts"
 import type { DnsConfig } from "./dns/dns.config.ts"
 import type { AuthConfig, GoogleCredentials } from "./shared/auth.ts"
 import type { MailerConfig } from "./shared/mailer.ts"
@@ -9,6 +10,7 @@ export type AppConfig = {
   readonly auth: AuthConfig
   readonly mailer: MailerConfig
   readonly dns: DnsConfig
+  readonly claims: ClaimsConfig
 }
 
 type Environment = Record<string, string | undefined>
@@ -40,6 +42,7 @@ export function loadConfig(source: Environment = process.env): AppConfig {
       zoneCacheTtlSeconds: integer(source.ZONE_CACHE_TTL_SECONDS, 300),
       soaBudgetMs: integer(source.SOA_BUDGET_MS, 2_500),
     },
+    claims: { driver: "demo" },
   }
 }
 
