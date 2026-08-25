@@ -1,6 +1,10 @@
 import { type Static, type TSchema, t } from "elysia"
-import { type Challenge, type Diagnosis, explain } from "../../shared/diagnosis.ts"
 import { unreachable } from "../../shared/result.ts"
+import {
+  type Challenge,
+  type Diagnosis,
+  explain,
+} from "../../verification/verification.contract.ts"
 import type { DomainView } from "../application/domain-view.ts"
 import { firstVerifiedAt, lastConfirmedAt } from "../domain/account-domain.ts"
 import { type Claim, challengeRecords, isOpen, pendingStatus } from "../domain/claim.ts"
@@ -54,6 +58,7 @@ const OpenClaimResponse = t.Object({
   lastOutcome: LastOutcome,
   diagnosis: t.Union([DiagnosisResponse, t.Null()]),
   waitEstimate: t.Union([WaitEstimateResponse, t.Null()]),
+  nextCheckAt: t.String(),
   expiresAt: t.String(),
   createdAt: t.String(),
 })
@@ -131,6 +136,7 @@ export function toClaimResponse(claim: Claim, domain: Domain): Static<typeof Cla
       status: pendingStatus(claim),
       records: [...challengeRecords(claim, domain)],
       waitEstimate: claim.waitEstimate,
+      nextCheckAt: claim.nextCheckAt.toISOString(),
       expiresAt: claim.expiresAt.toISOString(),
     }
   }

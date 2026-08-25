@@ -1,5 +1,6 @@
 import type { Clock } from "../shared/clock.ts"
 import type { Database } from "../shared/database.ts"
+import { createDescribeZone } from "./application/describe-zone.ts"
 import { createReadZone, type ReadZone } from "./application/read-zone.ts"
 import { createFindDelegation, withFailover } from "./domain/delegation.ts"
 import type { AskNameserver, DnsResolver, ZoneRepository } from "./domain/ports.ts"
@@ -8,8 +9,9 @@ import { dohResolver } from "./infra/doh-resolver.ts"
 import { fakeNameserver, fakeResolver } from "./infra/fake-resolver.ts"
 import { DEMO_FIXTURES } from "./infra/fixtures.ts"
 import { nodeNameserver } from "./infra/nameserver.ts"
-import { inMemoryZoneRepository, postgresZoneRepository } from "./infra/zone-repository.ts"
+import { postgresZoneRepository } from "./infra/zone-repository.ts"
 import type { ZonesConfig } from "./zones.config.ts"
+import type { DescribeZone } from "./zones.contract.ts"
 
 export type ZonesModuleDeps = {
   readonly config: ZonesConfig
@@ -25,6 +27,7 @@ export type ZonesModuleOverrides = {
 
 export type ZonesModule = {
   readonly readZone: ReadZone
+  readonly describeZone: DescribeZone
 }
 
 export function createZonesModule(
@@ -44,8 +47,7 @@ export function createZonesModule(
     overrides.askNameserver ??
     (faked ? fakeNameserver(DEMO_FIXTURES) : nodeNameserver(config.soaBudgetMs))
 
-  const zones =
-    overrides.zones ?? (faked ? inMemoryZoneRepository() : postgresZoneRepository(deps.database))
+  const zones = overrides.zones ?? postgresZoneRepository(deps.database)
 
   const resolve = withFailover(resolvers)
 
@@ -57,5 +59,5 @@ export function createZonesModule(
     cacheTtlSeconds: config.zoneCacheTtlSeconds,
   })
 
-  return { readZone }
+  return { readZone, describeZone: createDescribeZone(readZone) }
 }

@@ -1,3 +1,4 @@
+import { joinTextChunks } from "../../shared/txt-chunks.ts"
 import {
   type AnswerOrigin,
   answered,
@@ -103,12 +104,6 @@ function toRecord(entry: DohEntry): DnsRecord[] {
       data: type === "TXT" ? joinTextChunks(entry.data) : entry.data.replace(/\.$/, ""),
     },
   ]
-}
-
-function joinTextChunks(data: string): string {
-  const chunks = data.match(/"(?:[^"\\]|\\.)*"/g)
-  if (!chunks) return data.replace(/^"|"$/g, "")
-  return chunks.map((chunk) => chunk.slice(1, -1).replace(/\\(.)/g, "$1")).join("")
 }
 
 function soaFromAuthority(authority: readonly DohEntry[]): SoaRecord | null {

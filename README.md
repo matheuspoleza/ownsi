@@ -33,7 +33,7 @@ Needs [Bun](https://bun.sh) and a running Docker Desktop.
 ```sh
 cp .env.example .env
 bun install
-bun run setup     # brings up Postgres, migrates and seeds the database
+bun run setup     # brings up Postgres and the Inngest Dev Server, and migrates
 bun run dev       # API on :3000, front end on :5173
 ```
 
@@ -52,12 +52,12 @@ a single origin — the same shape the Worker gives us in production (PRD §3.7)
 
 | Command | What it does |
 |---|---|
-| `bun run setup` | infra + migrate + seed, from scratch |
+| `bun run setup` | infra + migrate, from scratch |
 | `bun run dev` | api and web in parallel |
 | `bun run dev:docs` | the Mintlify site, after regenerating what is generated |
 | `bun run docs:emit` | rewrite `openapi.json` and the diagnostics catalogue from the code |
 | `bun run infra:up` / `infra:down` / `infra:logs` | docker compose |
-| `bun run db:migrate` / `db:seed` / `db:reset` / `db:studio` | Prisma |
+| `bun run db:migrate` / `db:reset` / `db:studio` | Prisma |
 | `bun run build` | build every package |
 | `bun run test` | `bun test` over the core |
 | `bun run lint` / `bun run check` | Biome |
@@ -73,13 +73,21 @@ packages. The `.env` sits at the root and reaches each app through `--env-file`.
 email — on a design system in `packages/ui`: brand tokens lifted from the canvas, shadcn/ui
 primitives, and the meerkat and dot-grid world map as real assets.
 
-Reading the zone is wired to the real endpoint. Sending the magic link is still a
-front-end stand-in in `apps/web/src/api/auth.api.ts`, waiting on the `auth` context —
-better-auth's client with Resend behind it.
+Reading the zone and sending the magic link are both wired to the real thing:
+`apps/web/src/api/auth.api.ts` calls better-auth's client, and the `auth` context behind
+it renders the email and hands it to Resend.
+
+**A claim that runs on its own.** Opening one writes a Postgres row and wakes an Inngest
+durable function that watches it until it becomes history — checking the zone on an
+interval that widens with the claim's age, backing off when a resolver is down, and
+stopping the moment the claim is proved, canceled or seven days old. What it finds comes
+back as one of thirteen named diagnoses, and the emails a claim owes — proved, the D+1
+and D+3 nudges, the D+6 warning, and the notice to anyone else claiming the same
+name — fall out of that as data, under a 24-hour ceiling per kind.
 
 `normalizeDomain` in `apps/web/src/lib/domain.utils.ts` is the field's own copy of the entry
 normalisation, so the input can answer before a round trip; the authoritative version —
-with the public-suffix warning — lives in `apps/api/src/dns/domain/domain-name.ts`.
+with the public-suffix warning — lives in `apps/api/src/shared/domain-name.ts`.
 
 ### `GET /api/zones/:name`
 

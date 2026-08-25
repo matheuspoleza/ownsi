@@ -5,6 +5,7 @@ import { end, type OpenClaim } from "../domain/claim.ts"
 import type { AccountDomainRepository } from "../domain/ports.ts"
 import type { DomainView, ViewDomain } from "./domain-view.ts"
 import type { DomainNotFound } from "./read-domain.ts"
+import type { RunAttempt } from "./run-attempt.ts"
 
 export type ClaimEnded = { readonly type: "claim_ended" }
 
@@ -27,8 +28,12 @@ export function createCancelClaim(deps: ClaimActionDeps): ClaimAction {
   return onOpenClaim(deps, (record, open, now) => withClaim(record, end(open, "canceled", now)))
 }
 
-export function createRequestCheck(deps: ClaimActionDeps): ClaimAction {
-  return onOpenClaim(deps, (record) => record)
+export type RequestCheckDeps = ClaimActionDeps & {
+  readonly runAttempt: RunAttempt
+}
+
+export function createRequestCheck(deps: RequestCheckDeps): ClaimAction {
+  return onOpenClaim(deps, (record, open, now) => deps.runAttempt(record, open, now))
 }
 
 export function createArchiveDomain(deps: ClaimActionDeps): ClaimAction {
@@ -44,7 +49,11 @@ export function createArchiveDomain(deps: ClaimActionDeps): ClaimAction {
 
 function onOpenClaim(
   deps: ClaimActionDeps,
-  apply: (record: AccountDomain, open: OpenClaim, now: Date) => AccountDomain,
+  apply: (
+    record: AccountDomain,
+    open: OpenClaim,
+    now: Date,
+  ) => AccountDomain | Promise<AccountDomain>,
 ): ClaimAction {
   return async ({ userId, id }) => {
     const record = await deps.domains.findById(userId, id)
@@ -53,7 +62,7 @@ function onOpenClaim(
     const open = pendingClaim(record)
     if (!open) return err({ type: "claim_ended" })
 
-    const moved = apply(record, open, deps.clock())
+    const moved = await apply(record, open, deps.clock())
     await deps.domains.save(moved)
     return ok(await deps.view(moved))
   }

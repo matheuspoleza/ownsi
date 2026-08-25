@@ -4,8 +4,8 @@ import {
   CLAIM_STATES,
   CLAIM_STATUSES,
   statusWhilePending,
-} from "../../src/shared/claim-lifecycle.ts"
-import { DEMO_DOMAINS, type DemoClaim, type DemoDomain } from "../../src/shared/demo.ts"
+} from "../../src/domains/domain/claim-lifecycle.ts"
+import { DEMO_DOMAINS, type DemoClaim, type DemoDomain } from "../../src/domains/infra/demo.ts"
 
 const claimsOf = (domain: DemoDomain): readonly DemoClaim[] => [domain.claim, ...domain.history]
 

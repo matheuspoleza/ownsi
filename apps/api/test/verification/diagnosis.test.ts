@@ -1,12 +1,12 @@
 import { describe, expect, test } from "bun:test"
-import { DEMO_DOMAINS, DEMO_TOKEN } from "../../src/shared/demo.ts"
+import { DEMO_DOMAINS, DEMO_TOKEN } from "../../src/domains/infra/demo.ts"
 import {
   type Challenge,
   DIAGNOSIS_CODES,
   type Diagnosis,
   explain,
   formatDuration,
-} from "../../src/shared/diagnosis.ts"
+} from "../../src/verification/domain/diagnosis.ts"
 
 type Diagnosed = {
   readonly domain: string

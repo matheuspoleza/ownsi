@@ -1,13 +1,14 @@
 import type { Clock } from "../../shared/clock.ts"
 import { type DomainNameError, parseDomainName } from "../../shared/domain-name.ts"
 import { err, ok, type Result } from "../../shared/result.ts"
-import { type AccountDomain, reclaim } from "../domain/account-domain.ts"
+import { type AccountDomain, pendingClaim, reclaim } from "../domain/account-domain.ts"
 import { openClaim } from "../domain/claim.ts"
 import { nameDomain } from "../domain/domain.ts"
 import type {
   AccountDomainRepository,
   GenerateId,
   GenerateToken,
+  ScheduleClaim,
   StartDomain,
 } from "../domain/ports.ts"
 import type { DomainView, ViewDomain } from "./domain-view.ts"
@@ -28,6 +29,7 @@ export type ClaimDomainDeps = {
   readonly generateId: GenerateId
   readonly generateToken: GenerateToken
   readonly startDomain: StartDomain
+  readonly scheduleClaim: ScheduleClaim
   readonly view: ViewDomain
   readonly clock: Clock
 }
@@ -64,6 +66,17 @@ export function createClaimDomain(deps: ClaimDomainDeps): ClaimDomain {
         })
 
     await deps.domains.save(record)
+
+    const open = pendingClaim(record)
+    if (open) {
+      await deps.scheduleClaim({
+        userId,
+        domainId: record.domain.id,
+        claimId: open.id,
+        checkAt: open.nextCheckAt,
+      })
+    }
+
     return ok(await deps.view(record))
   }
 }

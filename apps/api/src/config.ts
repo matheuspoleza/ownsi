@@ -1,6 +1,8 @@
+import type { AuthConfig, GoogleCredentials } from "./auth/auth.config.ts"
 import type { DomainsConfig } from "./domains/domains.config.ts"
-import type { AuthConfig, GoogleCredentials } from "./shared/auth.ts"
-import type { MailerConfig } from "./shared/mailer.ts"
+import type { MailerConfig } from "./shared/email.ts"
+import type { InngestConfig } from "./shared/inngest.ts"
+import type { VerificationConfig } from "./verification/verification.config.ts"
 import type { ZonesConfig } from "./zones/zones.config.ts"
 
 export type AppConfig = {
@@ -9,7 +11,9 @@ export type AppConfig = {
   readonly databaseUrl: string
   readonly auth: AuthConfig
   readonly mailer: MailerConfig
+  readonly inngest: InngestConfig
   readonly zones: ZonesConfig
+  readonly verification: VerificationConfig
   readonly domains: DomainsConfig
 }
 
@@ -35,6 +39,7 @@ export function loadConfig(source: Environment = process.env): AppConfig {
       google: googleCredentials(source),
     },
     mailer: mailerConfig(source),
+    inngest: inngestConfig(source),
     zones: {
       driver: source.DNS_DRIVER === "fake" ? "fake" : "doh",
       recursiveResolvers: ["cloudflare", "google", "quad9"],
@@ -42,7 +47,26 @@ export function loadConfig(source: Environment = process.env): AppConfig {
       zoneCacheTtlSeconds: integer(source.ZONE_CACHE_TTL_SECONDS, 300),
       soaBudgetMs: integer(source.SOA_BUDGET_MS, 2_500),
     },
-    domains: { driver: "demo" },
+    verification: {
+      driver: source.DNS_DRIVER === "fake" ? "fake" : "doh",
+      recursiveResolvers: ["cloudflare", "google", "quad9"],
+      resolverTimeoutMs: integer(source.DNS_RESOLVER_TIMEOUT_MS, 4_000),
+      authoritativeBudgetMs: integer(source.AUTHORITATIVE_BUDGET_MS, 2_500),
+    },
+    domains: { driver: source.DOMAINS_DRIVER === "demo" ? "demo" : "postgres", appUrl },
+  }
+}
+
+function inngestConfig(source: Environment): InngestConfig {
+  const isDev = source.INNGEST_DEV === "1"
+
+  return {
+    driver: source.INNGEST_DRIVER === "manual" ? "manual" : "inngest",
+    id: "ownsi",
+    isDev,
+    baseUrl: isDev ? (source.INNGEST_BASE_URL ?? null) : null,
+    eventKey: source.INNGEST_EVENT_KEY ?? "",
+    signingKey: source.INNGEST_SIGNING_KEY ?? "",
   }
 }
 

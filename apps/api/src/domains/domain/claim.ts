@@ -1,11 +1,7 @@
-import type {
-  ClaimStatus,
-  EndedState,
-  PendingStatus,
-  WaitEstimate,
-} from "../../shared/claim-lifecycle.ts"
-import { CLAIM_WINDOW_DAYS, statusWhilePending } from "../../shared/claim-lifecycle.ts"
-import { CHALLENGE_LABEL, challengeHost, type Diagnosis } from "../../shared/diagnosis.ts"
+import type { Diagnosis } from "../../verification/verification.contract.ts"
+import { CHALLENGE_LABEL, challengeHost } from "../../verification/verification.contract.ts"
+import type { ClaimStatus, EndedState, PendingStatus, WaitEstimate } from "./claim-lifecycle.ts"
+import { CLAIM_WINDOW_DAYS, statusWhilePending } from "./claim-lifecycle.ts"
 import type { Domain } from "./domain.ts"
 
 export type LastCheck =
@@ -13,7 +9,7 @@ export type LastCheck =
   | { readonly outcome: "absent"; readonly diagnosis: Diagnosis; readonly at: Date }
   | { readonly outcome: "unresolvable"; readonly at: Date }
 
-type ClaimFacts = {
+export type ClaimFacts = {
   readonly id: string
   readonly userId: string
   readonly domainId: string
@@ -25,6 +21,8 @@ type ClaimFacts = {
 export type OpenClaim = ClaimFacts & {
   readonly state: "pending"
   readonly expiresAt: Date
+  readonly nextCheckAt: Date
+  readonly consecutiveFailures: number
   readonly waitEstimate: WaitEstimate | null
 }
 
@@ -34,6 +32,12 @@ export type EndedClaim = ClaimFacts & {
 }
 
 export type Claim = OpenClaim | EndedClaim
+
+export type ClaimChallenge = {
+  readonly domain: string
+  readonly token: string
+  readonly previousTokens: readonly string[]
+}
 
 export type ChallengeRecord = {
   readonly host: string
@@ -52,6 +56,7 @@ export type NewClaim = {
 
 const FIRST_CHECK_SECONDS = 30
 const MILLISECONDS_IN_DAY = 86_400_000
+const MILLISECONDS_IN_SECOND = 1_000
 
 export function openClaim(params: NewClaim): OpenClaim {
   return {
@@ -63,12 +68,18 @@ export function openClaim(params: NewClaim): OpenClaim {
     lastCheck: null,
     waitEstimate: { reason: "first_check", secondsRemaining: FIRST_CHECK_SECONDS },
     expiresAt: daysAfter(params.openedAt, CLAIM_WINDOW_DAYS),
+    nextCheckAt: secondsAfter(params.openedAt, FIRST_CHECK_SECONDS),
+    consecutiveFailures: 0,
     createdAt: params.openedAt,
   }
 }
 
 export function daysAfter(instant: Date, days: number): Date {
   return new Date(instant.getTime() + days * MILLISECONDS_IN_DAY)
+}
+
+export function secondsAfter(instant: Date, seconds: number): Date {
+  return new Date(instant.getTime() + seconds * MILLISECONDS_IN_SECOND)
 }
 
 export function isOpen(claim: Claim): claim is OpenClaim {

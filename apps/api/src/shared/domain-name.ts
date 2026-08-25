@@ -65,22 +65,6 @@ export function parseDomainName(raw: string): Result<DomainName, DomainNameError
   })
 }
 
-export function zoneCandidates(domain: DomainName): readonly string[] {
-  const apex = domain.registrable ?? domain.ascii
-  const labels = domain.ascii.split(".")
-  const apexLabelCount = apex.split(".").length
-
-  const candidates: string[] = []
-  for (let offset = 0; labels.length - offset >= apexLabelCount; offset++) {
-    candidates.push(labels.slice(offset).join("."))
-  }
-  return candidates
-}
-
-export function childHost(domain: DomainName, prefix: string): string {
-  return `${prefix}.${domain.ascii}`
-}
-
 function strip(
   value: string,
   pattern: RegExp,

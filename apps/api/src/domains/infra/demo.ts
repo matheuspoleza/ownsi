@@ -1,5 +1,5 @@
-import type { Coexistence, EndedState, WaitEstimate } from "./claim-lifecycle.ts"
-import type { Diagnosis } from "./diagnosis.ts"
+import type { Diagnosis } from "../../verification/verification.contract.ts"
+import type { Coexistence, EndedState, WaitEstimate } from "../domain/claim-lifecycle.ts"
 
 export type DemoCheck =
   | { readonly outcome: "found" }

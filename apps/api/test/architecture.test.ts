@@ -24,6 +24,14 @@ const REACHES_THE_WORLD = [
   /^better-auth/,
 ]
 
+const CONTEXT_MAP: Record<string, readonly string[]> = {
+  auth: [],
+  zones: [],
+  verification: ["zones"],
+  domains: ["verification"],
+  proof: ["domains"],
+}
+
 const RULES: readonly Rule[] = [
   {
     name: "domain/ stays pure and knows no other layer",
@@ -51,6 +59,11 @@ const RULES: readonly Rule[] = [
     forbids: [/\/infra\//],
   },
   {
+    name: "*.contract.ts publishes its own domain and nothing downstream of it",
+    appliesTo: (path) => path.endsWith(".contract.ts"),
+    forbids: [...REACHES_THE_WORLD, /\.\/(api|application|infra)\//],
+  },
+  {
     name: "shared/ depends on no bounded context",
     appliesTo: (path) => path.startsWith("shared/"),
     forbids: [/\.\.\/(zones|domains|proof|verification)\//],
@@ -67,6 +80,26 @@ async function sourceFiles(directory: string): Promise<string[]> {
     }),
   )
   return files.flat()
+}
+
+async function boundedContexts(): Promise<string[]> {
+  const entries = await readdir(SRC, { withFileTypes: true })
+  return entries
+    .filter((entry) => entry.isDirectory() && entry.name !== "shared")
+    .map((entry) => entry.name)
+}
+
+function reachedContext(
+  context: string,
+  specifier: string,
+  contexts: readonly string[],
+): string | undefined {
+  return contexts.find((other) => other !== context && specifier.includes(`../${other}/`))
+}
+
+function allowed(context: string, reached: string, specifier: string): boolean {
+  const declared = (CONTEXT_MAP[context] ?? []).includes(reached)
+  return declared && specifier.endsWith(`${reached}/${reached}.contract.ts`)
 }
 
 async function importsOf(path: string): Promise<string[]> {
@@ -103,24 +136,41 @@ describe("layer boundaries", () => {
     expect(violations).toEqual([])
   })
 
-  test("bounded contexts do not reach into each other", async () => {
-    const contexts = (await readdir(SRC, { withFileTypes: true }))
-      .filter((entry) => entry.isDirectory() && entry.name !== "shared")
-      .map((entry) => entry.name)
-
+  test("a context reaches another only through its published contract", async () => {
+    const contexts = await boundedContexts()
     const violations: string[] = []
 
     for (const context of contexts) {
       for (const path of await sourceFiles(join(SRC, context))) {
         for (const specifier of await importsOf(path)) {
-          const reached = contexts.find(
-            (other) => other !== context && specifier.includes(`../${other}/`),
-          )
-          if (reached) violations.push(`${relative(SRC, path)} imports ${reached}`)
+          const reached = reachedContext(context, specifier, contexts)
+          if (reached && !allowed(context, reached, specifier)) {
+            violations.push(`${relative(SRC, path)} imports ${specifier}`)
+          }
         }
       }
     }
 
     expect(violations).toEqual([])
+  })
+
+  test("the context map has no cycle", () => {
+    const seen = new Set<string>()
+
+    const walk = (context: string, path: readonly string[]): string[] => {
+      if (path.includes(context)) return [...path, context]
+      seen.add(context)
+      for (const next of CONTEXT_MAP[context] ?? []) {
+        const cycle = walk(next, [...path, context])
+        if (cycle.length > 0) return cycle
+      }
+      return []
+    }
+
+    const cycles = Object.keys(CONTEXT_MAP).flatMap((context) =>
+      seen.has(context) ? [] : [walk(context, [])],
+    )
+
+    expect(cycles.filter((cycle) => cycle.length > 0)).toEqual([])
   })
 })

@@ -11,15 +11,79 @@ enum ClaimState {
   PENDING
   PROVED
   EXPIRED
-  DORMANT
-  ARCHIVED
+  CANCELED
 }
 
+enum CheckOutcome {
+  FOUND
+  ABSENT
+  UNRESOLVABLE
+}
+
+enum NoticeKind {
+  PROVED
+  NUDGE
+  EXPIRING
+  COEXISTENCE
+}
+
+enum WaitReason {
+  FIRST_CHECK
+  NEGATIVE_CACHE
+  PROVIDER_PUBLISHING
+}
+
+/// One account's involvement with one name. The same name is claimable by other
+/// accounts at the same time — coexistence is read across rows, never enforced away.
+model Domain {
+  id          String    @id
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  nameAscii   String
+  nameUnicode String
+  archivedAt  DateTime?
+  createdAt   DateTime
+  claims      Claim[]
+
+  @@unique([userId, nameAscii])
+  @@index([nameAscii])
+}
+
+/// `sequence` orders the claims of a domain; the highest is the one in play, the
+/// rest are history. A claim is never reopened, so the order never changes.
 model Claim {
-  id          String     @id @default(cuid())
-  domainAscii String     @unique
-  state       ClaimState @default(PENDING)
-  createdAt   DateTime   @default(now())
+  id                   String        @id
+  sequence             Int           @default(autoincrement())
+  domainId             String
+  domain               Domain        @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  userId               String
+  token                String
+  state                ClaimState
+  expiresAt            DateTime
+  nextCheckAt          DateTime?
+  consecutiveFailures  Int           @default(0)
+  endedAt              DateTime?
+  waitReason           WaitReason?
+  waitSecondsRemaining Int?
+  lastCheckOutcome     CheckOutcome?
+  lastCheckAt          DateTime?
+  lastDiagnosis        Json?
+  createdAt            DateTime
+  sentNotices          SentNotice[]
+
+  @@index([domainId, sequence])
+  @@index([state, nextCheckAt])
+}
+
+/// What we have already said about a claim, so that nothing is said twice inside a day.
+model SentNotice {
+  id      String     @id
+  claimId String
+  claim   Claim      @relation(fields: [claimId], references: [id], onDelete: Cascade)
+  notice  NoticeKind
+  sentAt  DateTime
+
+  @@index([claimId, notice, sentAt])
 }
 
 /// `requestedName` is what a caller asked about; `name` is the zone that answered, which
@@ -47,6 +111,7 @@ model User {
   updatedAt     DateTime  @updatedAt
   sessions      Session[]
   accounts      Account[]
+  domains       Domain[]
 }
 
 model Session {

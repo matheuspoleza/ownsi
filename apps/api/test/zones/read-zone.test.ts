@@ -16,7 +16,7 @@ import {
   fakeResolver,
   unreachableResolver,
 } from "../../src/zones/infra/fake-resolver.ts"
-import { inMemoryZoneRepository } from "../../src/zones/infra/zone-repository.ts"
+import { inMemoryZoneRepository } from "./in-memory-zone-repository.ts"
 
 const NOW = new Date("2026-08-24T12:00:00Z")
 

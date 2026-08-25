@@ -1,7 +1,10 @@
-import { CLAIM_WINDOW_DAYS } from "../../shared/claim-lifecycle.ts"
-import { DEMO_DOMAINS, DEMO_TOKEN, type DemoCheck, type DemoClaim } from "../../shared/demo.ts"
-import { type Claim, daysAfter, type LastCheck, openClaim } from "../domain/claim.ts"
-import type { FindCoexistence, NewAccountDomain, StartDomain } from "../domain/ports.ts"
+import type { NewAccountDomain } from "../domain/account-domain.ts"
+import { type Claim, daysAfter, type LastCheck, openClaim, secondsAfter } from "../domain/claim.ts"
+import { CLAIM_WINDOW_DAYS } from "../domain/claim-lifecycle.ts"
+import type { FindCoexistence, StartDomain } from "../domain/ports.ts"
+import { DEMO_DOMAINS, DEMO_TOKEN, type DemoCheck, type DemoClaim } from "./demo.ts"
+
+const FIRST_DEMO_CHECK_SECONDS = 30
 
 const CATALOGUE = new Map(DEMO_DOMAINS.map((entry) => [entry.domain, entry]))
 
@@ -54,6 +57,8 @@ function replay(demo: DemoClaim, params: NewAccountDomain, index: number): Claim
       state: "pending",
       waitEstimate: demo.waitEstimate,
       expiresAt: daysAfter(openedAt, CLAIM_WINDOW_DAYS),
+      nextCheckAt: secondsAfter(params.now, FIRST_DEMO_CHECK_SECONDS),
+      consecutiveFailures: 0,
     }
   }
 

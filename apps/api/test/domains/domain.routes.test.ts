@@ -2,15 +2,19 @@ import { describe, expect, test } from "bun:test"
 import { Elysia, type Static } from "elysia"
 import type { DomainListResponse, DomainResponse } from "../../src/domains/api/domain.response.ts"
 import { domainRoutes } from "../../src/domains/api/domain.routes.ts"
+import { statusWhilePending } from "../../src/domains/domain/claim-lifecycle.ts"
 import { createDomainsModule } from "../../src/domains/domains.module.ts"
-import { statusWhilePending } from "../../src/shared/claim-lifecycle.ts"
+import { DEMO_DOMAINS, type DemoClaim } from "../../src/domains/infra/demo.ts"
 import { fixedClock } from "../../src/shared/clock.ts"
-import { DEMO_DOMAINS, type DemoClaim } from "../../src/shared/demo.ts"
+import type { Database } from "../../src/shared/database.ts"
 import {
   type CheckSession,
   type SessionUser,
   sessionPlugin,
 } from "../../src/shared/http/session.ts"
+import type { CheckChallenge } from "../../src/verification/verification.contract.ts"
+import { inMemoryDomainRepository } from "./in-memory-domain-repository.ts"
+import { inMemorySentNotices } from "./in-memory-sent-notices.ts"
 
 const ADA: SessionUser = { id: "usr_ada", email: "ada@example.com", name: "Ada" }
 const GRACE: SessionUser = { id: "usr_grace", email: "grace@example.com", name: "Grace" }
@@ -26,12 +30,28 @@ const signedInAs =
 
 const signedOut: CheckSession = async () => ({ type: "anonymous" })
 
+const resolversUnreachable: CheckChallenge = async () => ({
+  type: "unresolvable",
+  resolvers: [],
+})
+
 function server(check: CheckSession = signedInAs(ADA)) {
   let ids = 0
   let tokens = 0
   const module = createDomainsModule(
-    { config: { driver: "demo" }, clock: fixedClock(NOW) },
     {
+      config: { driver: "demo", appUrl: "https://ownsi.dev" },
+      clock: fixedClock(NOW),
+      database: {} as Database,
+      checkChallenge: resolversUnreachable,
+      sendEmail: async () => {},
+      scheduleClaim: async () => {},
+    },
+    {
+      domains: inMemoryDomainRepository(),
+      announce: async () => {},
+      otherClaimants: async () => [],
+      sentNotices: inMemorySentNotices(),
       generateId: (prefix) => `${prefix}_${++ids}`,
       generateToken: () => `ownsi_v1_token_${++tokens}`,
     },
@@ -137,7 +157,22 @@ describe("the session", () => {
 
     const asGrace = new Elysia().use(
       domainRoutes(
-        createDomainsModule({ config: { driver: "demo" }, clock: fixedClock(NOW) }),
+        createDomainsModule(
+          {
+            config: { driver: "demo", appUrl: "https://ownsi.dev" },
+            clock: fixedClock(NOW),
+            database: {} as Database,
+            checkChallenge: resolversUnreachable,
+            sendEmail: async () => {},
+            scheduleClaim: async () => {},
+          },
+          {
+            domains: inMemoryDomainRepository(),
+            announce: async () => {},
+            otherClaimants: async () => [],
+            sentNotices: inMemorySentNotices(),
+          },
+        ),
         sessionPlugin(signedInAs(GRACE)),
       ),
     )
