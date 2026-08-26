@@ -1,3 +1,6 @@
+import { openapi } from "@elysiajs/openapi"
+import { Elysia } from "elysia"
+
 const API_VERSION = "0.1.0"
 
 const DESCRIPTION = `
@@ -70,4 +73,56 @@ export function openApiDocumentation(appUrl: string): OpenApiDocumentation {
       },
     ],
   }
+}
+
+export function openApiPlugin(appUrl: string) {
+  return new Elysia({ name: "shared.openapi" })
+    .onAfterHandle(({ response }) => withoutBodylessContent(response))
+    .use(openapi({ documentation: openApiDocumentation(appUrl) }))
+}
+
+/**
+ * `@elysiajs/openapi` writes `content: { type: "void" }` for a response declared `t.Void()`,
+ * where OAS 3.1 allows only a media type map. A status that carries no body carries no
+ * `content` either, so the key is dropped before the document is published: an OpenAPI reader
+ * strict enough to validate — Mintlify is — rejects the whole document over the one response.
+ */
+export function withoutBodylessContent(document: unknown): unknown {
+  if (!isObject(document) || !isObject(document.paths)) return document
+
+  return { ...document, paths: mapValues(document.paths, pathItemContent) }
+}
+
+function pathItemContent(pathItem: unknown): unknown {
+  return isObject(pathItem) ? mapValues(pathItem, operationContent) : pathItem
+}
+
+function operationContent(operation: unknown): unknown {
+  if (!isObject(operation) || !isObject(operation.responses)) return operation
+
+  return { ...operation, responses: mapValues(operation.responses, responseContent) }
+}
+
+function responseContent(response: unknown): unknown {
+  if (!isObject(response) || !("content" in response) || isMediaTypeMap(response.content)) {
+    return response
+  }
+
+  const { content: _bodyless, ...carriesNoBody } = response
+  return carriesNoBody
+}
+
+function isMediaTypeMap(content: unknown): boolean {
+  return isObject(content) && Object.keys(content).every((mediaType) => mediaType.includes("/"))
+}
+
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+}
+
+function mapValues(
+  source: Record<string, unknown>,
+  transform: (value: unknown) => unknown,
+): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(source).map(([key, value]) => [key, transform(value)]))
 }

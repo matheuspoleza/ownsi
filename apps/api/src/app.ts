@@ -1,4 +1,3 @@
-import { openapi } from "@elysiajs/openapi"
 import { Elysia } from "elysia"
 import { authApp } from "./auth/auth.app.ts"
 import { type AuthModuleOverrides, createAuthModule } from "./auth/auth.module.ts"
@@ -20,7 +19,7 @@ import { createSendEmail, type SendEmail } from "./shared/email.ts"
 import { eventRoutes, type StreamEvent } from "./shared/http/events.routes.ts"
 import { healthRoutes } from "./shared/http/health.routes.ts"
 import { inngestRoutes } from "./shared/http/inngest.routes.ts"
-import { openApiDocumentation } from "./shared/http/openapi.ts"
+import { openApiPlugin } from "./shared/http/openapi.ts"
 import { sessionPlugin } from "./shared/http/session.ts"
 import { createInngest, type InngestClient } from "./shared/inngest.ts"
 import { maskEmail } from "./shared/masked-email.ts"
@@ -186,7 +185,7 @@ export function createApp(config: AppConfig, overrides: AppOverrides = {}) {
     .use(proofApp(proof, session, { appUrl: config.appUrl }))
     .use(verificationApp(verification, session))
 
-  const document = openapi({ documentation: openApiDocumentation(config.appUrl) })
+  const document = openApiPlugin(config.appUrl)
   const server = new Elysia()
     .use(document)
     .use(api)
