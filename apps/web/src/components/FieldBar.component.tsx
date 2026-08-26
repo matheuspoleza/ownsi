@@ -31,11 +31,14 @@ export interface FieldBarProps {
   pending?: boolean
   /** What was typed here came back refused. */
   invalid?: boolean
-  onKeyDown?: (event: KeyboardEvent<HTMLInputElement>) => void
+  /** `commit` is the same beat a suggestion runs, so a key can pick one. */
+  onKeyDown?: (event: KeyboardEvent<HTMLInputElement>, commit: (value: string) => void) => void
   /** The person reached for the bar, as opposed to it having been focused for them. */
   onReach?: () => void
   onBlur?: () => void
   describedBy?: string
+  /** The row the arrow keys are resting on, for a screen reader to read out. */
+  activeDescendant?: string
   /**
    * A popover the field owns, hung under the bar. `commit` runs the same beat the button runs,
    * on a value nobody typed — what a suggestion needs.
@@ -60,6 +63,7 @@ export const FieldBar = ({
   onReach,
   onBlur,
   describedBy,
+  activeDescendant,
   children,
 }: FieldBarProps) => {
   const [submitting, setSubmitting] = useState(false)
@@ -135,13 +139,14 @@ export const FieldBar = ({
             value={value}
             readOnly={committing}
             onChange={(event) => onValueChange(event.target.value)}
-            onKeyDown={onKeyDown}
+            onKeyDown={(event) => onKeyDown?.(event, commit)}
             onPointerDown={onReach}
             onBlur={onBlur}
             placeholder={placeholder}
             aria-label={label}
             aria-invalid={invalid ? true : undefined}
             aria-describedby={describedBy}
+            aria-activedescendant={activeDescendant}
             autoComplete={autoComplete}
             spellCheck={false}
             className="relative z-10 h-full min-w-0 flex-1 bg-transparent font-mono text-[14px] text-foreground outline-none placeholder:text-muted-foreground"
