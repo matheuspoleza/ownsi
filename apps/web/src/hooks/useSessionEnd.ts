@@ -14,9 +14,11 @@ export const useSessionEnd = (): UseSessionEndResult => {
   const mutation = useMutation({
     mutationFn: endSession,
     onSuccess: async () => {
-      await navigate({ to: "/" })
-      queryClient.removeQueries()
       queryClient.setQueryData(SESSION_KEY, null)
+      queryClient.removeQueries({
+        predicate: ({ queryKey }) => queryKey[0] !== SESSION_KEY[0],
+      })
+      await navigate({ to: "/" })
     },
   })
 
