@@ -1,4 +1,6 @@
 @import "tailwindcss";
+@import "@fontsource-variable/eb-garamond";
+@import "@fontsource-variable/figtree";
 @import "@fontsource-variable/inter";
 @import "@fontsource-variable/jetbrains-mono";
 
@@ -128,6 +130,8 @@
   --radius-2xl: 14px;
 
   --font-sans: "Inter Variable", Inter, ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Figtree Variable", Figtree, ui-sans-serif, system-ui, sans-serif;
+  --font-display: "EB Garamond Variable", "EB Garamond", ui-serif, Georgia, serif;
   --font-mono: "JetBrains Mono Variable", "JetBrains Mono", ui-monospace, monospace;
 }
 
@@ -147,13 +151,13 @@
    the vantage points, standing in for a resolver being asked. */
 @keyframes ownsi-ping {
   0% {
-    opacity: 0.7;
-    transform: translate(-50%, -50%) scale(0.5);
+    opacity: 0.45;
+    transform: translate(-50%, -50%) scale(0.6);
   }
-  75%,
+  70%,
   100% {
     opacity: 0;
-    transform: translate(-50%, -50%) scale(2.4);
+    transform: translate(-50%, -50%) scale(2);
   }
 }
 
@@ -171,7 +175,7 @@
 @keyframes ownsi-chip {
   from {
     opacity: 0;
-    transform: translateY(4px);
+    transform: translateY(3px);
   }
   to {
     opacity: 1;

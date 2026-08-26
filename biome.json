@@ -59,6 +59,22 @@
   "overrides": [
     {
       "includes": [
+        "packages/ui/src/components/animate-ui/**"
+      ],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noExplicitAny": "off"
+          },
+          "correctness": {
+            "useExhaustiveDependencies": "off",
+            "useHookAtTopLevel": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": [
         "apps/api/**"
       ],
       "linter": {
