@@ -1,5 +1,5 @@
 import { Badge } from "@ownsi/ui"
-import { Navigate, useParams } from "@tanstack/react-router"
+import { useParams } from "@tanstack/react-router"
 import { Hero, HeroSubtitle, HeroTitle } from "../../components/Hero.component.tsx"
 import { MagicLinkPanel } from "../../components/MagicLinkPanel.component.tsx"
 import { Page } from "../../components/Page.component.tsx"
@@ -11,6 +11,7 @@ import { useZoneState } from "../../hooks/useZoneState.ts"
 import { providerName } from "../../lib/providers.utils.ts"
 import { heroSubtitle } from "./Claim.utils.ts"
 import { ZoneReadout } from "./components/ZoneReadout.component.tsx"
+import { useClaimHandoff } from "./hooks/useClaimHandoff.ts"
 
 const SIGN_IN_DESCRIPTION =
   "The next screen shows the exact TXT record and tracks it live while it propagates. The account is what keeps the claim yours if you close the tab."
@@ -20,9 +21,10 @@ export const ClaimPage = () => {
   const { account, isResolving: isResolvingSession } = useSessionState()
   const { delegation, publishing, isReading, isSlow, failure } = useZoneState({ domain })
 
-  if (account !== null) return <Navigate to="/domains/$domain" params={{ domain }} replace />
+  const signedIn = account !== null
+  const handoff = useClaimHandoff({ domain, signedIn })
 
-  const signIn = !isResolvingSession && !failure
+  const signIn = !isResolvingSession && !signedIn && !failure
 
   return (
     <Page logIn={false}>
@@ -42,9 +44,16 @@ export const ClaimPage = () => {
           {heroSubtitle({
             failure,
             isReading,
+            isOpening: handoff.isOpening,
             publishingMinutes: publishing?.publishingMinutes,
           })}
         </HeroSubtitle>
+
+        {handoff.failure ? (
+          <p role="alert" className="pt-2 text-[12px] text-error">
+            {handoff.failure.message}
+          </p>
+        ) : null}
       </Hero>
 
       <div className="mx-auto grid w-full max-w-[1000px] items-start gap-x-16 gap-y-10 px-6 lg:grid-cols-[minmax(0,468px)_minmax(0,1fr)]">
