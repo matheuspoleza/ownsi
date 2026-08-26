@@ -13,7 +13,9 @@
     ]
   },
   "deploy": {
-    "preDeployCommand": ["cd packages/db && bunx prisma migrate deploy"],
+    "preDeployCommand": [
+      "bun run db:deploy"
+    ],
     "healthcheckPath": "/api/health",
     "healthcheckTimeout": 60,
     "restartPolicyType": "ON_FAILURE",
