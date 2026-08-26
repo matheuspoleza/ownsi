@@ -8,9 +8,7 @@
     "binding": "ASSETS",
     "not_found_handling": "single-page-application"
   },
-  "routes": [
-    { "pattern": "ownsi.dev", "custom_domain": true }
-  ],
+  "routes": [{ "pattern": "ownsi.dev", "custom_domain": true }],
   "ratelimits": [
     { "name": "RL_ZONES", "namespace_id": "1", "simple": { "limit": 12, "period": 60 } },
     { "name": "RL_PROOF", "namespace_id": "2", "simple": { "limit": 30, "period": 60 } }
