@@ -21,6 +21,7 @@
     "db:migrate": "bun --filter @ownsi/db db:migrate",
     "db:deploy": "bun --filter @ownsi/db db:deploy",
     "db:studio": "bun --filter @ownsi/db db:studio",
+    "deploy:web": "turbo run deploy --filter=@ownsi/web",
     "infra:up": "docker compose up -d --wait",
     "infra:down": "docker compose down",
     "infra:logs": "docker compose logs -f",
