@@ -19,6 +19,7 @@
     "check": "biome check --write .",
     "db:generate": "turbo run db:generate",
     "db:migrate": "bun --filter @ownsi/db db:migrate",
+    "db:deploy": "bun --filter @ownsi/db db:deploy",
     "db:studio": "bun --filter @ownsi/db db:studio",
     "infra:up": "docker compose up -d --wait",
     "infra:down": "docker compose down",

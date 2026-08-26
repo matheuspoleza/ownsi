@@ -614,7 +614,7 @@ shows the copy *is* the product.
 |---|---|
 | `ownsi.dev` | the product — add a domain, provider instruction, pending, diagnosis, recovery, coexistence, timeline |
 | `ownsi.dev/p/:slug` | the public proof page |
-| `ownsi.dev/docs` | quickstart, API reference, diagnostics catalogue |
+| `docs.ownsi.dev` | quickstart, API reference, diagnostics catalogue |
 
 ### 3.11 Testing
 

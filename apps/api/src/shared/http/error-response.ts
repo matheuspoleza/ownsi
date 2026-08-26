@@ -1,6 +1,6 @@
 import { t } from "elysia"
 
-const DOCS_BASE_URL = "https://ownsi.dev/docs/errors"
+const DOCS_BASE_URL = "https://docs.ownsi.dev/errors"
 
 export const ErrorResponse = t.Object({
   error: t.Object({

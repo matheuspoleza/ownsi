@@ -16,7 +16,7 @@ import type { Account } from "../api/session.api.ts"
 import { useSessionEnd } from "../hooks/useSessionEnd.ts"
 import { Avatar } from "./Avatar.component.tsx"
 
-const DOCS_URL = "https://ownsi.dev/docs"
+const DOCS_URL = "https://docs.ownsi.dev"
 
 export interface AccountMenuProps {
   account: Account

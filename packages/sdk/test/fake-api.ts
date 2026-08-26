@@ -48,7 +48,7 @@ export function fakeApi(): FakeApi {
 }
 
 export function errorBody(code: string, message: string) {
-  return { error: { code, message, docsUrl: `https://ownsi.dev/docs/errors#${code}` } }
+  return { error: { code, message, docsUrl: `https://docs.ownsi.dev/errors#${code}` } }
 }
 
 export const DOMAIN = {
