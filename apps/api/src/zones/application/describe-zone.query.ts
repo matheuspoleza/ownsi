@@ -1,4 +1,4 @@
-import type { DescribeZone, ZoneDescription } from "../zones.contract.ts"
+import type { DescribeZone, ProviderId, ZoneDescription } from "../zones.contract.ts"
 import type { GetZone, GetZoneError, ZoneStep } from "./get-zone.query.ts"
 
 export function describeZone(readZone: GetZone): DescribeZone {
@@ -17,13 +17,17 @@ function fold(description: ZoneDescription, step: ZoneStep): ZoneDescription {
     case "failed":
       return unreadable(step.error)
     case "delegated":
-      return delegated(step.zone.name, step.zone.nameservers)
+      return delegated(step.zone.name, step.zone.nameservers, step.zone.provider)
     case "published":
       return withAuthority(description, step.negativeCacheTtlSeconds)
   }
 }
 
-function delegated(name: string, nameservers: readonly string[]): ZoneDescription {
+function delegated(
+  name: string,
+  nameservers: readonly string[],
+  provider: ProviderId,
+): ZoneDescription {
   const [first, ...rest] = nameservers
   if (first === undefined) return { type: "not_delegated", name }
 
@@ -31,6 +35,7 @@ function delegated(name: string, nameservers: readonly string[]): ZoneDescriptio
     type: "delegated",
     zoneName: name,
     nameservers: [first, ...rest],
+    provider,
     authority: { type: "silent" },
   }
 }
