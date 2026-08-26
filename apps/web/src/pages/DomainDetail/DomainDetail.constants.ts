@@ -41,8 +41,8 @@ export const NO_CLAIM_MESSAGE: MessageCopy = {
 }
 
 export const CHECKING_MESSAGE: MessageCopy = {
-  headline: "The first check is running",
-  body: "This usually takes a few seconds.",
+  headline: "Nothing has been read yet",
+  body: "ownsi reads DNS half a minute after a claim opens, then every thirty seconds while the record is new.",
 }
 
 export const PROVED_MESSAGE: MessageCopy = {
