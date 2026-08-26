@@ -288,7 +288,7 @@ endpoint means adding the route with its `response` schemas and a `detail: { tag
 description }`, then regenerating; there is no page to write.
 
 `errors.mdx` sits at the docs root because `errorResponse()` builds `docsUrl` as
-`https://ownsi.dev/docs/errors#<code>`. Moving it breaks every error the API has ever returned. Every
+`https://docs.ownsi.dev/errors#<code>`. Moving it breaks every error the API has ever returned. Every
 code passed to `errorResponse()` must have a `## <code>` heading there, and the test checks it.
 
 Prose pages are hand-written and follow the same voice as the rest of the repo: name the true

@@ -131,11 +131,14 @@ There is deliberately no `build` script here: Mintlify builds the site, and runn
 would mean installing Chromium on every job. `bun test` covers internal links and navigation without
 it; `bun run links` is the fuller check, run by hand before a release.
 
-The PRD (§3.9, §3.10) puts the docs at `ownsi.dev/docs`. Mintlify serves them from its own hostname;
-routing them onto the app's origin is a `/docs` prefix on the Cloudflare Worker in `apps/web/worker`,
-alongside the `/api` and `/p` proxies already there. Until that is wired, `docsUrl` on every API
-error points at a path that does not resolve yet — the codes and anchors on `errors.mdx` are already
-correct for when it does.
+The PRD (§3.9, §3.10) puts the docs at `docs.ownsi.dev`, and Mintlify serves that hostname itself —
+a CNAME to its edge, its own certificate, nothing on the app's origin. The Cloudflare Worker in
+`apps/web/worker` therefore proxies only `/api` and `/p`; it knows nothing about the docs.
+
+That is the reason for the subdomain rather than a path on `ownsi.dev`: a path would mean the Worker
+carrying Mintlify's own URL scheme — its asset and playground prefixes live at the domain root, not
+under the subpath — and breaking at the edge whenever the vendor moved them. `docsUrl` on every API
+error resolves to `docs.ownsi.dev/errors#<code>`, which is `errors.mdx` at this root.
 
 ## Still to do
 

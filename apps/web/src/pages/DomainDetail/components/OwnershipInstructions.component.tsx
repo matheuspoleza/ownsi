@@ -21,7 +21,7 @@ export const OwnershipInstructions = ({ domain, provider, record }: OwnershipIns
           Only whoever controls DNS for {domain} can publish this record. That is what makes it
           proof.{" "}
           <a
-            href="https://ownsi.dev/docs"
+            href="https://docs.ownsi.dev"
             target="_blank"
             rel="noreferrer"
             aria-label="Learn how ownsi verifies a domain"

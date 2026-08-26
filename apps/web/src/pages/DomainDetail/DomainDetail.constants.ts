@@ -60,9 +60,9 @@ export const CANCELED_MESSAGE: MessageCopy = {
   body: "Its token stops being accepted, so the record left in the zone is inert. Claiming again issues a new one.",
 }
 
-export const DIAGNOSTICS_URL = "https://ownsi.dev/docs/diagnostics/catalogue"
+export const DIAGNOSTICS_URL = "https://docs.ownsi.dev/diagnostics/catalogue"
 
-export const DISPUTES_URL = "https://ownsi.dev/docs/concepts/claim-lifecycle#coexistence"
+export const DISPUTES_URL = "https://docs.ownsi.dev/concepts/claim-lifecycle#coexistence"
 
 export const DNS_SNAPSHOT_TIP =
   "What your DNS looked like on the day we read it. We do not watch it after that, so this is " +

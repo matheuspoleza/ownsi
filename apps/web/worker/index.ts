@@ -50,7 +50,7 @@ async function enforceRateLimit(request: Request, env: Env, url: URL): Promise<R
       error: {
         code: "rate_limited",
         message: "Too many requests. Wait a moment and try again.",
-        docsUrl: "https://ownsi.dev/docs/errors#rate_limited",
+        docsUrl: "https://docs.ownsi.dev/errors#rate_limited",
       },
     },
     {

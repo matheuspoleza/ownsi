@@ -162,7 +162,7 @@ describe("errors arrive as codes, not as strings to parse", () => {
     const error = await thrown(() => ownsi.claims.create("dom_1"))
 
     expect(error.code).toBe("already_claimed")
-    expect(error.docsUrl).toBe("https://ownsi.dev/docs/errors#already_claimed")
+    expect(error.docsUrl).toBe("https://docs.ownsi.dev/errors#already_claimed")
     expect(error.message).toContain("already has a claim open")
   })
 

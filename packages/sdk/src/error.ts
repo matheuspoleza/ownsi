@@ -27,7 +27,7 @@ export const RETRYABLE: ReadonlySet<OwnsiErrorCode> = new Set([
   "rate_limited",
 ])
 
-const DOCS_BASE_URL = "https://ownsi.dev/docs/errors"
+const DOCS_BASE_URL = "https://docs.ownsi.dev/errors"
 
 const UNREACHABLE_MESSAGE = "We could not reach ownsi. Check your connection and try again."
 
