@@ -5,6 +5,14 @@ export type DomainData = NonNullable<
   Awaited<ReturnType<ReturnType<Treaty["domains"]>["get"]>>["data"]
 >
 
+type ListBody = NonNullable<Awaited<ReturnType<Treaty["domains"]["get"]>>["data"]>
+
+export type ListedDomainData = ListBody["domains"][number]
+
+export type DomainStatus = ListedDomainData["status"]
+
+export type DomainCounts = ListBody["counts"]
+
 /**
  * The two dates a proof page states. Derived across a domain's claims and never stored, so
  * neither can disagree with the claims it is read from.
@@ -14,7 +22,7 @@ export type Proof = {
   readonly lastConfirmedAt: string
 }
 
-export type Domain = DomainData & {
+export type DomainActions = {
   /** Opens a claim: mints the token and starts the verification behind it. */
   readonly claim: () => Promise<ClaimDetail>
   readonly claims: () => Promise<readonly Claim[]>
@@ -26,20 +34,46 @@ export type Domain = DomainData & {
   readonly refresh: () => Promise<Domain>
 }
 
+export type Domain = DomainData & DomainActions
+
+/** A domain as the list renders it: the name, plus where the claim in play on it stands. */
+export type ListedDomain = ListedDomainData & DomainActions
+
+export type DomainQuery = {
+  /** Narrows to one name, in punycode. The way a page reads a domain it knows by name. */
+  readonly name?: string
+  readonly status?: DomainStatus
+  /** The `nextCursor` of the page before this one. Absent asks for the first. */
+  readonly cursor?: string
+  readonly limit?: number
+}
+
+export type DomainPage = {
+  readonly domains: readonly ListedDomain[]
+  /** Every status on the account, not only the ones this page happens to carry. */
+  readonly counts: DomainCounts
+  readonly nextCursor: string | null
+}
+
 export type Domains = {
   /** Idempotent on the name: asking twice returns the same domain. */
   readonly findOrCreate: (name: string) => Promise<Domain>
   readonly get: (domainId: string) => Promise<Domain>
-  readonly list: () => Promise<readonly Domain[]>
+  readonly list: (query?: DomainQuery) => Promise<DomainPage>
 }
 
 export function domains(api: Treaty): Domains {
   return {
     findOrCreate: async (name) => asDomain(api, await unwrap(api.domains.post({ domain: name }))),
     get: (domainId) => readDomain(api, domainId),
-    list: async () => {
-      const { domains: owned } = await unwrap(api.domains.get())
-      return owned.map((domain) => asDomain(api, domain))
+    list: async (query = {}) => {
+      const page = await unwrap(api.domains.get({ query }))
+
+      return {
+        domains: page.domains.map((domain) => asDomain(api, domain)),
+        counts: page.counts,
+        nextCursor: page.nextCursor,
+      }
     },
   }
 }
@@ -48,7 +82,7 @@ async function readDomain(api: Treaty, domainId: string): Promise<Domain> {
   return asDomain(api, await unwrap(api.domains({ id: domainId }).get()))
 }
 
-function asDomain(api: Treaty, data: DomainData): Domain {
+function asDomain<Data extends DomainData>(api: Treaty, data: Data): Data & DomainActions {
   const claimsOn = async () =>
     (await unwrap(api.claims.get({ query: { domainId: data.id } }))).claims
 

@@ -100,6 +100,31 @@ Postgres is `claimId`, because there is one database and `delete permanently` ne
 key; the type says `subjectId` and the repository translates in one line. The code is what
 separates. The schema is honest that it does not, yet.
 
+### A reaction runs once; a broadcast reaches every screen
+
+`src/app.ts` hangs two different things off the same topics, and they are not the same kind of
+thing.
+
+A **reaction** is a policy — `attempt.succeeded` proves the claim, `exhausted` expires it. It must
+run exactly once, in the process that raised the event, and `inProcessBus` is what guarantees
+that.
+
+A **broadcast** is a notice to whatever screens the account has open, delivered over
+`GET /api/events`. It must reach every process holding one of those connections. `shared/broadcast.ts`
+keeps that register, scoped by user, and the messages carry no state: each names what moved, and
+the client reads the resource back over its own route. A message that never arrives is therefore
+late data, never wrong data.
+
+The two must not be merged. The day the broadcast moves to Postgres `LISTEN/NOTIFY` so that a
+second replica can serve a stream, every replica hears every message — which is correct for a
+notice and catastrophic for a policy: `proveClaim` would run N times and the claimant would get N
+emails. The bus stays in process; only the broadcast crosses.
+
+Until it does cross, the in-process register is what caps the API at one replica while a stream is
+live. It is not a deploy-window problem — the connection dies with the old process and the client
+reconnects — it is a scaling one, and it fails silently, so the safety net on the client (a slow
+refetch, and one on focus) is part of the design rather than a belt on top of it.
+
 ### The third outcome has no topic
 
 `unresolvable` — our failure to reach DNS — records an attempt, widens the backoff and publishes

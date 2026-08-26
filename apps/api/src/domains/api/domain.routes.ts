@@ -10,11 +10,16 @@ import { notFound, toFindOrCreateDomainError } from "./domain.errors.ts"
 import {
   DomainListResponse,
   DomainResponse,
+  DomainStatusValue,
   toDomainListResponse,
   toDomainResponse,
 } from "./domain.response.ts"
 
 const MAX_DOMAIN_LENGTH = 253
+
+const DOMAINS_PER_PAGE = 20
+
+const MOST_PER_PAGE = 100
 
 export type DomainHandlers = {
   readonly findOrCreateDomain: FindOrCreateDomain
@@ -55,18 +60,37 @@ export function domainRoutes(handlers: DomainHandlers, session: SessionPlugin) {
     )
     .get(
       "/",
-      async ({ user }) => {
-        const owned = await handlers.listDomains({ userId: user.id })
+      async ({ user, query }) => {
+        const page = await handlers.listDomains({
+          userId: user.id,
+          name: query.name ?? null,
+          status: query.status ?? null,
+          after: query.cursor ?? null,
+          limit: query.limit ?? DOMAINS_PER_PAGE,
+        })
 
-        return toDomainListResponse(owned.filter((domain) => domain.archivedAt === null))
+        return toDomainListResponse(page)
       },
       {
+        query: t.Object({
+          name: t.Optional(t.String({ minLength: 1, maxLength: MAX_DOMAIN_LENGTH })),
+          status: t.Optional(DomainStatusValue),
+          cursor: t.Optional(t.String({ minLength: 1 })),
+          limit: t.Optional(
+            t.Number({ minimum: 1, maximum: MOST_PER_PAGE, default: DOMAINS_PER_PAGE }),
+          ),
+        }),
         session: true,
         response: { 200: DomainListResponse, 401: ErrorResponse },
         detail: {
           tags: ["Domains"],
           summary: "List the domains on this account",
-          description: "Archived domains are left out; they are still readable by id.",
+          description:
+            "Newest first, one page at a time: pass `nextCursor` back as `cursor` for the " +
+            "next one. Each domain carries the state of the claim in play on it, and " +
+            "`counts` tallies every status on the account, not only this page. `name` " +
+            "narrows to one, which is how a page reads a domain it only knows by name. " +
+            "Archived domains are left out; they are still readable by id.",
         },
       },
     )

@@ -75,6 +75,77 @@ describe("reading them back", () => {
   })
 })
 
+describe("the list a dashboard reads", () => {
+  const named = async (app: ReturnType<typeof harness>, name: string) =>
+    bodyOf<DomainBody>(await app.post("/api/domains", { domain: name }))
+
+  test("a name nobody claimed yet says so, and the tally agrees", async () => {
+    const app = harness()
+    await named(app, "acme.com")
+
+    const page = await bodyOf<DomainListBody>(await app.get("/api/domains"))
+
+    expect(page.domains[0]).toMatchObject({ status: "unclaimed", claimId: null })
+    expect(page.counts).toMatchObject({ unclaimed: 1, pending: 0 })
+    expect(page.nextCursor).toBeNull()
+  })
+
+  test("opening a claim moves the name, and carries what the row renders", async () => {
+    const app = harness()
+    const domain = await named(app, "acme.com")
+    await app.post("/api/claims", { domainId: domain.id })
+
+    const page = await bodyOf<DomainListBody>(await app.get("/api/domains"))
+
+    expect(page.domains[0]).toMatchObject({ status: "pending" })
+    expect(page.domains[0]?.verificationId).not.toBeNull()
+    expect(page.domains[0]?.claimStartedAt).not.toBeNull()
+    expect(page.counts).toMatchObject({ unclaimed: 0, pending: 1 })
+  })
+
+  test("the cursor walks the account without repeating or skipping a name", async () => {
+    const app = harness()
+    for (const name of ["one.com", "two.com", "three.com"]) await named(app, name)
+
+    const first = await bodyOf<DomainListBody>(await app.get("/api/domains?limit=2"))
+    expect(first.domains).toHaveLength(2)
+    expect(first.nextCursor).toBe(first.domains[1]?.id ?? "")
+
+    const second = await bodyOf<DomainListBody>(
+      await app.get(`/api/domains?limit=2&cursor=${first.nextCursor}`),
+    )
+
+    expect(second.domains).toHaveLength(1)
+    expect(second.nextCursor).toBeNull()
+    expect([...first.domains, ...second.domains].map((domain) => domain.name)).toEqual([
+      "three.com",
+      "two.com",
+      "one.com",
+    ])
+  })
+
+  test("filtering narrows the page and leaves the tally whole", async () => {
+    const app = harness()
+    const claimed = await named(app, "claimed.com")
+    await named(app, "bare.com")
+    await app.post("/api/claims", { domainId: claimed.id })
+
+    const page = await bodyOf<DomainListBody>(await app.get("/api/domains?status=pending"))
+
+    expect(page.domains.map((domain) => domain.name)).toEqual(["claimed.com"])
+    expect(page.counts).toMatchObject({ pending: 1, unclaimed: 1 })
+  })
+
+  test("a status nobody is in answers an empty page, not an error", async () => {
+    const app = harness()
+    await named(app, "acme.com")
+
+    const response = await app.get("/api/domains?status=proved")
+    expect(response.status).toBe(200)
+    expect((await bodyOf<DomainListBody>(response)).domains).toEqual([])
+  })
+})
+
 describe("erasing one", () => {
   test("delete answers 204 and the domain stops existing", async () => {
     const app = harness()

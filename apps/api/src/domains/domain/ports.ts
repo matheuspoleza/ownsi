@@ -8,4 +8,32 @@ export type DomainRepository = {
   readonly remove: (domainId: string) => Promise<void>
 }
 
+export const DOMAIN_STATUSES = ["unclaimed", "pending", "proved", "expired", "canceled"] as const
+
+export type DomainStatus = (typeof DOMAIN_STATUSES)[number]
+
+export type ListedDomain = {
+  readonly domain: Domain
+  readonly status: DomainStatus
+  readonly claimId: string | null
+  readonly verificationId: string | null
+  readonly claimStartedAt: Date | null
+  readonly claimEndedAt: Date | null
+}
+
+export type DomainCounts = Readonly<Record<DomainStatus, number>>
+
+export type DomainPageRequest = {
+  readonly userId: string
+  readonly name: string | null
+  readonly status: DomainStatus | null
+  readonly after: string | null
+  readonly limit: number
+}
+
+export type DomainListing = {
+  readonly listPage: (request: DomainPageRequest) => Promise<readonly ListedDomain[]>
+  readonly countByStatus: (userId: string) => Promise<DomainCounts>
+}
+
 export type GenerateId = (prefix: string) => string

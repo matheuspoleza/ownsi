@@ -26,12 +26,14 @@ export {
 export type AttemptSucceeded = {
   readonly verificationId: string
   readonly subjectId: string
+  readonly ownerId: string
   readonly at: Date
 }
 
 export type AttemptFailed = {
   readonly verificationId: string
   readonly subjectId: string
+  readonly ownerId: string
   readonly diagnosis: Diagnosis
   readonly since: Date
   readonly at: Date
@@ -40,6 +42,7 @@ export type AttemptFailed = {
 export type VerificationExhausted = {
   readonly verificationId: string
   readonly subjectId: string
+  readonly ownerId: string
   readonly at: Date
 }
 

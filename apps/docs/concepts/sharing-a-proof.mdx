@@ -1,0 +1,62 @@
+---
+title: "Sharing a proof"
+description: "A proved claim can publish a link anyone can open. What that page states, how long the link lasts, and what taking it back does and does not do."
+icon: "share-nodes"
+---
+
+A proof is private until its holder says otherwise. Nothing about a proved claim is public, and
+opening a claim publishes nothing — the only thing that reaches a stranger is a link somebody asked
+for.
+
+## Publishing one
+
+`POST /api/claims/:id/proof_links` mints it. The claim must be `proved`; a `pending`, `expired` or
+`canceled` one has nothing to share and answers `claim_not_proved`.
+
+```json
+{
+  "slug": "8f2k91mx4c",
+  "url": "https://ownsi.dev/p/8f2k91mx4c",
+  "domain": "acme.com",
+  "heldBy": "m•••@acme.com",
+  "provedAt": "2026-08-24T12:00:00.000Z",
+  "standing": "live",
+  "expiresAt": "2026-08-31T12:00:00.000Z"
+}
+```
+
+The slug is the link's own. It is **never the DNS token**, which stays between the account and its
+zone — and which, on an ended claim, proves nothing anyway.
+
+Asking twice while a link is still live hands back the same slug rather than minting a second one.
+A link that has expired is not reused: the next call issues a fresh one.
+
+## What the page states
+
+`GET /p/:slug` is server-rendered HTML with real link-preview tags, and it runs **no DNS query when
+it is opened**. It reads one stored row and prints what that row says: the domain, the date, the
+holder's masked address, and the token that was found.
+
+That is the whole promise of the product in one page. The proof is a fact about a moment, so the
+record that earned it may already be gone — it is consumable by design, and removing it changes
+nothing the page states.
+
+`GET /p/:slug/badge.svg` renders the same fact as a README badge.
+
+## Taking one back
+
+`POST /api/claims/:id/proof_links/:slug/revoke` stops that slug resolving. It retracts nothing:
+
+- the proof keeps its date, and `GET /api/claims/:id` still reads `proved`;
+- any other link on the same claim keeps working;
+- the account can publish a fresh link the moment it wants one.
+
+Links expire on their own after seven days. `standing` says which of the three a link is in —
+`live`, `expired` or `revoked` — and `GET /api/claims/:id/proof_links` lists them all, because what
+has been shared is part of the record.
+
+An expired or revoked link answers `410` and names nothing about the domain behind it. A slug
+nobody published answers `404`.
+
+Deleting a domain with `DELETE /api/domains/:id` is the one thing that erases links, along with the
+claims they hang from. See [the claim lifecycle](/concepts/claim-lifecycle).

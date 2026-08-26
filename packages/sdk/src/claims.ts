@@ -1,5 +1,6 @@
 import { type Treaty, unwrap } from "./client.ts"
 import { ownsiError } from "./error.ts"
+import { listProofLinks, type ProofLink, publishProofLink } from "./proof.ts"
 import { readVerification, runVerification, type Verification } from "./verifications.ts"
 
 type ClaimRequest = ReturnType<Treaty["claims"]>
@@ -24,6 +25,10 @@ type ClaimActions = {
   /** Reads DNS now instead of waiting for the schedule. Rate limited per verification. */
   readonly recheck: () => Promise<Verification>
   readonly cancel: () => Promise<Claim>
+  /** Publishes a public link to this proof, or hands back the one already live. */
+  readonly share: () => Promise<ProofLink>
+  /** Every link ever published on it, expired and revoked included. */
+  readonly shares: () => Promise<readonly ProofLink[]>
   readonly refresh: () => Promise<ClaimDetail>
 }
 
@@ -81,5 +86,7 @@ function actions(api: Treaty, data: ClaimData): ClaimActions {
     recheck: async () => runVerification(api, behind()),
     refresh: () => readClaim(api, data.id),
     cancel: async () => asClaim(api, await unwrap(api.claims({ id: data.id }).cancel.post())),
+    share: () => publishProofLink(api, data.id),
+    shares: () => listProofLinks(api, data.id),
   }
 }

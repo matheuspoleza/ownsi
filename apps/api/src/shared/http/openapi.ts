@@ -50,6 +50,19 @@ export function openApiDocumentation(appUrl: string): OpenApiDocumentation {
           "reopened, so the list of them is the account's history. Session required.",
       },
       {
+        name: "Events",
+        description:
+          "One stream per open tab, telling an account's screens what moved. It carries no " +
+          "state: a message names the resource, the client reads it back. Session required.",
+      },
+      {
+        name: "Proof",
+        description:
+          "A proved claim, shared. A link carries its own slug — never the DNS token — and " +
+          "resolves for seven days at `/p/:slug`, where the page states one moment and reads " +
+          "no DNS. Session required to publish one.",
+      },
+      {
         name: "Verifications",
         description:
           "The process behind a claim: the runs it has made, the named diagnosis of the last " +

@@ -7,7 +7,9 @@ import type { CheckChallenge } from "../src/verification/domain/attempt.ts"
 import type { AttemptOutcome } from "../src/verification/verification.contract.ts"
 import { inMemoryClaimRepository } from "./claims/in-memory-claim-repository.ts"
 import { inMemorySentNotices } from "./claims/in-memory-sent-notices.ts"
+import { inMemoryDomainListing } from "./domains/in-memory-domain-listing.ts"
 import { inMemoryDomainRepository } from "./domains/in-memory-domain-repository.ts"
+import { inMemoryProofLinkRepository } from "./proof/in-memory-proof-link-repository.ts"
 import { inMemoryVerificationRepository } from "./verification/in-memory-verification-repository.ts"
 
 export const ADA: SessionUser = { id: "usr_ada", email: "ada@example.com", name: "Ada" }
@@ -68,19 +70,25 @@ export function harness(options: HarnessOptions = {}) {
   const claims = inMemoryClaimRepository()
   const domains = inMemoryDomainRepository()
   const verifications = inMemoryVerificationRepository()
+  const proofLinks = inMemoryProofLinkRepository()
   const notified: ClaimAnnouncement[] = []
   const asked: Parameters<CheckChallenge>[] = []
 
   let now = options.now ?? new Date("2026-08-24T12:00:00Z")
   let ids = 0
   let tokens = 0
+  let slugs = 0
 
   const app = createApp(TEST_CONFIG, {
     database: {} as Database,
     clock: () => now,
     sendEmail: async () => {},
     auth: { checkSession: options.session ?? signedInAs(ADA) },
-    domains: { domains, generateId: (prefix) => `${prefix}_${++ids}` },
+    domains: {
+      domains,
+      listing: inMemoryDomainListing(domains, claims),
+      generateId: (prefix) => `${prefix}_${++ids}`,
+    },
     claims: {
       claims,
       sentNotices: inMemorySentNotices(),
@@ -91,6 +99,10 @@ export function harness(options: HarnessOptions = {}) {
       },
       generateId: (prefix) => `${prefix}_${++ids}`,
       generateToken: () => `ownsi_v1_token_${++tokens}`,
+    },
+    proof: {
+      links: proofLinks,
+      generateSlug: () => `slug${++slugs}`,
     },
     verification: {
       verifications,
@@ -117,6 +129,7 @@ export function harness(options: HarnessOptions = {}) {
     claims,
     domains,
     verifications,
+    proofLinks,
     notified,
     asked,
     at: (instant: Date) => {

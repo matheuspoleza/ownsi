@@ -1,4 +1,6 @@
+import type { Publish } from "../../shared/bus.ts"
 import { err, ok, type Result } from "../../shared/result.ts"
+import type { ClaimEvent } from "../claims.contract.ts"
 import { isOpen, prove } from "../domain/claim.ts"
 import type {
   ClaimRepository,
@@ -21,6 +23,7 @@ export type ProveClaimDeps = {
   readonly findDomain: FindDomain
   readonly otherClaimants: FindOtherClaimants
   readonly sendNotice: SendNotice
+  readonly publish: Publish<ClaimEvent>
 }
 
 export function proveClaim(deps: ProveClaimDeps): ProveClaim {
@@ -34,6 +37,17 @@ export function proveClaim(deps: ProveClaimDeps): ProveClaim {
 
     const proved = prove(found, at)
     await deps.claims.save(proved)
+
+    await deps.publish({
+      name: "claims/claim.ended",
+      data: {
+        claimId: proved.id,
+        userId: proved.userId,
+        domainId: proved.domainId,
+        reason: "proved",
+        endedAt: proved.endedAt,
+      },
+    })
 
     await deps.sendNotice({
       notice: { kind: "proved", provedAt: at },

@@ -8,8 +8,8 @@ import {
   prove,
   provedAt,
 } from "../../src/claims/domain/claim.ts"
-import { maskEmail } from "../../src/claims/domain/coexistence.ts"
 import { noticesBetween } from "../../src/claims/domain/notice.ts"
+import { maskEmail } from "../../src/shared/masked-email.ts"
 import { daysAfter } from "../../src/shared/time.ts"
 import type { Diagnosis } from "../../src/verification/verification.contract.ts"
 
