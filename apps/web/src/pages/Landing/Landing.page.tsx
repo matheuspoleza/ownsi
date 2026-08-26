@@ -42,7 +42,7 @@ export const LandingPage = () => {
               <HeroSubtitle>{LEAD}</HeroSubtitle>
             </Reveal>
 
-            <Reveal delayMs={200} className="relative pt-[34px]">
+            <Reveal delayMs={200} className="relative z-10 pt-[34px]">
               <Sentinel
                 typed={typed}
                 className="right-[2px] bottom-[calc(100%-34px)] h-[52px] w-[124px]"
