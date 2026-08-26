@@ -36,7 +36,7 @@ export const MARKER_SIZE_PX = Math.ceil(GRID_DOT_DIAMETER_PX)
 
 export const RESOLVERS = ["cloudflare", "google", "quad9"] as const
 
-export const ASK_MS = 1500
-export const LOCK_MS = 2400
+export const ASK_MS = 2400
+export const LOCK_MS = 3400
 export const BEATS = RESOLVERS.length + 1
 export const AGREED_BEAT = RESOLVERS.length

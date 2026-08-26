@@ -48,7 +48,7 @@ export const VantageField = ({ story = "checking" }: VantageFieldProps) => {
   return (
     <div
       aria-hidden
-      className="-translate-x-1/2 -translate-y-1/2 pointer-events-none absolute top-1/2 left-1/2 aspect-[360/130] w-full max-w-[1440px] animate-[ownsi-fade_1200ms_cubic-bezier(0.33,1,0.68,1)_900ms_both] motion-reduce:animate-none"
+      className="-translate-x-1/2 -translate-y-1/2 pointer-events-none absolute top-1/2 left-1/2 aspect-[360/130] w-full max-w-[1440px] animate-[ownsi-fade_1800ms_cubic-bezier(0.33,1,0.68,1)_900ms_both] motion-reduce:animate-none"
     >
       {GRID_SNAPPED_VANTAGES.map((vantage, index) => {
         const witnessOf = witnesses.indexOf(index)
@@ -66,18 +66,18 @@ export const VantageField = ({ story = "checking" }: VantageFieldProps) => {
             }}
           >
             {active && !agreed ? (
-              <span className="absolute top-1/2 left-1/2 size-[22px] animate-[ownsi-ping_1.5s_cubic-bezier(0,0,0.2,1)_infinite] rounded-full border border-foreground/25" />
+              <span className="absolute top-1/2 left-1/2 size-[22px] animate-[ownsi-ping_2.8s_cubic-bezier(0.33,1,0.68,1)_infinite] rounded-full border border-foreground/15" />
             ) : null}
 
             {active && locked ? (
               <span
                 key={`lock-ring-${tick}`}
-                className="absolute top-1/2 left-1/2 size-[26px] animate-[ownsi-lock_700ms_cubic-bezier(0.2,0,0,1)_forwards] rounded-full border border-success/60"
+                className="absolute top-1/2 left-1/2 size-[26px] animate-[ownsi-lock_1100ms_cubic-bezier(0.33,1,0.68,1)_forwards] rounded-full border border-success/40"
               />
             ) : null}
 
             <span
-              className="block rounded-full transition-colors duration-500"
+              className="block rounded-full transition-colors duration-1000"
               style={{
                 width: MARKER_SIZE_PX,
                 height: MARKER_SIZE_PX,
@@ -85,7 +85,7 @@ export const VantageField = ({ story = "checking" }: VantageFieldProps) => {
                 animation:
                   answered || active || reduced
                     ? undefined
-                    : `ownsi-breathe 4s ease-in-out ${index * 0.4}s infinite`,
+                    : `ownsi-breathe 6s ease-in-out ${index * 0.6}s infinite`,
               }}
             />
 
@@ -101,14 +101,14 @@ export const VantageField = ({ story = "checking" }: VantageFieldProps) => {
                     key={`lock-${tick}`}
                     className="size-4 text-foreground"
                     strokeWidth={2}
-                    style={{ animation: "ownsi-seal 420ms cubic-bezier(0.2,0,0,1) both" }}
+                    style={{ animation: "ownsi-seal 640ms cubic-bezier(0.33,1,0.68,1) both" }}
                   />
                 ) : (
                   <ResolverMark
                     key={`mark-${tick}`}
                     id={markAtBeat(beat)}
                     className="size-4"
-                    style={{ animation: "ownsi-chip 320ms ease-out both" }}
+                    style={{ animation: "ownsi-chip 620ms cubic-bezier(0.33,1,0.68,1) both" }}
                   />
                 )}
               </span>

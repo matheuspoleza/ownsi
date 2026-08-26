@@ -1,8 +1,8 @@
-import { DotWorldMap, OwnsiMark } from "@ownsi/ui"
+import { DotWorldMap, OwnsiSeal } from "@ownsi/ui"
 import type { ReactNode } from "react"
+import { ProofQr } from "../../../components/ProofQr.component.tsx"
 import { ProviderGlyph } from "../../../components/ProviderGlyph.component.tsx"
 import { useProofTicketTear } from "../hooks/useProofTicketTear.ts"
-import { ProofQr } from "./ProofQr.component.tsx"
 import { TornEdge } from "./TornEdge.component.tsx"
 
 export interface Proof {
@@ -17,7 +17,7 @@ export interface Proof {
   expiresOn: string
 }
 
-export interface ProofTicketProps {
+export interface HeroProofTicketProps {
   proof: Proof
 }
 
@@ -62,7 +62,7 @@ const Notch = ({ className }: NotchProps) => (
   />
 )
 
-export const ProofTicket = ({ proof }: ProofTicketProps) => {
+export const HeroProofTicket = ({ proof }: HeroProofTicketProps) => {
   const tear = useProofTicketTear()
   const torn = tear.phase === "torn"
   const tilt = torn ? 8 : tear.progress * 2.4
@@ -82,7 +82,7 @@ export const ProofTicket = ({ proof }: ProofTicketProps) => {
         <div className="relative">
           <div className="flex items-center justify-between gap-4">
             <span className="flex items-center gap-[7px]">
-              <OwnsiMark className="h-[19px] w-[13px] text-proof-foreground" />
+              <OwnsiSeal className="h-[22px] w-[19px] text-proof-foreground" />
               <span className="font-semibold text-[13px]">ownsi</span>
             </span>
             <span className="font-medium text-[11px] text-white/70 tracking-[0.6px]">

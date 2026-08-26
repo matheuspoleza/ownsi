@@ -3,15 +3,12 @@ import type { ReactNode } from "react"
 import { ProviderGlyph } from "../../../components/ProviderGlyph.component.tsx"
 import type { ProviderId } from "../../../lib/providers.constants.ts"
 import { providerName } from "../../../lib/providers.utils.ts"
-import type { StatusPill, Tone } from "../DomainDetail.constants.ts"
-
-const PILL_TONES: Record<Tone, string> = {
-  idle: "border-border text-muted-foreground",
-  running: "border-border text-muted-foreground",
-  success: "border-success/50 text-success",
-  warning: "border-warning/50 text-warning",
-  error: "border-error/50 text-error",
-}
+import {
+  type DomainStatus,
+  STATUS_DOTS,
+  STATUS_LABELS,
+  STATUS_PILLS,
+} from "../../../lib/status.constants.ts"
 
 interface FactProps {
   label: string
@@ -26,7 +23,7 @@ const Fact = ({ label, children }: FactProps) => (
 )
 
 export interface DomainFactsProps {
-  status: StatusPill
+  status: DomainStatus
   provider: ProviderId
   added: string
   lastChecked: string
@@ -37,11 +34,12 @@ export const DomainFacts = ({ status, provider, added, lastChecked }: DomainFact
     <Fact label="Status">
       <span
         className={cn(
-          "rounded-full border px-2 py-[3px] font-medium text-[12px]",
-          PILL_TONES[status.tone],
+          "flex items-center gap-1.5 rounded-full px-2.5 py-[4px] font-mono text-[12px]",
+          STATUS_PILLS[status],
         )}
       >
-        {status.label}
+        <span className={cn("size-[6px] rounded-full", STATUS_DOTS[status])} />
+        {STATUS_LABELS[status]}
       </span>
     </Fact>
 

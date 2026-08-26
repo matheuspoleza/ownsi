@@ -11,9 +11,9 @@ import {
 } from "lucide-react"
 import { useState } from "react"
 import type { Diagnosis } from "../../../api/verification.api.ts"
+import { useCopy } from "../../../hooks/useCopy.ts"
 import type { Tone } from "../DomainDetail.constants.ts"
 import { DIAGNOSTICS_URL } from "../DomainDetail.constants.ts"
-import { useCopy } from "../hooks/useCopy.ts"
 
 const BAND_TONES: Record<Tone, string> = {
   idle: "bg-muted/40",

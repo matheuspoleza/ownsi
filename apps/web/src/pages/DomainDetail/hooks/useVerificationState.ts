@@ -7,7 +7,7 @@ import {
   type VerificationStatus,
   verificationKey,
 } from "../../../api/verification.api.ts"
-import { LIVE_STATUSES } from "../../Domains/Domains.constants.ts"
+import { LIVE_STATUSES } from "../DomainDetail.constants.ts"
 
 export interface UseVerificationStateOptions {
   verificationId: string | null
@@ -18,7 +18,7 @@ export interface UseVerificationStateResult {
   isResolving: boolean
 }
 
-const POLL_MS = 5_000
+const SAFETY_NET_MS = 60_000
 
 const isLive = (status: VerificationStatus | undefined) =>
   status !== undefined && LIVE_STATUSES.has(status)
@@ -35,7 +35,7 @@ export const useVerificationState = ({
     queryKey: verificationKey(verificationId),
     queryFn: () => read(verificationId),
     enabled: verificationId !== null,
-    refetchInterval: ({ state }) => (isLive(state.data?.status) ? POLL_MS : false),
+    refetchInterval: ({ state }) => (isLive(state.data?.status) ? SAFETY_NET_MS : false),
   })
 
   const status = query.data?.status ?? null

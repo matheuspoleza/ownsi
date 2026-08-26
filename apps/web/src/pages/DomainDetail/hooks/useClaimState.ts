@@ -4,7 +4,7 @@ import {
   type ClaimDetail,
   claimKey,
   claimsKey,
-  DOMAINS_KEY,
+  domainNameKey,
   listClaims,
   listDomains,
   readClaim,
@@ -33,9 +33,13 @@ const detailOf = (claimId: string | null) =>
   claimId === null ? Promise.resolve(null) : readClaim(claimId)
 
 export const useClaimState = ({ domain, enabled }: UseClaimStateOptions): UseClaimStateResult => {
-  const domains = useQuery({ queryKey: DOMAINS_KEY, queryFn: listDomains, enabled })
+  const named = useQuery({
+    queryKey: domainNameKey(domain),
+    queryFn: () => listDomains({ name: domain }),
+    enabled,
+  })
 
-  const domainId = domains.data?.find((owned) => owned.name === domain)?.id ?? null
+  const domainId = named.data?.domains[0]?.id ?? null
 
   const claims = useQuery({
     queryKey: claimsKey(domainId ?? UNCLAIMED),
@@ -51,7 +55,7 @@ export const useClaimState = ({ domain, enabled }: UseClaimStateOptions): UseCla
     enabled: enabled && latest !== undefined,
   })
 
-  const resolvingDomain = enabled && domains.isPending
+  const resolvingDomain = enabled && named.isPending
   const resolvingClaims = domainId !== null && claims.isPending
   const resolvingDetail = latest !== undefined && detail.isPending
 

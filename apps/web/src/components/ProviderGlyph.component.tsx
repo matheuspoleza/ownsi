@@ -1,4 +1,4 @@
-import { Globe } from "lucide-react"
+import { GlobeIcon } from "@ownsi/ui"
 import type { ComponentProps, ReactNode } from "react"
 
 const CloudflareGlyph = (props: ComponentProps<"svg">) => (
@@ -10,9 +10,66 @@ const CloudflareGlyph = (props: ComponentProps<"svg">) => (
   </svg>
 )
 
+const Route53Glyph = (props: ComponentProps<"svg">) => (
+  <svg viewBox="0 0 24 24" role="presentation" xmlns="http://www.w3.org/2000/svg" {...props}>
+    <path
+      d="M3.6 3.6h16.8v16.8H3.6zM2 2v20h20V2z"
+      fill="#8C4FFF"
+      transform="translate(0 0) scale(0)"
+    />
+    <path
+      d="M12 1.2 2.6 5.4v13.2L12 22.8l9.4-4.2V5.4zm0 1.9 7.6 3.4-7.6 3.4-7.6-3.4zM4.2 7.9l7 3.2v8.8l-7-3.1zm8.6 12V11.1l7-3.2v8.9z"
+      fill="#8C4FFF"
+    />
+  </svg>
+)
+
+const VercelGlyph = (props: ComponentProps<"svg">) => (
+  <svg viewBox="0 0 24 24" role="presentation" xmlns="http://www.w3.org/2000/svg" {...props}>
+    <path d="M12 2 23 21H1z" fill="currentColor" />
+  </svg>
+)
+
+const GoDaddyGlyph = (props: ComponentProps<"svg">) => (
+  <svg viewBox="0 0 24 24" role="presentation" xmlns="http://www.w3.org/2000/svg" {...props}>
+    <path
+      d="M20.4 3.6c-2.2-2.2-5.8-1.9-8.9.4-3.1-2.3-6.7-2.6-8.9-.4-2.2 2.2-1.9 5.8.4 8.9-2.3 3.1-2.6 6.7-.4 8.9 2.2 2.2 5.8 1.9 8.9-.4 3.1 2.3 6.7 2.6 8.9.4 2.2-2.2 1.9-5.8-.4-8.9 2.3-3.1 2.6-6.7.4-8.9zM4.3 4.9c1.2-1.2 3.3-1.1 5.4.1-2 1.9-3.6 4.2-4.5 6.7-1.7-2.3-2-4.8-.9-6.8zm1.4 14.2c-1.2-1.2-1.1-3.3.1-5.4 1.9 2 4.2 3.6 6.7 4.5-2.3 1.7-4.8 2-6.8.9zm13-.2c-1.2 1.2-3.3 1.1-5.4-.1 2-1.9 3.6-4.2 4.5-6.7 1.7 2.3 2 4.8.9 6.8zm-.4-7.5c-.9-2.5-2.5-4.8-4.5-6.7 2.1-1.2 4.2-1.3 5.4-.1 1.1 2 .8 4.5-.9 6.8z"
+      fill="#1BDBDB"
+    />
+  </svg>
+)
+
+const NamecheapGlyph = (props: ComponentProps<"svg">) => (
+  <svg viewBox="0 0 24 24" role="presentation" xmlns="http://www.w3.org/2000/svg" {...props}>
+    <path d="M2 19 9 4l6 11 1-8 6 16-7-4-6-11-1 8z" fill="#DE3723" />
+  </svg>
+)
+
+const GoogleGlyph = (props: ComponentProps<"svg">) => (
+  <svg viewBox="0 0 24 24" role="presentation" xmlns="http://www.w3.org/2000/svg" {...props}>
+    <path
+      d="M22.5 12.2c0-.8-.1-1.5-.2-2.2H12v4.2h5.9a5 5 0 0 1-2.2 3.3v2.7h3.5c2-1.9 3.3-4.7 3.3-8z"
+      fill="#4285F4"
+    />
+    <path
+      d="M12 23c3 0 5.5-1 7.3-2.7l-3.5-2.7c-1 .6-2.2 1-3.8 1-2.9 0-5.4-2-6.3-4.6H2v2.8A11 11 0 0 0 12 23z"
+      fill="#34A853"
+    />
+    <path d="M5.7 14a6.6 6.6 0 0 1 0-4.2V7H2a11 11 0 0 0 0 9.9z" fill="#FBBC05" />
+    <path
+      d="M12 5.4c1.6 0 3.1.6 4.3 1.7l3.2-3.2A11 11 0 0 0 2 7l3.7 2.9c.9-2.7 3.4-4.6 6.3-4.6z"
+      fill="#EA4335"
+    />
+  </svg>
+)
+
 const GLYPHS: Record<string, (props: ComponentProps<"svg">) => ReactNode> = {
   cloudflare: CloudflareGlyph,
-  namecheap: CloudflareGlyph,
+  route53: Route53Glyph,
+  vercel: VercelGlyph,
+  godaddy: GoDaddyGlyph,
+  namecheap: NamecheapGlyph,
+  "google-domains": GoogleGlyph,
 }
 
 export interface ProviderGlyphProps {
@@ -20,8 +77,13 @@ export interface ProviderGlyphProps {
   className?: string
 }
 
+/**
+ * A named provider gets its own mark; an unnamed one gets a globe. The globe turns when an
+ * `AnimateIcon` around the real hover target says so — never on the 14px glyph itself.
+ */
 export const ProviderGlyph = ({ provider, className }: ProviderGlyphProps) => {
   const Glyph = GLYPHS[provider.toLowerCase()]
-  if (!Glyph) return <Globe className={className} strokeWidth={1.5} />
+  if (!Glyph) return <GlobeIcon className={className} strokeWidth={1.6} />
+
   return <Glyph className={className} />
 }

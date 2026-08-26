@@ -1,27 +1,23 @@
-import type { ClaimState } from "../../api/claim.api.ts"
 import type { VerificationStatus } from "../../api/verification.api.ts"
+import type { DomainStatus } from "../../lib/status.constants.ts"
 
 export type Tone = "idle" | "running" | "success" | "warning" | "error"
 
-export interface StatusPill {
-  label: string
-  tone: Tone
-}
+/** The statuses a verification can still leave on its own, so the page keeps asking. */
+export const LIVE_STATUSES: ReadonlySet<VerificationStatus> = new Set([
+  "checking",
+  "propagating",
+  "needs_attention",
+])
 
-/** The word the page puts on a domain, derived from the claim and the process behind it. */
-export const CLAIM_STATUS_PILLS: Record<Exclude<ClaimState, "pending">, StatusPill> = {
-  proved: { label: "Verified", tone: "success" },
-  expired: { label: "Expired", tone: "warning" },
-  canceled: { label: "Canceled", tone: "idle" },
-}
-
-export const RUNNING_STATUS_PILLS: Record<VerificationStatus, StatusPill> = {
-  checking: { label: "Checking", tone: "running" },
-  propagating: { label: "Propagating", tone: "warning" },
-  needs_attention: { label: "Not verified", tone: "error" },
-  proved: { label: "Verified", tone: "success" },
-  exhausted: { label: "Expired", tone: "warning" },
-  stopped: { label: "Canceled", tone: "idle" },
+/** How loudly the page speaks about each state: the ground the message block stands on. */
+export const STATUS_TONES: Record<DomainStatus, Tone> = {
+  unclaimed: "idle",
+  pending: "error",
+  checking: "running",
+  proved: "success",
+  expired: "warning",
+  canceled: "idle",
 }
 
 export type StepTone = Exclude<Tone, "warning">
@@ -65,3 +61,13 @@ export const CANCELED_MESSAGE: MessageCopy = {
 }
 
 export const DIAGNOSTICS_URL = "https://ownsi.dev/docs/diagnostics/catalogue"
+
+export const DISPUTES_URL = "https://ownsi.dev/docs/concepts/claim-lifecycle#coexistence"
+
+export const DNS_SNAPSHOT_TIP =
+  "What your DNS looked like on the day we read it. We do not watch it after that, so this is " +
+  "a snapshot, not a live view."
+
+export const COEXISTENCE_TIP =
+  "Both accounts published a valid record, so both proofs are live. ownsi does not pick a " +
+  "winner — this list only says who got there first."
