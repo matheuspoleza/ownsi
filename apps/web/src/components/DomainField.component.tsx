@@ -2,6 +2,7 @@ import { GlobeIcon } from "@ownsi/ui"
 import { CornerDownLeft, Plus } from "lucide-react"
 import { useId, useState } from "react"
 import { parseClaimInput } from "../lib/domain.utils.ts"
+import { stepThrough, suggestionsFor } from "./DomainField.utils.ts"
 import { FieldBar } from "./FieldBar.component.tsx"
 import { ProviderGlyph } from "./ProviderGlyph.component.tsx"
 
@@ -22,15 +23,13 @@ const CAPTION =
 
 const NOTE = "px-[9px] pt-[2px] pb-[7px] text-[12px] text-muted-foreground"
 
-const DEMO_NOTE = "Ownsi answers for this zone, so the record is published for you."
+const DEMO_CAPTION = "Demo domains"
+
+const DEMO_NOTE =
+  "Ownsi publishes the record for these itself, so you can watch a real verification run without touching DNS."
 
 /** Clicking a row must not blur the field first, or the field closes the row out from under it. */
 const keepFocus = (event: { preventDefault: () => void }) => event.preventDefault()
-
-const matches = (domain: string, typed: string) => {
-  const wanted = typed.trim().toLowerCase()
-  return domain !== wanted && domain.includes(wanted)
-}
 
 export interface DomainFieldProps {
   onSubmit: (domain: string) => void
@@ -56,12 +55,26 @@ export const DomainField = ({
 }: DomainFieldProps) => {
   const [value, setValue] = useState("")
   const [open, setOpen] = useState(false)
+  const [active, setActive] = useState(-1)
   const listId = useId()
 
   const parsed = parseClaimInput(value)
   const fromEmail = parsed.email !== null && parsed.domain !== null
-  const offered = fromEmail ? [] : demoDomains.filter((domain) => matches(domain, value))
+  const offered = fromEmail ? [] : suggestionsFor(demoDomains, value)
   const suggesting = open && !pending && (fromEmail || offered.length > 0)
+
+  const rowId = (index: number) => `${listId}-${index}`
+
+  const close = () => {
+    setOpen(false)
+    setActive(-1)
+  }
+
+  const fill = (domain: string) => {
+    setValue(domain)
+    setActive(-1)
+    onValueChange?.(domain)
+  }
 
   return (
     <FieldBar
@@ -69,6 +82,7 @@ export const DomainField = ({
       onValueChange={(next) => {
         setValue(next)
         setOpen(true)
+        setActive(-1)
         onValueChange?.(next)
       }}
       onSubmit={(submitted) => {
@@ -83,12 +97,42 @@ export const DomainField = ({
       pending={pending}
       invalid={invalid}
       describedBy={suggesting ? listId : undefined}
+      activeDescendant={active >= 0 ? rowId(active) : undefined}
       onReach={() => setOpen(true)}
-      onBlur={() => setOpen(false)}
-      onKeyDown={(event) => {
+      onBlur={close}
+      onKeyDown={(event, commit) => {
         if (event.key === "Escape" && suggesting) {
           event.preventDefault()
-          setOpen(false)
+          close()
+          return
+        }
+
+        if (fromEmail || offered.length === 0) return
+
+        if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+          event.preventDefault()
+          setOpen(true)
+          setActive(stepThrough(active, offered.length, event.key === "ArrowDown" ? 1 : -1))
+          return
+        }
+
+        const chosen = suggesting ? offered[active] : undefined
+        if (!chosen) return
+
+        if (event.key === "Enter") {
+          event.preventDefault()
+          close()
+          commit(chosen.domain)
+          return
+        }
+
+        const caretAtEnd =
+          event.currentTarget.selectionStart === value.length &&
+          event.currentTarget.selectionEnd === value.length
+
+        if (event.key === "ArrowRight" && caretAtEnd) {
+          event.preventDefault()
+          fill(chosen.domain)
         }
       }}
     >
@@ -119,27 +163,40 @@ export const DomainField = ({
               </>
             ) : (
               <>
-                <p className={CAPTION}>Ours to answer for</p>
+                <p className={CAPTION}>{DEMO_CAPTION}</p>
 
-                {offered.map((domain) => (
-                  <button
-                    key={domain}
-                    type="button"
-                    onMouseDown={keepFocus}
-                    onClick={() => commit(domain)}
-                    className={`${ROW} hover:bg-accent`}
-                  >
-                    <span className={SQUARE}>
-                      <GlobeIcon className="size-3" strokeWidth={1.6} />
-                    </span>
-                    <span className="font-mono text-[13.5px] text-foreground">{domain}</span>
-                    <span
-                      className={`${RETURN_CHIP} opacity-0 transition-opacity group-hover:opacity-100`}
-                    >
-                      <CornerDownLeft className="size-2.5" />
-                    </span>
-                  </button>
-                ))}
+                <ul>
+                  {offered.map((suggestion, index) => (
+                    <li key={suggestion.domain}>
+                      <button
+                        id={rowId(index)}
+                        type="button"
+                        onMouseDown={keepFocus}
+                        onMouseEnter={() => setActive(index)}
+                        onClick={() => commit(suggestion.domain)}
+                        className={`${ROW} ${active === index ? "bg-accent" : ""}`}
+                      >
+                        <span className={SQUARE}>
+                          <GlobeIcon className="size-3" strokeWidth={1.6} />
+                        </span>
+                        <span className="font-mono text-[13.5px] text-muted-foreground">
+                          {suggestion.before}
+                          <mark className="bg-transparent font-medium text-foreground">
+                            {suggestion.match}
+                          </mark>
+                          {suggestion.after}
+                        </span>
+                        <span
+                          className={`${RETURN_CHIP} transition-opacity ${
+                            active === index ? "opacity-100" : "opacity-0"
+                          }`}
+                        >
+                          <CornerDownLeft className="size-2.5" />
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
 
                 <div className="my-[5px] h-px bg-border" />
 
