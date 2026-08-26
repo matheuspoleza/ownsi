@@ -145,6 +145,8 @@ model ProofLink {
   domainUnicode String
   heldBy        String
   token         String
+  challengeHost String
+  provider      String?
   provedAt      DateTime
   issuedAt      DateTime
   expiresAt     DateTime

@@ -1,3 +1,5 @@
+import qrcode from "qrcode-generator"
+import { OWNSI_MARK } from "../../shared/brand.ts"
 import type { ProofUnreadable } from "../application/get-proof.query.ts"
 import type { ProofLink } from "../domain/proof-link.ts"
 
@@ -22,53 +24,114 @@ export function formatProofDate(instant: Date): string {
   })
 }
 
+/** Day and month only, for the stub, where the year is already on the face of the ticket. */
+function formatStubDate(instant: Date): string {
+  return instant.toLocaleDateString("en-US", { day: "2-digit", month: "short", timeZone: "UTC" })
+}
+
+const FONTS =
+  "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap"
+
 const STYLE = `
-:root { color-scheme: light dark; --ink: #0a0a0a; --page: #fafafa; --muted: #737373;
-  --line: #e5e5e5; --proof: #0f5c36; }
-@media (prefers-color-scheme: dark) {
-  :root { --ink: #fafafa; --page: #0a0a0a; --muted: #a3a3a3; --line: #ffffff1a; }
+:root {
+  --background: #fafafa; --foreground: #0a0a0a; --muted-foreground: #737373;
+  --border: #e5e5e5; --card: #fafafa; --ticket: #0a0a0a;
+  --sans: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 }
 * { box-sizing: border-box; }
-body { margin: 0; background: var(--page); color: var(--ink); font-size: 14px; line-height: 1.5;
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+body { margin: 0; background: var(--background); color: var(--foreground);
+  font-family: var(--sans); font-size: 14px; line-height: 1.45;
   -webkit-font-smoothing: antialiased; }
+dl, dd, dt, p, h1 { margin: 0; }
 a { color: inherit; }
-header { border-bottom: 1px solid var(--line); }
-.bar, main { margin: 0 auto; max-width: 1180px; padding: 0 24px; }
-.bar { display: flex; align-items: center; justify-content: space-between; height: 58px; }
-.word { font-weight: 600; font-size: 17px; letter-spacing: -0.4px; }
+
+header { border-bottom: 1px solid var(--border); }
+.inner { margin: 0 auto; display: flex; height: 58px; max-width: 1180px; padding: 0 24px;
+  align-items: center; justify-content: space-between; gap: 24px; }
+.logo { display: flex; align-items: center; gap: 6px; }
+.logo svg { height: 28px; width: 19.72px; color: var(--foreground); }
+.word { font-size: 17px; font-weight: 600; letter-spacing: -0.4px; }
 .cta { font-size: 13px; font-weight: 500; text-decoration: none; }
-main { padding-top: 56px; padding-bottom: 72px; }
-.ticket { position: relative; overflow: hidden; max-width: 660px; border-radius: 14px;
-  background: var(--proof); color: #fff; display: flex; flex-wrap: wrap; }
-.face { flex: 1 1 380px; padding: 20px 22px 22px; }
-.stub { flex: 0 0 200px; border-left: 1px dashed #ffffff3d; padding: 20px 22px 22px;
-  display: flex; flex-direction: column; justify-content: space-between; gap: 24px; }
-.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.brand { font-weight: 600; font-size: 13px; }
-.kicker { font-size: 11px; font-weight: 500; letter-spacing: 0.6px; color: #ffffffb8; }
-.subject { margin: 22px 0 0; font-size: 34px; font-weight: 600; letter-spacing: -0.9px;
-  line-height: 1.15; word-break: break-all; }
-.holder { margin: 6px 0 0; font-size: 13px; color: #ffffffb8; }
-.cells { display: flex; flex-wrap: wrap; gap: 28px; margin: 22px 0 0; }
-.label { font-size: 10.5px; font-weight: 500; letter-spacing: 0.4px; color: #ffffff7a; }
-.value { font-size: 13.5px; font-weight: 500; margin-top: 4px; }
-.token { margin: 20px 0 0; font-size: 12px; color: #ffffffb8; word-break: break-all;
-  font-family: ui-monospace, "JetBrains Mono", SFMono-Regular, monospace; }
-.stub .value { font-size: 12px; }
-.slug { font-size: 10.5px; color: #ffffffb8; word-break: break-all;
-  font-family: ui-monospace, "JetBrains Mono", SFMono-Regular, monospace; }
-.moment { margin: 32px 0 0; max-width: 620px; font-size: 13px; }
-.moment strong { font-weight: 600; }
-.fine { margin: 14px 0 0; max-width: 620px; font-size: 12px; color: var(--muted); }
-.gone { max-width: 620px; }
-.gone h1 { font-size: 24px; font-weight: 600; letter-spacing: -0.5px; margin: 0; }
-.gone p { color: var(--muted); margin: 12px 0 0; }
+
+main { margin: 0 auto; display: flex; max-width: 1180px; padding: 92px 24px 36px;
+  flex-direction: column; align-items: center; }
+
+.ticket { position: relative; display: flex; width: 660px; max-width: 100%;
+  border-radius: 14px; background: var(--ticket); color: #fff; }
+.face { flex: 1 1 auto; display: flex; min-width: 0; flex-direction: column;
+  padding: 24px 26px 24px 28px; }
+.top { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.brand { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; }
+.brand svg { height: 16px; width: 16px; }
+.kicker { font-size: 11px; font-weight: 500; letter-spacing: 0.6px; color: #ffffffa6; }
+.subject { padding-top: 24px; font-size: 34px; font-weight: 600; letter-spacing: -0.9px;
+  line-height: 1.15; word-break: break-word; }
+.holder { padding-top: 5px; font-size: 13px; color: #ffffffa6; }
+.cells { display: flex; padding: 24px 0 15px; }
+.cell { display: flex; min-width: 0; flex: 0 0 136px; flex-direction: column; gap: 5px; }
+.label { font-size: 10.5px; font-weight: 500; letter-spacing: 0.5px; color: #ffffff6b; }
+.value { font-size: 13.5px; font-weight: 500; }
+.token { margin-top: auto; padding-top: 15px; border-top: 1px solid #ffffff29;
+  font-family: var(--mono); font-size: 12px; color: #ffffffa6; word-break: break-all; }
+
+.stub { display: flex; width: 196px; flex: 0 0 196px; flex-direction: column;
+  align-items: center; justify-content: center; gap: 12px; padding: 24px 20px;
+  border-left: 1px dashed #ffffff29; }
+.plate { display: flex; height: 124px; width: 124px; align-items: center;
+  justify-content: center; border-radius: 8px; background: #fff; }
+.plate svg { height: 104px; width: 104px; color: var(--ticket); }
+.slug { font-family: var(--mono); font-size: 10.5px; color: #ffffffa6; word-break: break-all;
+  text-align: center; }
+.expiry { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #ffffffa6; }
+.expiry span { height: 6px; width: 6px; border-radius: 999px; background: #fff; }
+.notch { position: absolute; right: 185px; height: 22px; width: 22px; border-radius: 999px;
+  background: var(--background); }
+.notch.up { top: -11px; }
+.notch.down { bottom: -11px; }
+
+.dig { display: flex; width: 356px; max-width: 100%; padding-top: 44px;
+  flex-direction: column; align-items: center; gap: 9px; }
+.dig p { font-size: 12.5px; color: var(--muted-foreground); text-align: center; }
+.box { display: flex; width: 100%; align-items: center; gap: 14px; border: 1px solid var(--border);
+  border-radius: 9px; background: var(--card); padding: 11px 12px 11px 14px; }
+.box code { min-width: 0; flex: 1 1 auto; overflow-x: auto; font-family: var(--mono);
+  font-size: 12.5px; white-space: nowrap; }
+.box button { display: flex; flex: 0 0 auto; border: 0; background: none; padding: 0;
+  color: var(--muted-foreground); cursor: pointer; }
+.box svg { height: 15px; width: 15px; }
+
+.fine { padding-top: 30px; font-size: 12px; color: var(--muted-foreground); text-align: center; }
+
+.gone { max-width: 620px; text-align: center; }
+.gone h1 { font-size: 24px; font-weight: 600; letter-spacing: -0.5px; }
+.gone p { padding-top: 12px; color: var(--muted-foreground); }
+
+@media (max-width: 700px) {
+  main { padding-top: 48px; }
+  .ticket { flex-direction: column; }
+  .stub { width: auto; flex: 1 1 auto; border-left: 0; border-top: 1px dashed #ffffff29; }
+  .notch { display: none; }
+}
 `.trim()
 
+const COPY_SCRIPT = `
+document.querySelector("[data-copy]")?.addEventListener("click", (event) => {
+  const button = event.currentTarget
+  navigator.clipboard.writeText(button.dataset.copy).then(() => {
+    button.setAttribute("aria-label", "Copied")
+  })
+})
+`.trim()
+
+const CIRCLE_CHECK = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="presentation"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>`
+
+const COPY_GLYPH = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="presentation"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>`
+
 export function proofPage(link: ProofLink, appUrl: string, url: string): string {
-  const { attestation: proof } = link
+  const proof = link.attestation
   const proved = formatProofDate(proof.provedAt)
+  const dig = `dig TXT ${proof.challengeHost} +short`
   const title = `${proof.unicodeDomain} — proved on ${proved}`
   const description = `On ${proved}, ${proof.heldBy} demonstrated control of ${proof.unicodeDomain}'s DNS zone.`
 
@@ -77,38 +140,52 @@ export function proofPage(link: ProofLink, appUrl: string, url: string): string 
     description,
     url,
     appUrl,
+    script: COPY_SCRIPT,
     body: `
     <article class="ticket">
+      <span class="notch up"></span>
+      <span class="notch down"></span>
+
       <div class="face">
         <div class="top">
-          <span class="brand">ownsi</span>
+          <span class="brand">${CIRCLE_CHECK}ownsi</span>
           <span class="kicker">Proof of ownership</span>
         </div>
+
         <p class="subject">${escapeXml(proof.unicodeDomain)}</p>
         <p class="holder">held by ${escapeXml(proof.heldBy)}</p>
+
         <dl class="cells">
-          <div><dt class="label">Proved</dt><dd class="value">${escapeXml(proved)}</dd></div>
-          <div><dt class="label">Method</dt><dd class="value">DNS TXT record</dd></div>
+          <div class="cell">
+            <dt class="label">Proved</dt>
+            <dd class="value">${escapeXml(proved)}</dd>
+          </div>
+          ${cell("Provider", proof.provider)}
         </dl>
+
         <p class="token">${escapeXml(proof.token)}</p>
       </div>
+
       <div class="stub">
-        <div>
-          <p class="label">Issued</p>
-          <p class="value">${escapeXml(formatProofDate(link.issuedAt))}</p>
-        </div>
-        <p class="slug">${escapeXml(url.replace(/^https?:\/\//, ""))}</p>
+        <span class="plate">${qrSvg(url)}</span>
+        <span class="slug">${escapeXml(bare(url))}</span>
+        <span class="expiry"><span></span>Expires ${escapeXml(formatStubDate(link.expiresAt))}</span>
       </div>
     </article>
 
-    <p class="moment">
-      <strong>This states one moment, and only that.</strong> Nothing was checked when you opened
-      this page, and the record that earned the proof may already be gone — it is consumable by
-      design. Removing it changes nothing about the date above.
-    </p>
+    <section class="dig">
+      <p>Do not take our word for it.</p>
+      <div class="box">
+        <code>${escapeXml(dig)}</code>
+        <button type="button" data-copy="${escapeXml(dig)}" aria-label="Copy the lookup">
+          ${COPY_GLYPH}
+        </button>
+      </div>
+    </section>
+
     <p class="fine">
-      This link stops resolving on ${escapeXml(formatProofDate(link.expiresAt))}. Anyone who has it
-      can open this page.
+      This link expires on ${escapeXml(formatProofDate(link.expiresAt))}. Anyone who has it can
+      open this page.
     </p>`,
   })
 }
@@ -144,12 +221,43 @@ const SAID: Readonly<Record<ProofUnreadable["type"], { title: string; body: stri
   },
 }
 
+function cell(label: string, value: string | null): string {
+  if (value === null) return ""
+
+  return `<div class="cell">
+            <dt class="label">${escapeXml(label)}</dt>
+            <dd class="value">${escapeXml(value)}</dd>
+          </div>`
+}
+
+function bare(url: string): string {
+  return url.replace(/^https?:\/\//, "")
+}
+
+/** One path of module squares, so the code scales with the plate and carries no image. */
+function qrSvg(text: string): string {
+  const code = qrcode(0, "M")
+  code.addData(text)
+  code.make()
+
+  const size = code.getModuleCount()
+  let path = ""
+  for (let row = 0; row < size; row += 1) {
+    for (let column = 0; column < size; column += 1) {
+      if (code.isDark(row, column)) path += `M${column} ${row}h1v1h-1z`
+    }
+  }
+
+  return `<svg viewBox="0 0 ${size} ${size}" shape-rendering="crispEdges" role="img" aria-label="This page's address as a QR code"><path d="${path}" fill="currentColor"/></svg>`
+}
+
 type ProofDocument = {
   readonly title: string
   readonly description: string
   readonly url: string
   readonly appUrl: string
   readonly body: string
+  readonly script?: string
 }
 
 function htmlDocument(page: ProofDocument): string {
@@ -167,15 +275,19 @@ function htmlDocument(page: ProofDocument): string {
 <meta property="og:url" content="${escapeXml(page.url)}">
 <meta name="twitter:card" content="summary">
 <meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="${FONTS}">
 <style>${STYLE}</style>
 </head>
 <body>
-<header><div class="bar">
-  <span class="word">ownsi</span>
+<header><div class="inner">
+  <span class="logo">${OWNSI_MARK}<span class="word">ownsi</span></span>
   <a class="cta" href="${escapeXml(page.appUrl)}">Prove your own domain</a>
 </div></header>
 <main>${page.body}
 </main>
+${page.script ? `<script>${page.script}</script>` : ""}
 </body>
 </html>
 `

@@ -1,4 +1,3 @@
-import type { Attestation } from "./attestation.ts"
 import type { ProofLink } from "./proof-link.ts"
 
 export type ProofLinkRepository = {
@@ -9,7 +8,12 @@ export type ProofLinkRepository = {
 
 export type ProvedClaim = {
   readonly claimId: string
-  readonly attestation: Attestation
+  readonly domain: string
+  readonly unicodeDomain: string
+  readonly heldBy: string
+  readonly token: string
+  readonly challengeHost: string
+  readonly provedAt: Date
 }
 
 /**
@@ -21,5 +25,8 @@ export type FindProvedClaim = (input: {
   readonly email: string
   readonly claimId: string
 }) => Promise<ProvedClaim | null>
+
+/** Named once, when the link goes out. Nothing reads it again — the page states a moment. */
+export type ReadProvider = (domain: string) => Promise<string | null>
 
 export type GenerateSlug = () => string

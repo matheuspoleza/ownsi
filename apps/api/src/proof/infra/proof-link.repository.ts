@@ -9,6 +9,8 @@ type Row = {
   readonly domainUnicode: string
   readonly heldBy: string
   readonly token: string
+  readonly challengeHost: string
+  readonly provider: string | null
   readonly provedAt: Date
   readonly issuedAt: Date
   readonly expiresAt: Date
@@ -44,6 +46,8 @@ function toProofLink(row: Row): ProofLink {
       unicodeDomain: row.domainUnicode,
       heldBy: row.heldBy,
       token: row.token,
+      challengeHost: row.challengeHost,
+      provider: row.provider,
       provedAt: row.provedAt,
     },
     issuedAt: row.issuedAt,
@@ -60,6 +64,8 @@ function toRow(link: ProofLink): Row {
     domainUnicode: link.attestation.unicodeDomain,
     heldBy: link.attestation.heldBy,
     token: link.attestation.token,
+    challengeHost: link.attestation.challengeHost,
+    provider: link.attestation.provider,
     provedAt: link.attestation.provedAt,
     issuedAt: link.issuedAt,
     expiresAt: link.expiresAt,

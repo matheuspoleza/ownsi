@@ -2104,6 +2104,8 @@
                     "unicodeDomain",
                     "heldBy",
                     "token",
+                    "challengeHost",
+                    "provider",
                     "provedAt",
                     "standing",
                     "issuedAt",
@@ -2131,6 +2133,19 @@
                     },
                     "token": {
                       "type": "string"
+                    },
+                    "challengeHost": {
+                      "type": "string"
+                    },
+                    "provider": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
                     },
                     "provedAt": {
                       "type": "string"
@@ -2276,6 +2291,8 @@
                           "unicodeDomain",
                           "heldBy",
                           "token",
+                          "challengeHost",
+                          "provider",
                           "provedAt",
                           "standing",
                           "issuedAt",
@@ -2303,6 +2320,19 @@
                           },
                           "token": {
                             "type": "string"
+                          },
+                          "challengeHost": {
+                            "type": "string"
+                          },
+                          "provider": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
                           },
                           "provedAt": {
                             "type": "string"
@@ -2454,6 +2484,8 @@
                     "unicodeDomain",
                     "heldBy",
                     "token",
+                    "challengeHost",
+                    "provider",
                     "provedAt",
                     "standing",
                     "issuedAt",
@@ -2481,6 +2513,19 @@
                     },
                     "token": {
                       "type": "string"
+                    },
+                    "challengeHost": {
+                      "type": "string"
+                    },
+                    "provider": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
                     },
                     "provedAt": {
                       "type": "string"

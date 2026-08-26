@@ -1,6 +1,11 @@
 import type { Clock } from "../../shared/clock.ts"
 import { err, ok, type Result } from "../../shared/result.ts"
-import type { FindProvedClaim, GenerateSlug, ProofLinkRepository } from "../domain/ports.ts"
+import type {
+  FindProvedClaim,
+  GenerateSlug,
+  ProofLinkRepository,
+  ReadProvider,
+} from "../domain/ports.ts"
 import { isLive, issueProofLink, type ProofLinkView, viewOf } from "../domain/proof-link.ts"
 
 export type ProofLinkUnavailable = { readonly type: "claim_not_proved" }
@@ -18,6 +23,7 @@ export type FindOrCreateProofLink = (
 export type FindOrCreateProofLinkDeps = {
   readonly links: ProofLinkRepository
   readonly findProvedClaim: FindProvedClaim
+  readonly readProvider: ReadProvider
   readonly generateSlug: GenerateSlug
   readonly clock: Clock
 }
@@ -35,7 +41,15 @@ export function findOrCreateProofLink(deps: FindOrCreateProofLinkDeps): FindOrCr
     const issued = issueProofLink({
       slug: deps.generateSlug(),
       claimId: proved.claimId,
-      attestation: proved.attestation,
+      attestation: {
+        domain: proved.domain,
+        unicodeDomain: proved.unicodeDomain,
+        heldBy: proved.heldBy,
+        token: proved.token,
+        challengeHost: proved.challengeHost,
+        provider: await deps.readProvider(proved.domain),
+        provedAt: proved.provedAt,
+      },
       issuedAt: now,
     })
 

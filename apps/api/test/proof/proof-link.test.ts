@@ -16,6 +16,8 @@ const ATTESTATION: Attestation = {
   unicodeDomain: "acme.com",
   heldBy: "m•••@acme.com",
   token: "ownsi_v1_9f3a",
+  challengeHost: "_ownsi-challenge.acme.com",
+  provider: "Cloudflare",
   provedAt: new Date("2026-08-21T09:30:00Z"),
 }
 
