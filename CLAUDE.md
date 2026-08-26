@@ -276,7 +276,7 @@ that reach back into the code.
 
 | Generated file | Comes from |
 | --- | --- |
-| `api-reference/openapi.json` | the running Elysia app, via `/openapi/json` |
+| `openapi.json` | the running Elysia app, via `/openapi/json` |
 | `diagnostics/catalogue.mdx` | `explain()` in `apps/api/src/verification/domain/diagnosis.ts` |
 
 `apps/api/scripts/emit-docs.ts` writes both; `bun run docs:emit` runs it. `apps/api/test/docs.test.ts`

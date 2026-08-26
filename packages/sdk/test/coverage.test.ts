@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import { join } from "node:path"
 
-const OPENAPI = join(import.meta.dir, "../../../apps/docs/api-reference/openapi.json")
+const OPENAPI = join(import.meta.dir, "../../../apps/docs/openapi.json")
 
 /** Every operation the API publishes, and the call that reaches it. */
 const REACHED: Readonly<Record<string, string>> = {

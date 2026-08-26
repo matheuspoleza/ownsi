@@ -12,7 +12,7 @@ import {
 
 export const DOCS_DIRECTORY = join(import.meta.dir, "../../docs")
 
-export const OPENAPI_PATH = join(DOCS_DIRECTORY, "api-reference/openapi.json")
+export const OPENAPI_PATH = join(DOCS_DIRECTORY, "openapi.json")
 export const DIAGNOSTICS_PATH = join(DOCS_DIRECTORY, "diagnostics/catalogue.mdx")
 
 const DOCUMENTED: AppConfig = {
