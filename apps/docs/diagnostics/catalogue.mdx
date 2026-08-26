@@ -139,15 +139,15 @@ _ownsi-challenge.acme.com is a CNAME pointing at acme.pages.dev, and a name that
 
 ## record_absent
 
-Nothing exists at _ownsi-challenge.acme.com — the record was never created, or it was saved under a different name.
+No resolver ownsi reads finds anything at _ownsi-challenge.acme.com, and the delegation for acme.com could not be read, so its own nameservers were never asked.
 
-**What to do.** Create a TXT record on _ownsi-challenge with the value ownsi_v1_9f3a2c8d1e4b7a6053c21f8e4d7b0a95.
+**What to do.** Create a TXT record on _ownsi-challenge with the value ownsi_v1_9f3a2c8d1e4b7a6053c21f8e4d7b0a95 if it is not there yet. ownsi rechecks on its own, and says more once it can read the zone.
 
 ```json
 {
   "code": "record_absent",
-  "cause": "Nothing exists at _ownsi-challenge.acme.com — the record was never created, or it was saved under a different name.",
-  "fix": "Create a TXT record on _ownsi-challenge with the value ownsi_v1_9f3a2c8d1e4b7a6053c21f8e4d7b0a95.",
+  "cause": "No resolver ownsi reads finds anything at _ownsi-challenge.acme.com, and the delegation for acme.com could not be read, so its own nameservers were never asked.",
+  "fix": "Create a TXT record on _ownsi-challenge with the value ownsi_v1_9f3a2c8d1e4b7a6053c21f8e4d7b0a95 if it is not there yet. ownsi rechecks on its own, and says more once it can read the zone.",
   "observed": {
     "answer": {
       "type": "nxdomain"
@@ -176,15 +176,15 @@ The token is on _ownsi-challenge.www.acme.com; the proof reads _ownsi-challenge.
 
 ## not_published
 
-dana.ns.cloudflare.com and rick.ns.cloudflare.com answer for acme.com and do not have the record, so nothing is spreading yet.
+dana.ns.cloudflare.com and rick.ns.cloudflare.com answer for acme.com, and the record is not in what they serve. Either it has not been created, or your panel has not published the zone edit yet.
 
-**What to do.** Reopen the record in your panel and confirm it saved — some panels hold zone changes in a draft until you publish them.
+**What to do.** Create the record, or reopen it in your panel and confirm it saved — some panels hold zone changes in a draft until you publish them. ownsi rechecks on its own.
 
 ```json
 {
   "code": "not_published",
-  "cause": "dana.ns.cloudflare.com and rick.ns.cloudflare.com answer for acme.com and do not have the record, so nothing is spreading yet.",
-  "fix": "Reopen the record in your panel and confirm it saved — some panels hold zone changes in a draft until you publish them.",
+  "cause": "dana.ns.cloudflare.com and rick.ns.cloudflare.com answer for acme.com, and the record is not in what they serve. Either it has not been created, or your panel has not published the zone edit yet.",
+  "fix": "Create the record, or reopen it in your panel and confirm it saved — some panels hold zone changes in a draft until you publish them. ownsi rechecks on its own.",
   "observed": {
     "nameservers": [
       "dana.ns.cloudflare.com",

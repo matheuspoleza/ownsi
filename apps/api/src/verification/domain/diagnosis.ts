@@ -111,7 +111,7 @@ export function explain(diagnosis: Diagnosis, challenge: Challenge): Explanation
         fix: `Remove the CNAME on ${CHALLENGE_LABEL}, then create the TXT record.`,
       }
     case "record_absent":
-      return absent(diagnosis.observed.answer, host, token)
+      return absent(diagnosis.observed.answer, challenge)
     case "record_on_www":
       return {
         cause: `The token is on ${diagnosis.observed.name}; the proof reads ${host}, without the www.`,
@@ -119,8 +119,8 @@ export function explain(diagnosis: Diagnosis, challenge: Challenge): Explanation
       }
     case "not_published":
       return {
-        cause: `${conjoin(diagnosis.observed.nameservers)} answer for ${domain} and do not have the record, so nothing is spreading yet.`,
-        fix: `Reopen the record in your panel and confirm it saved — some panels hold zone changes in a draft until you publish them.`,
+        cause: `${conjoin(diagnosis.observed.nameservers)} answer for ${domain}, and the record is not in what they serve. Either it has not been created, or your panel has not published the zone edit yet.`,
+        fix: `Create the record, or reopen it in your panel and confirm it saved — some panels hold zone changes in a draft until you publish them. ownsi rechecks on its own.`,
       }
     case "negative_cache":
       return {
@@ -142,11 +142,13 @@ export function explain(diagnosis: Diagnosis, challenge: Challenge): Explanation
   }
 }
 
-function absent(answer: AbsentAnswer, host: string, token: string): Explanation {
+function absent(answer: AbsentAnswer, { domain, token }: Challenge): Explanation {
+  const host = challengeHost(domain)
+
   if (answer.type === "nxdomain") {
     return {
-      cause: `Nothing exists at ${host} — the record was never created, or it was saved under a different name.`,
-      fix: `Create a TXT record on ${CHALLENGE_LABEL} with the value ${token}.`,
+      cause: `No resolver ownsi reads finds anything at ${host}, and the delegation for ${domain} could not be read, so its own nameservers were never asked.`,
+      fix: `Create a TXT record on ${CHALLENGE_LABEL} with the value ${token} if it is not there yet. ownsi rechecks on its own, and says more once it can read the zone.`,
     }
   }
   return {
