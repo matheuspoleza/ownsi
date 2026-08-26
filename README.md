@@ -1,5 +1,7 @@
 # ownsi
 
+[![Proved with ownsi](https://ownsi.dev/p/znd7mmzmjh/badge.svg)](https://ownsi.dev/p/znd7mmzmjh)
+
 Domain ownership proof. The spec lives in [`docs/domain-ownership/prd.md`](docs/domain-ownership/prd.md).
 
 ## Layout
