@@ -119,6 +119,22 @@
                           "type": "string"
                         }
                       }
+                    },
+                    {
+                      "type": "object",
+                      "required": [
+                        "type",
+                        "domainId"
+                      ],
+                      "properties": {
+                        "type": {
+                          "const": "domain.unarchived",
+                          "type": "string"
+                        },
+                        "domainId": {
+                          "type": "string"
+                        }
+                      }
                     }
                   ]
                 }
@@ -600,7 +616,7 @@
           "Domains"
         ],
         "summary": "List the domains on this account",
-        "description": "Newest first, one page at a time: pass `nextCursor` back as `cursor` for the next one. Each domain carries the state of the claim in play on it, and `counts` tallies every status on the account, not only this page. `name` narrows to one, which is how a page reads a domain it only knows by name. Archived domains are left out; they are still readable by id.",
+        "description": "Newest first, one page at a time: pass `nextCursor` back as `cursor` for the next one. Each domain carries the state of the claim in play on it, and `counts` tallies every status on the account, not only this page. `name` narrows to one, which is how a page reads a domain it only knows by name. Browsing leaves archived domains out until `archived` asks for them, and `counts.archived` says how many are waiting there; naming one finds it either way, and every domain carries `archived` so a caller can tell.",
         "parameters": [
           {
             "name": "name",
@@ -625,6 +641,15 @@
                 "expired",
                 "canceled"
               ]
+            }
+          },
+          {
+            "name": "archived",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": false,
+              "type": "boolean"
             }
           },
           {
@@ -753,7 +778,8 @@
                         "pending",
                         "proved",
                         "expired",
-                        "canceled"
+                        "canceled",
+                        "archived"
                       ],
                       "properties": {
                         "unclaimed": {
@@ -769,6 +795,9 @@
                           "type": "number"
                         },
                         "canceled": {
+                          "type": "number"
+                        },
+                        "archived": {
                           "type": "number"
                         }
                       }
@@ -1049,7 +1078,7 @@
           "Domains"
         ],
         "summary": "Stop involving me with this name",
-        "description": "Leaves the list and ends any open claim on it. Nothing is retracted: a proof keeps its dates and its links resolve.",
+        "description": "Leaves the list, ends any open claim on it, and takes back every public link it published — those slugs stop resolving for good. The proof itself is untouched: the claim keeps its state and its dates, and the domain answers to `archived=true`. Idempotent.",
         "parameters": [
           {
             "name": "id",
@@ -1166,6 +1195,131 @@
           }
         },
         "operationId": "postApiDomainsByIdArchive"
+      }
+    },
+    "/api/domains/{id}/unarchive": {
+      "post": {
+        "tags": [
+          "Domains"
+        ],
+        "summary": "Put this name back on the list",
+        "description": "The domain returns to the list with every claim it ever carried. It opens no claim and restores no link: claim it again to start proving it, and publish a new link to share a proof it still holds. Idempotent.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Response for status 200",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "name",
+                    "unicodeName",
+                    "archived",
+                    "createdAt"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "unicodeName": {
+                      "type": "string"
+                    },
+                    "archived": {
+                      "type": "boolean"
+                    },
+                    "createdAt": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Response for status 401",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "docsUrl"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "docsUrl": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Response for status 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "docsUrl"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "docsUrl": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "operationId": "postApiDomainsByIdUnarchive"
       }
     },
     "/api/claims/": {
@@ -1325,19 +1479,40 @@
                     "coexistence": {
                       "anyOf": [
                         {
-                          "type": "object",
-                          "required": [
-                            "maskedEmail",
-                            "provedAt"
-                          ],
-                          "properties": {
-                            "maskedEmail": {
-                              "type": "string"
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "required": [
+                                "type"
+                              ],
+                              "properties": {
+                                "type": {
+                                  "const": "unnamed",
+                                  "type": "string"
+                                }
+                              }
                             },
-                            "provedAt": {
-                              "type": "string"
+                            {
+                              "type": "object",
+                              "required": [
+                                "type",
+                                "maskedEmail",
+                                "provedAt"
+                              ],
+                              "properties": {
+                                "type": {
+                                  "const": "named",
+                                  "type": "string"
+                                },
+                                "maskedEmail": {
+                                  "type": "string"
+                                },
+                                "provedAt": {
+                                  "type": "string"
+                                }
+                              }
                             }
-                          }
+                          ]
                         },
                         {
                           "type": "null"
@@ -1744,19 +1919,40 @@
                     "coexistence": {
                       "anyOf": [
                         {
-                          "type": "object",
-                          "required": [
-                            "maskedEmail",
-                            "provedAt"
-                          ],
-                          "properties": {
-                            "maskedEmail": {
-                              "type": "string"
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "required": [
+                                "type"
+                              ],
+                              "properties": {
+                                "type": {
+                                  "const": "unnamed",
+                                  "type": "string"
+                                }
+                              }
                             },
-                            "provedAt": {
-                              "type": "string"
+                            {
+                              "type": "object",
+                              "required": [
+                                "type",
+                                "maskedEmail",
+                                "provedAt"
+                              ],
+                              "properties": {
+                                "type": {
+                                  "const": "named",
+                                  "type": "string"
+                                },
+                                "maskedEmail": {
+                                  "type": "string"
+                                },
+                                "provedAt": {
+                                  "type": "string"
+                                }
+                              }
                             }
-                          }
+                          ]
                         },
                         {
                           "type": "null"
@@ -2074,7 +2270,7 @@
           "Proof"
         ],
         "summary": "Publish a link to this proof",
-        "description": "Idempotent while one is live: asking twice hands back the same slug. The slug is its own — never the DNS token — and it stops resolving after seven days.",
+        "description": "Idempotent: asking twice hands back the same slug. The slug is its own — never the DNS token — and it resolves until the holder takes it back. An archived domain publishes nothing: archiving revoked its links, and it has to be back on the list before a new one is minted.",
         "parameters": [
           {
             "name": "id",
@@ -2106,7 +2302,6 @@
                     "provedAt",
                     "standing",
                     "issuedAt",
-                    "expiresAt",
                     "revokedAt"
                   ],
                   "properties": {
@@ -2152,14 +2347,10 @@
                       "type": "string",
                       "enum": [
                         "live",
-                        "expired",
                         "revoked"
                       ]
                     },
                     "issuedAt": {
-                      "type": "string"
-                    },
-                    "expiresAt": {
                       "type": "string"
                     },
                     "revokedAt": {
@@ -2244,6 +2435,40 @@
                 }
               }
             }
+          },
+          "409": {
+            "description": "Response for status 409",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "docsUrl"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "docsUrl": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
           }
         },
         "operationId": "postApiClaimsByIdProof_links"
@@ -2253,7 +2478,7 @@
           "Proof"
         ],
         "summary": "List the links published for this proof",
-        "description": "Newest first, expired and revoked ones included — what was shared is part of the record. `standing` says which of them still resolves.",
+        "description": "Newest first, revoked ones included — what was shared is part of the record. `standing` says which of them still resolves.",
         "parameters": [
           {
             "name": "id",
@@ -2293,7 +2518,6 @@
                           "provedAt",
                           "standing",
                           "issuedAt",
-                          "expiresAt",
                           "revokedAt"
                         ],
                         "properties": {
@@ -2339,14 +2563,10 @@
                             "type": "string",
                             "enum": [
                               "live",
-                              "expired",
                               "revoked"
                             ]
                           },
                           "issuedAt": {
-                            "type": "string"
-                          },
-                          "expiresAt": {
                             "type": "string"
                           },
                           "revokedAt": {
@@ -2486,7 +2706,6 @@
                     "provedAt",
                     "standing",
                     "issuedAt",
-                    "expiresAt",
                     "revokedAt"
                   ],
                   "properties": {
@@ -2532,14 +2751,10 @@
                       "type": "string",
                       "enum": [
                         "live",
-                        "expired",
                         "revoked"
                       ]
                     },
                     "issuedAt": {
-                      "type": "string"
-                    },
-                    "expiresAt": {
                       "type": "string"
                     },
                     "revokedAt": {
@@ -2629,6 +2844,187 @@
         "operationId": "postApiClaimsByIdProof_linksBySlugRevoke"
       }
     },
+    "/api/proofs/{slug}": {
+      "get": {
+        "tags": [
+          "Proof"
+        ],
+        "summary": "Read a published proof",
+        "description": "The machine-readable side of the page a link opens. No account needed: the slug is the whole of it. Hands back the domain, the holder as a stranger may see them, the token and the host it was written on, so a reader can run the lookup themselves — this reads no DNS. `recency` says whether a later proof of the same name exists — it takes nothing away from this one, and the reader decides what it means. Answers 410 once the link is taken back, and the proof behind it stands either way.",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Response for status 200",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "slug",
+                    "url",
+                    "domain",
+                    "unicodeDomain",
+                    "heldBy",
+                    "token",
+                    "challengeHost",
+                    "provider",
+                    "provedAt",
+                    "recency"
+                  ],
+                  "properties": {
+                    "slug": {
+                      "type": "string"
+                    },
+                    "url": {
+                      "type": "string"
+                    },
+                    "domain": {
+                      "type": "string"
+                    },
+                    "unicodeDomain": {
+                      "type": "string"
+                    },
+                    "heldBy": {
+                      "type": "string"
+                    },
+                    "token": {
+                      "type": "string"
+                    },
+                    "challengeHost": {
+                      "type": "string"
+                    },
+                    "provider": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "provedAt": {
+                      "type": "string"
+                    },
+                    "recency": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "required": [
+                            "type"
+                          ],
+                          "properties": {
+                            "type": {
+                              "const": "latest",
+                              "type": "string"
+                            }
+                          }
+                        },
+                        {
+                          "type": "object",
+                          "required": [
+                            "type",
+                            "latestProvedAt"
+                          ],
+                          "properties": {
+                            "type": {
+                              "const": "earlier",
+                              "type": "string"
+                            },
+                            "latestProvedAt": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Response for status 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "docsUrl"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "docsUrl": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Response for status 410",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "docsUrl"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "docsUrl": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "operationId": "getApiProofsBySlug"
+      }
+    },
     "/api/verifications/{id}": {
       "get": {
         "tags": [
@@ -2716,6 +3112,7 @@
                                 "code",
                                 "cause",
                                 "fix",
+                                "awaits",
                                 "observed"
                               ],
                               "properties": {
@@ -2728,6 +3125,14 @@
                                 },
                                 "fix": {
                                   "type": "string"
+                                },
+                                "awaits": {
+                                  "default": "claimant",
+                                  "type": "string",
+                                  "enum": [
+                                    "claimant",
+                                    "resolvers"
+                                  ]
                                 },
                                 "observed": {
                                   "type": "object",
@@ -2748,6 +3153,7 @@
                                 "code",
                                 "cause",
                                 "fix",
+                                "awaits",
                                 "observed"
                               ],
                               "properties": {
@@ -2760,6 +3166,14 @@
                                 },
                                 "fix": {
                                   "type": "string"
+                                },
+                                "awaits": {
+                                  "default": "claimant",
+                                  "type": "string",
+                                  "enum": [
+                                    "claimant",
+                                    "resolvers"
+                                  ]
                                 },
                                 "observed": {
                                   "type": "object",
@@ -2784,6 +3198,7 @@
                                 "code",
                                 "cause",
                                 "fix",
+                                "awaits",
                                 "observed"
                               ],
                               "properties": {
@@ -2797,6 +3212,14 @@
                                 "fix": {
                                   "type": "string"
                                 },
+                                "awaits": {
+                                  "default": "claimant",
+                                  "type": "string",
+                                  "enum": [
+                                    "claimant",
+                                    "resolvers"
+                                  ]
+                                },
                                 "observed": {
                                   "type": "object",
                                   "required": [
@@ -2816,6 +3239,7 @@
                                 "code",
                                 "cause",
                                 "fix",
+                                "awaits",
                                 "observed"
                               ],
                               "properties": {
@@ -2829,6 +3253,14 @@
                                 "fix": {
                                   "type": "string"
                                 },
+                                "awaits": {
+                                  "default": "claimant",
+                                  "type": "string",
+                                  "enum": [
+                                    "claimant",
+                                    "resolvers"
+                                  ]
+                                },
                                 "observed": {
                                   "type": "object",
                                   "required": [
@@ -2848,6 +3280,7 @@
                                 "code",
                                 "cause",
                                 "fix",
+                                "awaits",
                                 "observed"
                               ],
                               "properties": {
@@ -2861,6 +3294,14 @@
                                 "fix": {
                                   "type": "string"
                                 },
+                                "awaits": {
+                                  "default": "claimant",
+                                  "type": "string",
+                                  "enum": [
+                                    "claimant",
+                                    "resolvers"
+                                  ]
+                                },
                                 "observed": {
                                   "type": "object",
                                   "required": [
@@ -2880,6 +3321,7 @@
                                 "code",
                                 "cause",
                                 "fix",
+                                "awaits",
                                 "observed"
                               ],
                               "properties": {
@@ -2892,6 +3334,14 @@
                                 },
                                 "fix": {
                                   "type": "string"
+                                },
+                                "awaits": {
+                                  "default": "claimant",
+                                  "type": "string",
+                                  "enum": [
+                                    "claimant",
+                                    "resolvers"
+                                  ]
                                 },
                                 "observed": {
                                   "type": "object",
@@ -2915,6 +3365,7 @@
                                 "code",
                                 "cause",
                                 "fix",
+                                "awaits",
                                 "observed"
                               ],
                               "properties": {
@@ -2927,6 +3378,14 @@
                                 },
                                 "fix": {
                                   "type": "string"
+                                },
+                                "awaits": {
+                                  "default": "claimant",
+                                  "type": "string",
+                                  "enum": [
+                                    "claimant",
+                                    "resolvers"
+                                  ]
                                 },
                                 "observed": {
                                   "type": "object",
@@ -2947,6 +3406,7 @@
                                 "code",
                                 "cause",
                                 "fix",
+                                "awaits",
                                 "observed"
                               ],
                               "properties": {
@@ -2959,6 +3419,14 @@
                                 },
                                 "fix": {
                                   "type": "string"
+                                },
+                                "awaits": {
+                                  "default": "claimant",
+                                  "type": "string",
+                                  "enum": [
+                                    "claimant",
+                                    "resolvers"
+                                  ]
                                 },
                                 "observed": {
                                   "type": "object",
@@ -3011,6 +3479,7 @@
                                 "code",
                                 "cause",
                                 "fix",
+                                "awaits",
                                 "observed"
                               ],
                               "properties": {
@@ -3023,6 +3492,14 @@
                                 },
                                 "fix": {
                                   "type": "string"
+                                },
+                                "awaits": {
+                                  "default": "claimant",
+                                  "type": "string",
+                                  "enum": [
+                                    "claimant",
+                                    "resolvers"
+                                  ]
                                 },
                                 "observed": {
                                   "type": "object",
@@ -3047,6 +3524,7 @@
                                 "code",
                                 "cause",
                                 "fix",
+                                "awaits",
                                 "observed"
                               ],
                               "properties": {
@@ -3059,6 +3537,14 @@
                                 },
                                 "fix": {
                                   "type": "string"
+                                },
+                                "awaits": {
+                                  "default": "claimant",
+                                  "type": "string",
+                                  "enum": [
+                                    "claimant",
+                                    "resolvers"
+                                  ]
                                 },
                                 "observed": {
                                   "type": "object",
@@ -3082,6 +3568,7 @@
                                 "code",
                                 "cause",
                                 "fix",
+                                "awaits",
                                 "observed"
                               ],
                               "properties": {
@@ -3094,6 +3581,14 @@
                                 },
                                 "fix": {
                                   "type": "string"
+                                },
+                                "awaits": {
+                                  "default": "claimant",
+                                  "type": "string",
+                                  "enum": [
+                                    "claimant",
+                                    "resolvers"
+                                  ]
                                 },
                                 "observed": {
                                   "type": "object",
@@ -3114,6 +3609,7 @@
                                 "code",
                                 "cause",
                                 "fix",
+                                "awaits",
                                 "observed"
                               ],
                               "properties": {
@@ -3126,6 +3622,14 @@
                                 },
                                 "fix": {
                                   "type": "string"
+                                },
+                                "awaits": {
+                                  "default": "claimant",
+                                  "type": "string",
+                                  "enum": [
+                                    "claimant",
+                                    "resolvers"
+                                  ]
                                 },
                                 "observed": {
                                   "type": "object",
@@ -3149,6 +3653,7 @@
                                 "code",
                                 "cause",
                                 "fix",
+                                "awaits",
                                 "observed"
                               ],
                               "properties": {
@@ -3161,6 +3666,14 @@
                                 },
                                 "fix": {
                                   "type": "string"
+                                },
+                                "awaits": {
+                                  "default": "claimant",
+                                  "type": "string",
+                                  "enum": [
+                                    "claimant",
+                                    "resolvers"
+                                  ]
                                 },
                                 "observed": {
                                   "type": "object",
@@ -3388,6 +3901,7 @@
                                       "code",
                                       "cause",
                                       "fix",
+                                      "awaits",
                                       "observed"
                                     ],
                                     "properties": {
@@ -3400,6 +3914,14 @@
                                       },
                                       "fix": {
                                         "type": "string"
+                                      },
+                                      "awaits": {
+                                        "default": "claimant",
+                                        "type": "string",
+                                        "enum": [
+                                          "claimant",
+                                          "resolvers"
+                                        ]
                                       },
                                       "observed": {
                                         "type": "object",
@@ -3420,6 +3942,7 @@
                                       "code",
                                       "cause",
                                       "fix",
+                                      "awaits",
                                       "observed"
                                     ],
                                     "properties": {
@@ -3432,6 +3955,14 @@
                                       },
                                       "fix": {
                                         "type": "string"
+                                      },
+                                      "awaits": {
+                                        "default": "claimant",
+                                        "type": "string",
+                                        "enum": [
+                                          "claimant",
+                                          "resolvers"
+                                        ]
                                       },
                                       "observed": {
                                         "type": "object",
@@ -3456,6 +3987,7 @@
                                       "code",
                                       "cause",
                                       "fix",
+                                      "awaits",
                                       "observed"
                                     ],
                                     "properties": {
@@ -3469,6 +4001,14 @@
                                       "fix": {
                                         "type": "string"
                                       },
+                                      "awaits": {
+                                        "default": "claimant",
+                                        "type": "string",
+                                        "enum": [
+                                          "claimant",
+                                          "resolvers"
+                                        ]
+                                      },
                                       "observed": {
                                         "type": "object",
                                         "required": [
@@ -3488,6 +4028,7 @@
                                       "code",
                                       "cause",
                                       "fix",
+                                      "awaits",
                                       "observed"
                                     ],
                                     "properties": {
@@ -3501,6 +4042,14 @@
                                       "fix": {
                                         "type": "string"
                                       },
+                                      "awaits": {
+                                        "default": "claimant",
+                                        "type": "string",
+                                        "enum": [
+                                          "claimant",
+                                          "resolvers"
+                                        ]
+                                      },
                                       "observed": {
                                         "type": "object",
                                         "required": [
@@ -3520,6 +4069,7 @@
                                       "code",
                                       "cause",
                                       "fix",
+                                      "awaits",
                                       "observed"
                                     ],
                                     "properties": {
@@ -3533,6 +4083,14 @@
                                       "fix": {
                                         "type": "string"
                                       },
+                                      "awaits": {
+                                        "default": "claimant",
+                                        "type": "string",
+                                        "enum": [
+                                          "claimant",
+                                          "resolvers"
+                                        ]
+                                      },
                                       "observed": {
                                         "type": "object",
                                         "required": [
@@ -3552,6 +4110,7 @@
                                       "code",
                                       "cause",
                                       "fix",
+                                      "awaits",
                                       "observed"
                                     ],
                                     "properties": {
@@ -3564,6 +4123,14 @@
                                       },
                                       "fix": {
                                         "type": "string"
+                                      },
+                                      "awaits": {
+                                        "default": "claimant",
+                                        "type": "string",
+                                        "enum": [
+                                          "claimant",
+                                          "resolvers"
+                                        ]
                                       },
                                       "observed": {
                                         "type": "object",
@@ -3587,6 +4154,7 @@
                                       "code",
                                       "cause",
                                       "fix",
+                                      "awaits",
                                       "observed"
                                     ],
                                     "properties": {
@@ -3599,6 +4167,14 @@
                                       },
                                       "fix": {
                                         "type": "string"
+                                      },
+                                      "awaits": {
+                                        "default": "claimant",
+                                        "type": "string",
+                                        "enum": [
+                                          "claimant",
+                                          "resolvers"
+                                        ]
                                       },
                                       "observed": {
                                         "type": "object",
@@ -3619,6 +4195,7 @@
                                       "code",
                                       "cause",
                                       "fix",
+                                      "awaits",
                                       "observed"
                                     ],
                                     "properties": {
@@ -3631,6 +4208,14 @@
                                       },
                                       "fix": {
                                         "type": "string"
+                                      },
+                                      "awaits": {
+                                        "default": "claimant",
+                                        "type": "string",
+                                        "enum": [
+                                          "claimant",
+                                          "resolvers"
+                                        ]
                                       },
                                       "observed": {
                                         "type": "object",
@@ -3683,6 +4268,7 @@
                                       "code",
                                       "cause",
                                       "fix",
+                                      "awaits",
                                       "observed"
                                     ],
                                     "properties": {
@@ -3695,6 +4281,14 @@
                                       },
                                       "fix": {
                                         "type": "string"
+                                      },
+                                      "awaits": {
+                                        "default": "claimant",
+                                        "type": "string",
+                                        "enum": [
+                                          "claimant",
+                                          "resolvers"
+                                        ]
                                       },
                                       "observed": {
                                         "type": "object",
@@ -3719,6 +4313,7 @@
                                       "code",
                                       "cause",
                                       "fix",
+                                      "awaits",
                                       "observed"
                                     ],
                                     "properties": {
@@ -3731,6 +4326,14 @@
                                       },
                                       "fix": {
                                         "type": "string"
+                                      },
+                                      "awaits": {
+                                        "default": "claimant",
+                                        "type": "string",
+                                        "enum": [
+                                          "claimant",
+                                          "resolvers"
+                                        ]
                                       },
                                       "observed": {
                                         "type": "object",
@@ -3754,6 +4357,7 @@
                                       "code",
                                       "cause",
                                       "fix",
+                                      "awaits",
                                       "observed"
                                     ],
                                     "properties": {
@@ -3766,6 +4370,14 @@
                                       },
                                       "fix": {
                                         "type": "string"
+                                      },
+                                      "awaits": {
+                                        "default": "claimant",
+                                        "type": "string",
+                                        "enum": [
+                                          "claimant",
+                                          "resolvers"
+                                        ]
                                       },
                                       "observed": {
                                         "type": "object",
@@ -3786,6 +4398,7 @@
                                       "code",
                                       "cause",
                                       "fix",
+                                      "awaits",
                                       "observed"
                                     ],
                                     "properties": {
@@ -3798,6 +4411,14 @@
                                       },
                                       "fix": {
                                         "type": "string"
+                                      },
+                                      "awaits": {
+                                        "default": "claimant",
+                                        "type": "string",
+                                        "enum": [
+                                          "claimant",
+                                          "resolvers"
+                                        ]
                                       },
                                       "observed": {
                                         "type": "object",
@@ -3821,6 +4442,7 @@
                                       "code",
                                       "cause",
                                       "fix",
+                                      "awaits",
                                       "observed"
                                     ],
                                     "properties": {
@@ -3833,6 +4455,14 @@
                                       },
                                       "fix": {
                                         "type": "string"
+                                      },
+                                      "awaits": {
+                                        "default": "claimant",
+                                        "type": "string",
+                                        "enum": [
+                                          "claimant",
+                                          "resolvers"
+                                        ]
                                       },
                                       "observed": {
                                         "type": "object",
@@ -4037,6 +4667,7 @@
                                 "code",
                                 "cause",
                                 "fix",
+                                "awaits",
                                 "observed"
                               ],
                               "properties": {
@@ -4049,6 +4680,14 @@
                                 },
                                 "fix": {
                                   "type": "string"
+                                },
+                                "awaits": {
+                                  "default": "claimant",
+                                  "type": "string",
+                                  "enum": [
+                                    "claimant",
+                                    "resolvers"
+                                  ]
                                 },
                                 "observed": {
                                   "type": "object",
@@ -4069,6 +4708,7 @@
                                 "code",
                                 "cause",
                                 "fix",
+                                "awaits",
                                 "observed"
                               ],
                               "properties": {
@@ -4081,6 +4721,14 @@
                                 },
                                 "fix": {
                                   "type": "string"
+                                },
+                                "awaits": {
+                                  "default": "claimant",
+                                  "type": "string",
+                                  "enum": [
+                                    "claimant",
+                                    "resolvers"
+                                  ]
                                 },
                                 "observed": {
                                   "type": "object",
@@ -4105,6 +4753,7 @@
                                 "code",
                                 "cause",
                                 "fix",
+                                "awaits",
                                 "observed"
                               ],
                               "properties": {
@@ -4118,6 +4767,14 @@
                                 "fix": {
                                   "type": "string"
                                 },
+                                "awaits": {
+                                  "default": "claimant",
+                                  "type": "string",
+                                  "enum": [
+                                    "claimant",
+                                    "resolvers"
+                                  ]
+                                },
                                 "observed": {
                                   "type": "object",
                                   "required": [
@@ -4137,6 +4794,7 @@
                                 "code",
                                 "cause",
                                 "fix",
+                                "awaits",
                                 "observed"
                               ],
                               "properties": {
@@ -4150,6 +4808,14 @@
                                 "fix": {
                                   "type": "string"
                                 },
+                                "awaits": {
+                                  "default": "claimant",
+                                  "type": "string",
+                                  "enum": [
+                                    "claimant",
+                                    "resolvers"
+                                  ]
+                                },
                                 "observed": {
                                   "type": "object",
                                   "required": [
@@ -4169,6 +4835,7 @@
                                 "code",
                                 "cause",
                                 "fix",
+                                "awaits",
                                 "observed"
                               ],
                               "properties": {
@@ -4182,6 +4849,14 @@
                                 "fix": {
                                   "type": "string"
                                 },
+                                "awaits": {
+                                  "default": "claimant",
+                                  "type": "string",
+                                  "enum": [
+                                    "claimant",
+                                    "resolvers"
+                                  ]
+                                },
                                 "observed": {
                                   "type": "object",
                                   "required": [
@@ -4201,6 +4876,7 @@
                                 "code",
                                 "cause",
                                 "fix",
+                                "awaits",
                                 "observed"
                               ],
                               "properties": {
@@ -4213,6 +4889,14 @@
                                 },
                                 "fix": {
                                   "type": "string"
+                                },
+                                "awaits": {
+                                  "default": "claimant",
+                                  "type": "string",
+                                  "enum": [
+                                    "claimant",
+                                    "resolvers"
+                                  ]
                                 },
                                 "observed": {
                                   "type": "object",
@@ -4236,6 +4920,7 @@
                                 "code",
                                 "cause",
                                 "fix",
+                                "awaits",
                                 "observed"
                               ],
                               "properties": {
@@ -4248,6 +4933,14 @@
                                 },
                                 "fix": {
                                   "type": "string"
+                                },
+                                "awaits": {
+                                  "default": "claimant",
+                                  "type": "string",
+                                  "enum": [
+                                    "claimant",
+                                    "resolvers"
+                                  ]
                                 },
                                 "observed": {
                                   "type": "object",
@@ -4268,6 +4961,7 @@
                                 "code",
                                 "cause",
                                 "fix",
+                                "awaits",
                                 "observed"
                               ],
                               "properties": {
@@ -4280,6 +4974,14 @@
                                 },
                                 "fix": {
                                   "type": "string"
+                                },
+                                "awaits": {
+                                  "default": "claimant",
+                                  "type": "string",
+                                  "enum": [
+                                    "claimant",
+                                    "resolvers"
+                                  ]
                                 },
                                 "observed": {
                                   "type": "object",
@@ -4332,6 +5034,7 @@
                                 "code",
                                 "cause",
                                 "fix",
+                                "awaits",
                                 "observed"
                               ],
                               "properties": {
@@ -4344,6 +5047,14 @@
                                 },
                                 "fix": {
                                   "type": "string"
+                                },
+                                "awaits": {
+                                  "default": "claimant",
+                                  "type": "string",
+                                  "enum": [
+                                    "claimant",
+                                    "resolvers"
+                                  ]
                                 },
                                 "observed": {
                                   "type": "object",
@@ -4368,6 +5079,7 @@
                                 "code",
                                 "cause",
                                 "fix",
+                                "awaits",
                                 "observed"
                               ],
                               "properties": {
@@ -4380,6 +5092,14 @@
                                 },
                                 "fix": {
                                   "type": "string"
+                                },
+                                "awaits": {
+                                  "default": "claimant",
+                                  "type": "string",
+                                  "enum": [
+                                    "claimant",
+                                    "resolvers"
+                                  ]
                                 },
                                 "observed": {
                                   "type": "object",
@@ -4403,6 +5123,7 @@
                                 "code",
                                 "cause",
                                 "fix",
+                                "awaits",
                                 "observed"
                               ],
                               "properties": {
@@ -4415,6 +5136,14 @@
                                 },
                                 "fix": {
                                   "type": "string"
+                                },
+                                "awaits": {
+                                  "default": "claimant",
+                                  "type": "string",
+                                  "enum": [
+                                    "claimant",
+                                    "resolvers"
+                                  ]
                                 },
                                 "observed": {
                                   "type": "object",
@@ -4435,6 +5164,7 @@
                                 "code",
                                 "cause",
                                 "fix",
+                                "awaits",
                                 "observed"
                               ],
                               "properties": {
@@ -4447,6 +5177,14 @@
                                 },
                                 "fix": {
                                   "type": "string"
+                                },
+                                "awaits": {
+                                  "default": "claimant",
+                                  "type": "string",
+                                  "enum": [
+                                    "claimant",
+                                    "resolvers"
+                                  ]
                                 },
                                 "observed": {
                                   "type": "object",
@@ -4470,6 +5208,7 @@
                                 "code",
                                 "cause",
                                 "fix",
+                                "awaits",
                                 "observed"
                               ],
                               "properties": {
@@ -4482,6 +5221,14 @@
                                 },
                                 "fix": {
                                   "type": "string"
+                                },
+                                "awaits": {
+                                  "default": "claimant",
+                                  "type": "string",
+                                  "enum": [
+                                    "claimant",
+                                    "resolvers"
+                                  ]
                                 },
                                 "observed": {
                                   "type": "object",

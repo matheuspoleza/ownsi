@@ -1,5 +1,5 @@
 ---
-title: "Error codes"
+title: "Error Codes"
 description: "Every code the API can return, what causes it, and whether retrying helps."
 icon: "triangle-exclamation"
 ---
@@ -55,7 +55,7 @@ Retrying the same request does not help. Sign in and retry.
 ## already_claimed
 
 **409.** The domain already has a claim open on your account, with the token it was issued. This is
-not a conflict with another account — [that is coexistence](/concepts/claim-lifecycle#coexistence)
+not a conflict with another account — [that is coexistence](/concepts/claim-lifecycle#when-someone-else-proves-the-same-domain)
 and it is not an error.
 
 Use the claim you already have. The token on it is the one that will verify.
@@ -67,6 +67,16 @@ Its token is no longer accepted, so there is nothing to re-check.
 
 Claim the domain again. That opens a new claim with a new token, and the ended one stays as
 history.
+
+## domain_archived
+
+**409.** The domain is archived, so it is off your list: it opens no new claim and publishes no new
+proof link. Archiving retracts no proof — the claims it carried keep their state and their dates,
+and every link it ever published is still listed — but the links themselves were revoked when it was
+archived.
+
+Put the domain back on the list — `POST /api/domains/{id}/unarchive` — and act from there. The old
+slugs do not come back.
 
 ## domain_not_found
 
@@ -102,12 +112,25 @@ had one.
 **404.** No link with that slug was ever published on that claim. Revoking one twice returns this
 too: what is already taken back is no longer there to take back.
 
+This is the holder's error, raised while managing links on a claim they own. A stranger reading a
+slug that resolves to nothing gets `proof_not_found` instead.
+
+## proof_not_found
+
+**404.** No proof resolves at that slug. `GET /api/proofs/:slug` reveals nothing else: a slug that
+was never issued and one that belongs to an account you cannot see read the same.
+
+## proof_revoked
+
+**410.** The holder took the link back. It retracts nothing about the proof itself: it was true on
+the day it was granted and still is. Ask whoever holds it to publish another link.
+
 ## rate_limited
 
 **429.** Too many requests. Carries a `Retry-After` header in seconds.
 
-Enforced per IP on the public surfaces — reading a zone, and public proof pages — and per
-verification on `POST /api/verifications/:id/runs`.
+Enforced per IP on the public surfaces — reading a zone, and the proof page and its API read, which
+share one budget — and per verification on `POST /api/verifications/:id/runs`.
 
 <Check>Safe to retry after `Retry-After`. Forcing checks in a loop does not make DNS answer faster.</Check>
 
@@ -127,4 +150,6 @@ verification on `POST /api/verifications/:id/runs`.
 | `verification_not_running` | 409 | No — claim the domain again. |
 | `claim_not_proved` | 404 | No — nothing is proved to share. |
 | `proof_link_not_found` | 404 | No. |
+| `proof_not_found` | 404 | No. |
+| `proof_revoked` | 410 | No — the link is gone, not the proof. |
 | `rate_limited` | 429 | Yes, after `Retry-After`. |

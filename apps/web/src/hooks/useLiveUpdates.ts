@@ -34,7 +34,9 @@ export const useLiveUpdates = ({ enabled }: UseLiveUpdatesOptions): void => {
           stale(CLAIM_KEY)
           break
         case "domain.archived":
+        case "domain.unarchived":
           stale(DOMAINS_KEY)
+          stale(CLAIMS_KEY)
           break
         default:
           break

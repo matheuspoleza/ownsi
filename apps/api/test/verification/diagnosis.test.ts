@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import { CHALLENGE, SAMPLES } from "../../scripts/emit-docs.ts"
 import {
+  awaits,
   DIAGNOSIS_CODES,
   type Diagnosis,
   explain,
@@ -68,6 +69,26 @@ describe("the diagnostics catalogue", () => {
       expect(cause.length).toBeLessThanOrEqual(SENTENCE_CEILING)
       expect(fix.length).toBeLessThanOrEqual(SENTENCE_CEILING)
     }
+  })
+})
+
+describe("who a diagnosis is waiting on", () => {
+  test("a fix the claimant cannot perform is the only one that waits on the resolvers", () => {
+    const resolvers = diagnosed.filter((diagnosis) => awaits(diagnosis) === "resolvers")
+
+    expect(resolvers.map((diagnosis) => diagnosis.code)).toEqual(["negative_cache"])
+  })
+
+  test("the one that waits on nobody is the one that asks for nothing", () => {
+    for (const diagnosis of diagnosed) {
+      const asksForNothing = explain(diagnosis, CHALLENGE).fix.startsWith("Nothing to do")
+      expect(asksForNothing).toBe(awaits(diagnosis) === "resolvers")
+    }
+  })
+
+  test("the explanation carries it, so a reader never maps codes itself", () => {
+    expect(explain(SAMPLES.negative_cache, CHALLENGE).awaits).toBe("resolvers")
+    expect(explain(SAMPLES.not_published, CHALLENGE).awaits).toBe("claimant")
   })
 })
 

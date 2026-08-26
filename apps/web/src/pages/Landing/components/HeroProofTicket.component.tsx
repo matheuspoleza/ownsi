@@ -14,7 +14,6 @@ export interface Proof {
   providerLabel: string
   token: string
   link: string
-  expiresOn: string
 }
 
 export interface HeroProofTicketProps {
@@ -172,7 +171,7 @@ export const HeroProofTicket = ({ proof }: HeroProofTicketProps) => {
             <p className="font-mono text-[10.5px] text-white/70">{proof.link}</p>
             <p className="flex items-center gap-1.5 text-[11px] text-white/70">
               <span className="size-1.5 rounded-full bg-white" />
-              Link expires {proof.expiresOn}
+              Does not expire
             </p>
           </div>
         </div>

@@ -8,7 +8,7 @@ import {
   prove,
   provedAt,
 } from "../../src/claims/domain/claim.ts"
-import { noticesBetween } from "../../src/claims/domain/notice.ts"
+import { noticeForChange, noticesBetween } from "../../src/claims/domain/notice.ts"
 import { maskEmail } from "../../src/shared/masked-email.ts"
 import { daysAfter } from "../../src/shared/time.ts"
 import type { Diagnosis } from "../../src/verification/verification.contract.ts"
@@ -26,6 +26,11 @@ const OPEN = openClaim({
 const NOT_PUBLISHED: Diagnosis = {
   code: "not_published",
   observed: { nameservers: ["kate.ns.cloudflare.com"] },
+}
+
+const CACHED_ABSENCE: Diagnosis = {
+  code: "negative_cache",
+  observed: { secondsRemaining: 240 },
 }
 
 const kindsOf = (notices: readonly { kind: string }[]) => notices.map((notice) => notice.kind)
@@ -90,6 +95,36 @@ describe("what a claim says out loud", () => {
       "nudge",
       "expiring",
     ])
+  })
+})
+
+describe("a claim waiting on nobody says nothing", () => {
+  test("the calendar is silent while the answer is out of the claimant's hands", () => {
+    expect(noticesBetween(NOW, NOW, daysAfter(NOW, 6.5), CACHED_ABSENCE)).toEqual([])
+  })
+
+  test("and speaks again as soon as there is something to do", () => {
+    expect(kindsOf(noticesBetween(NOW, NOW, daysAfter(NOW, 6.5), NOT_PUBLISHED))).toEqual([
+      "nudge",
+      "expiring",
+    ])
+  })
+})
+
+describe("what a changed answer says", () => {
+  test("a new code is worth saying out loud, and carries the code now read", () => {
+    expect(noticeForChange(NOT_PUBLISHED, CACHED_ABSENCE)).toEqual({
+      kind: "progress",
+      diagnosis: CACHED_ABSENCE,
+    })
+  })
+
+  test("the same code twice is the same news, and is not repeated", () => {
+    expect(noticeForChange(NOT_PUBLISHED, NOT_PUBLISHED)).toBeNull()
+  })
+
+  test("a first reading has nothing to have changed from", () => {
+    expect(noticeForChange(null, NOT_PUBLISHED)).toBeNull()
   })
 })
 

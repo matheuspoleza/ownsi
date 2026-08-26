@@ -30,6 +30,7 @@ export const DomainCountsResponse = t.Object({
   proved: t.Number(),
   expired: t.Number(),
   canceled: t.Number(),
+  archived: t.Number(),
 })
 
 export const DomainListResponse = t.Object({

@@ -28,6 +28,14 @@ export function toCreateClaimError(error: CreateClaimError): ClaimFailure {
         status: 404,
         body: errorResponse("domain_not_found", "That domain is not on your list."),
       }
+    case "domain_archived":
+      return {
+        status: 409,
+        body: errorResponse(
+          "domain_archived",
+          "That domain is archived. Put it back on your list before claiming it again.",
+        ),
+      }
     case "already_claimed":
       return {
         status: 409,

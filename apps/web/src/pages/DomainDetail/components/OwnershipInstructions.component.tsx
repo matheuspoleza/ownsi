@@ -1,6 +1,7 @@
 import type { ChallengeRecord } from "../../../api/claim.api.ts"
 import { ProviderGlyph } from "../../../components/ProviderGlyph.component.tsx"
 import { isDemoName } from "../../../lib/demo.utils.ts"
+import { DOCS_CHALLENGE_RECORD } from "../../../lib/docs.constants.ts"
 import type { ProviderId } from "../../../lib/providers.constants.ts"
 import { providerInstruction, providerName } from "../../../lib/providers.utils.ts"
 import { RecordRow } from "./RecordRow.component.tsx"
@@ -34,13 +35,12 @@ export const OwnershipInstructions = ({ domain, provider, record }: OwnershipIns
             </>
           )}
           <a
-            href="https://docs.ownsi.dev"
+            href={DOCS_CHALLENGE_RECORD}
             target="_blank"
             rel="noreferrer"
-            aria-label="Learn how ownsi verifies a domain"
             className="font-medium text-foreground underline-offset-4 hover:underline"
           >
-            Learn more
+            How this record is read
           </a>
         </p>
       </div>

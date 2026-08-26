@@ -1,100 +1,103 @@
 ---
-title: "What a diagnosis is"
-description: "Why 'not verified' is not an answer, and how to render the one ownsi gives instead."
+title: "Diagnosing a Failure"
+description: "You added the record and nothing happened. Tell apart a record that needs fixing from a wait that is already ending, and know what to do about either."
 icon: "circle-question"
 ---
 
-When a check does not find the token, the claim comes back with a `diagnosis`: a named code, the
-cause in one sentence, the fix in one sentence, and the evidence the probe matched on.
+You created the TXT record, you came back, and the screen still does not say proved. There are only
+two reasons for that, and ownsi always tells you which one you are in.
 
-```json
-{
-  "code": "record_at_apex",
-  "cause": "The token is on acme.com itself, not on _ownsi-challenge.acme.com.",
-  "fix": "Move the record to the _ownsi-challenge host and leave the records on acme.com alone.",
-  "observed": { "name": "acme.com", "value": "ownsi_v1_9f3a2c8d1e4b7a6053c21f8e4d7b0a95" }
-}
-```
-
-Twelve codes, each matching one specific shape of wrongness. [The full catalogue is
-here](/diagnostics/catalogue).
-
-## The fields
-
-<ResponseField name="code" type="string" required>
-  A stable identifier. Branch on this — it will not be reworded. One of the thirteen in the
-  catalogue.
-</ResponseField>
-
-<ResponseField name="cause" type="string" required>
-  One sentence saying what is actually true right now, with the real names and values in it. Render
-  it; do not match on it.
-</ResponseField>
-
-<ResponseField name="fix" type="string" required>
-  One sentence saying what to change. For the cases where nothing needs changing — `negative_cache`
-  — it says so and gives the wait.
-</ResponseField>
-
-<ResponseField name="observed" type="object" required>
-  The evidence the probe matched on, and its shape depends on `code`. `record_at_apex` carries
-  `{ name, value }`; `servfail` carries `{ resolvers }`; `negative_cache` carries
-  `{ secondsRemaining }`.
-</ResponseField>
-
-<Warning>
-  `observed` is a tagged union keyed on `code`. Narrow on `code` before reading it — there is no
-  field common to all thirteen.
-</Warning>
-
-## Where a diagnosis comes from
-
-The probes run over an observation that has already been collected — recursive resolvers first,
-then the authoritative nameservers if the answer was negative. No probe issues a query of its own,
-which is why a claim can carry a diagnosis without any extra DNS traffic when you read it back.
-
-See [How verification works](/concepts/verification) for the four steps.
-
-## Rendering one
-
-The whole "what now" message for a pending claim is two fields:
-
-```ts
-const whatNow = (claim: Claim) =>
-  claim.diagnosis
-    ? { title: claim.diagnosis.cause, action: claim.diagnosis.fix }
-    : { title: "Waiting for DNS", action: waitSentence(claim.waitEstimate) }
-```
-
-A claim that is not proved always carries one or the other. `diagnosis` means something has to
-change; `waitEstimate` means nothing does.
-
-<Note>
-  `cause` and `fix` are product copy and are improved regularly. They are safe to render verbatim
-  and unsafe to match on. If you need to key behaviour off a case, key it off `code`.
-</Note>
-
-## The three groups
-
-The thirteen codes fall into three groups, and it is worth styling them differently:
-
-<CardGroup cols={3}>
-  <Card title="You wrote it wrong" icon="pen">
-    `domain_appended`, `record_at_apex`, `value_formatted`, `record_on_www`, `no_matching_record`,
-    `record_absent`, `cname_conflict`, `expired_token`
-
-    Actionable now. Show `fix` as the primary action. `expired_token` is the cheapest of them:
-    the record is already in the right place and only its value is stale.
+<CardGroup cols={2}>
+  <Card title="You are early" icon="hourglass">
+    Nothing is wrong. The record is correct and the internet has not caught up with it. There is
+    nothing to fix and nothing to press.
   </Card>
-  <Card title="Just wait" icon="hourglass">
-    `negative_cache`, `not_published`
-
-    Nothing to do. Showing a fix here is the mistake this product exists to avoid.
-  </Card>
-  <Card title="Your provider is broken" icon="triangle-exclamation">
-    `servfail`, `lame_delegation`, `foreign_token`
-
-    Real problems, but not with the record. `servfail` is DNSSEC; `lame_delegation` is the
-    delegation itself; `foreign_token` is another account.
+  <Card title="Something needs changing" icon="pen">
+    The record exists, but not in the way a check can find it. This always comes with a named
+    reason and one specific thing to change.
   </Card>
 </CardGroup>
+
+Telling those two apart is the whole job. Being told to fix a record that is already correct is the
+most common way these flows waste a day.
+
+<Frame caption="The rail says which of the three questions failed. The message under it names the cause and the one thing to change.">
+  <img src="/images/verification-failure.png" alt="The ownership verification panel in ownsi: DNS connected, TXT not found, Token, above a message explaining that the nameservers answer but do not serve the record yet." />
+</Frame>
+
+## If you are early
+
+DNS is not one system, it is thousands of caches, and a new record reaches them at different times.
+ownsi shows you a wait with a real number on it rather than "up to 72 hours", because the two things
+you are waiting on can both be measured:
+
+| What you are waiting on | Why it takes time |
+|---|---|
+| Your provider publishing | Your edit is saved in the panel but has not reached that provider's own nameservers yet. Usually minutes. |
+| Resolvers forgetting | Before you created it, someone asked for that name and got "does not exist". Resolvers remember that answer for a set time, and keep repeating it until it expires. |
+
+The second one surprises people. It is the reason a record you can see in your panel, and even see
+with `dig` against your own nameservers, still comes back missing everywhere else. Nothing is broken.
+The clock is the fix, and ownsi tells you how much of it is left.
+
+<Note>
+  Pressing "check again" does not make DNS answer sooner. ownsi already knows when the wait ends and
+  schedules itself for then.
+</Note>
+
+## If something needs changing
+
+Then ownsi names it. Every problem it can recognise has a code, one sentence saying what is actually
+true right now, and one sentence saying what to change — with your domain and your token in them,
+not a generic template.
+
+For example:
+
+> **The token is on `acme.com` itself, not on `_ownsi-challenge.acme.com`.**
+>
+> Move the record to the `_ownsi-challenge` host and leave the records on `acme.com` alone.
+
+There are thirteen of these. [The full list, with the cause and the fix for each, is
+here](/diagnostics/catalogue).
+
+### They fall into three families
+
+<CardGroup cols={3}>
+  <Card title="The record needs an edit" icon="pen">
+    [`domain_appended`](/diagnostics/catalogue#domain_appended) ·
+    [`record_at_apex`](/diagnostics/catalogue#record_at_apex) ·
+    [`value_formatted`](/diagnostics/catalogue#value_formatted) ·
+    [`record_on_www`](/diagnostics/catalogue#record_on_www) ·
+    `no_matching_record` · `record_absent` · `cname_conflict` · `expired_token`
+
+    Something you can fix in your panel in under a minute.
+  </Card>
+  <Card title="Nothing to do but wait" icon="hourglass">
+    `negative_cache` · `not_published`
+
+    The record is right. These are the two waits above, named.
+  </Card>
+  <Card title="Not about your record" icon="triangle-exclamation">
+    `servfail` · `lame_delegation` · `foreign_token`
+
+    A real problem, but with your DNS provider or with another account. Retyping the record will
+    not help.
+  </Card>
+</CardGroup>
+
+## The one that catches almost everyone
+
+[`domain_appended`](/diagnostics/catalogue#domain_appended). You typed the full name into the Host
+field, and your panel added the domain to it again, so the record landed on
+`_ownsi-challenge.acme.com.acme.com`.
+
+Nearly every DNS panel does this. Put **only** `_ownsi-challenge` in the Host field and let the
+panel add the rest — [more about the record and the fields it goes in](/concepts/challenge-record).
+
+## The wording changes, the codes do not
+
+The sentences on these pages are product copy and we improve them. The code beside each one is an
+identifier and will not be reworded, so if you are keeping notes or writing anything that reacts to
+a case, key it off the code.
+
+Building against this? [Diagnosis Payload](/api-reference/diagnosis) has the field shapes.

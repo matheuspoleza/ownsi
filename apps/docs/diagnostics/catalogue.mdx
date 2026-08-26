@@ -1,5 +1,5 @@
 ---
-title: "Diagnostics catalogue"
+title: "Diagnostic Codes"
 description: "Every reason a check can fail to find your record, with the cause and the fix ownsi shows you."
 icon: "stethoscope"
 ---
@@ -25,6 +25,7 @@ Your panel appended the domain to what you typed, so the record landed on _ownsi
   "code": "domain_appended",
   "cause": "Your panel appended the domain to what you typed, so the record landed on _ownsi-challenge.acme.com.acme.com instead of _ownsi-challenge.acme.com.",
   "fix": "Put only _ownsi-challenge in the Host field — the panel adds acme.com for you.",
+  "awaits": "claimant",
   "observed": {
     "name": "_ownsi-challenge.acme.com.acme.com"
   }
@@ -42,6 +43,7 @@ The token is on acme.com itself, not on _ownsi-challenge.acme.com.
   "code": "record_at_apex",
   "cause": "The token is on acme.com itself, not on _ownsi-challenge.acme.com.",
   "fix": "Move the record to the _ownsi-challenge host and leave the records on acme.com alone.",
+  "awaits": "claimant",
   "observed": {
     "name": "acme.com",
     "value": "ownsi_v1_9f3a2c8d1e4b7a6053c21f8e4d7b0a95"
@@ -60,6 +62,7 @@ _ownsi-challenge.acme.com already carries an ownsi token, and it is not the one 
   "code": "foreign_token",
   "cause": "_ownsi-challenge.acme.com already carries an ownsi token, and it is not the one issued for this claim.",
   "fix": "Replace its value with ownsi_v1_9f3a2c8d1e4b7a6053c21f8e4d7b0a95.",
+  "awaits": "claimant",
   "observed": {
     "value": "ownsi_v1_1c05de77a4b83f2690ab4e1d6c7f8352"
   }
@@ -77,6 +80,7 @@ _ownsi-challenge.acme.com carries the token from an earlier claim of yours, and 
   "code": "expired_token",
   "cause": "_ownsi-challenge.acme.com carries the token from an earlier claim of yours, and that claim has ended.",
   "fix": "Change its value to ownsi_v1_9f3a2c8d1e4b7a6053c21f8e4d7b0a95. The record is already in the right place, so this is one edit rather than a new record.",
+  "awaits": "claimant",
   "observed": {
     "value": "ownsi_v1_4c07e9a2d61b83f5029ae7c4b1d6083f"
   }
@@ -94,6 +98,7 @@ The value at _ownsi-challenge.acme.com is not exactly the token: your panel wrap
   "code": "value_formatted",
   "cause": "The value at _ownsi-challenge.acme.com is not exactly the token: your panel wrapped or padded what you pasted.",
   "fix": "Set it to exactly ownsi_v1_9f3a2c8d1e4b7a6053c21f8e4d7b0a95, with no quotes and no surrounding spaces.",
+  "awaits": "claimant",
   "observed": {
     "value": "\"ownsi_v1_9f3a2c8d1e4b7a6053c21f8e4d7b0a95\""
   }
@@ -111,6 +116,7 @@ _ownsi-challenge.acme.com carries 2 TXT records, and none of them holds your tok
   "code": "no_matching_record",
   "cause": "_ownsi-challenge.acme.com carries 2 TXT records, and none of them holds your token.",
   "fix": "Add the token as one more TXT record on that host, or correct the one meant to carry it.",
+  "awaits": "claimant",
   "observed": {
     "values": [
       "v=spf1 include:_spf.google.com ~all",
@@ -131,6 +137,7 @@ _ownsi-challenge.acme.com is a CNAME pointing at acme.pages.dev, and a name that
   "code": "cname_conflict",
   "cause": "_ownsi-challenge.acme.com is a CNAME pointing at acme.pages.dev, and a name that holds a CNAME can hold nothing else (RFC 1034).",
   "fix": "Remove the CNAME on _ownsi-challenge, then create the TXT record.",
+  "awaits": "claimant",
   "observed": {
     "target": "acme.pages.dev"
   }
@@ -148,6 +155,7 @@ No resolver ownsi reads finds anything at _ownsi-challenge.acme.com, and the del
   "code": "record_absent",
   "cause": "No resolver ownsi reads finds anything at _ownsi-challenge.acme.com, and the delegation for acme.com could not be read, so its own nameservers were never asked.",
   "fix": "Create a TXT record on _ownsi-challenge with the value ownsi_v1_9f3a2c8d1e4b7a6053c21f8e4d7b0a95 if it is not there yet. ownsi rechecks on its own, and says more once it can read the zone.",
+  "awaits": "claimant",
   "observed": {
     "answer": {
       "type": "nxdomain"
@@ -167,6 +175,7 @@ The token is on _ownsi-challenge.www.acme.com; the proof reads _ownsi-challenge.
   "code": "record_on_www",
   "cause": "The token is on _ownsi-challenge.www.acme.com; the proof reads _ownsi-challenge.acme.com, without the www.",
   "fix": "Create the record on _ownsi-challenge at acme.com, and remove the one under www.",
+  "awaits": "claimant",
   "observed": {
     "name": "_ownsi-challenge.www.acme.com",
     "value": "ownsi_v1_9f3a2c8d1e4b7a6053c21f8e4d7b0a95"
@@ -185,6 +194,7 @@ dana.ns.cloudflare.com and rick.ns.cloudflare.com answer for acme.com, and the r
   "code": "not_published",
   "cause": "dana.ns.cloudflare.com and rick.ns.cloudflare.com answer for acme.com, and the record is not in what they serve. Either it has not been created, or your panel has not published the zone edit yet.",
   "fix": "Create the record, or reopen it in your panel and confirm it saved — some panels hold zone changes in a draft until you publish them. ownsi rechecks on its own.",
+  "awaits": "claimant",
   "observed": {
     "nameservers": [
       "dana.ns.cloudflare.com",
@@ -205,6 +215,7 @@ Your nameservers have the record; the public resolvers are still holding the "do
   "code": "negative_cache",
   "cause": "Your nameservers have the record; the public resolvers are still holding the \"does not exist\" they cached before you created it.",
   "fix": "Nothing to do — that memory expires in about 4 minutes, and ownsi rechecks on its own.",
+  "awaits": "resolvers",
   "observed": {
     "secondsRemaining": 240
   }
@@ -222,6 +233,7 @@ cloudflare and quad9 answered SERVFAIL for _ownsi-challenge.acme.com, which mean
   "code": "servfail",
   "cause": "cloudflare and quad9 answered SERVFAIL for _ownsi-challenge.acme.com, which means the zone fails to validate rather than that the record is missing.",
   "fix": "Check DNSSEC at your provider — while the signatures are broken, no record in acme.com can be read.",
+  "awaits": "claimant",
   "observed": {
     "resolvers": [
       "cloudflare",
@@ -242,6 +254,7 @@ acme.com is delegated to ns1.oldhost.example and ns2.oldhost.example, and none o
   "code": "lame_delegation",
   "cause": "acme.com is delegated to ns1.oldhost.example and ns2.oldhost.example, and none of them answered.",
   "fix": "This is a delegation problem at your provider, not a problem with the record — the nameservers acme.com points at are not serving the zone.",
+  "awaits": "claimant",
   "observed": {
     "nameservers": [
       "ns1.oldhost.example",

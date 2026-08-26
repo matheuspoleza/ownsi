@@ -1,4 +1,5 @@
 import type { VerificationStatus } from "../../api/verification.api.ts"
+import type { DomainStatus } from "../../lib/status.constants.ts"
 
 /** The next thing the person can do, in the row's own words. Null means nothing to do. */
 export const NEXT_STEPS: Record<VerificationStatus, string | null> = {
@@ -25,3 +26,27 @@ export const PREVIEW_RECORD = {
   type: "TXT",
   value: "ownsi_v1_…",
 } as const
+
+/** One request's worth of rows. The list keeps every batch it has read and asks for the next. */
+export const DOMAINS_PER_BATCH = 20
+
+/** Past this many domains the panel stands beside the table rather than under it. */
+export const ROWS_BEFORE_RAIL = 5
+
+/** What the panel offers to do with the domain on screen. One imperative per state. */
+export const PANEL_ACTIONS: Record<DomainStatus, string> = {
+  unclaimed: "claim it",
+  pending: "add the record",
+  checking: "watch it check",
+  proved: "open the proof",
+  expired: "claim it again",
+  canceled: "claim it again",
+  archived: "claim it again",
+}
+
+export const HELD_CAPTION = "A proof of ownership, yours to share."
+
+/** Off the list, with its links taken back — and the proof itself untouched. Both, in one line. */
+export const ARCHIVED_CAPTION = "Archived. The proof stands; its public links were taken back."
+
+export const AWAITED_CAPTION = "A proof of ownership, once the record reads back."

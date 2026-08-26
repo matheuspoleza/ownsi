@@ -1,5 +1,5 @@
 ---
-title: "Streaming responses"
+title: "Streaming"
 description: "The zone read yields server-sent events. How to consume it, and how failures arrive."
 icon: "wave-square"
 ---
@@ -105,8 +105,8 @@ controller.abort()
 ## Failures do not arrive as frames
 
 If the read fails, it fails as an HTTP status with the normal error envelope — `400`, `404` or
-`502`, per [Reading a zone](/concepts/zone-reading#failures). The stream never carries a
-half-read zone, and there is no error event to handle inside the loop.
+`502`, per [the three ways a read fails](/concepts/zone-reading#when-it-cannot-answer). The
+stream never carries a half-read zone, and there is no error event to handle inside the loop.
 
 ```json 404
 {

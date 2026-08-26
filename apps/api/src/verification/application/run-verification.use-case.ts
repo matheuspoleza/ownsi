@@ -6,6 +6,7 @@ import type { GenerateId, VerificationRepository } from "../domain/ports.ts"
 import {
   exhaust,
   isPastDeadline,
+  lastDiagnosis,
   recordAttempt,
   type Verification,
 } from "../domain/verification.ts"
@@ -63,6 +64,7 @@ export function runVerification(deps: RunVerificationDeps): RunVerification {
         data: {
           ...subject,
           diagnosis: outcome.diagnosis,
+          previousDiagnosis: lastDiagnosis(found),
           since: found.lastRun?.at ?? found.createdAt,
         },
       })

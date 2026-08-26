@@ -12,8 +12,8 @@ import {
 import { useState } from "react"
 import type { Diagnosis } from "../../../api/verification.api.ts"
 import { useCopy } from "../../../hooks/useCopy.ts"
+import { DOCS_CATALOGUE } from "../../../lib/docs.constants.ts"
 import type { Tone } from "../DomainDetail.constants.ts"
-import { DIAGNOSTICS_URL } from "../DomainDetail.constants.ts"
 
 const BAND_TONES: Record<Tone, string> = {
   idle: "bg-muted/40",
@@ -113,7 +113,7 @@ export const VerificationMessage = ({
       {showsEvidence && diagnosis ? (
         <div className="flex flex-col gap-2 border-border border-t pt-3">
           <a
-            href={`${DIAGNOSTICS_URL}#${diagnosis.code}`}
+            href={`${DOCS_CATALOGUE}#${diagnosis.code}`}
             target="_blank"
             rel="noreferrer"
             className="w-fit font-mono text-[11.5px] text-muted-foreground underline-offset-4 hover:underline"

@@ -18,6 +18,7 @@ export const STATUS_TONES: Record<DomainStatus, Tone> = {
   proved: "success",
   expired: "warning",
   canceled: "idle",
+  archived: "idle",
 }
 
 export type StepTone = Exclude<Tone, "warning">
@@ -59,10 +60,6 @@ export const CANCELED_MESSAGE: MessageCopy = {
   headline: "You ended this claim",
   body: "Its token stops being accepted, so the record left in the zone is inert. Claiming again issues a new one.",
 }
-
-export const DIAGNOSTICS_URL = "https://docs.ownsi.dev/diagnostics/catalogue"
-
-export const DISPUTES_URL = "https://docs.ownsi.dev/concepts/claim-lifecycle#coexistence"
 
 export const DNS_SNAPSHOT_TIP =
   "What your DNS looked like on the day we read it. We do not watch it after that, so this is " +

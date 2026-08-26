@@ -9,7 +9,10 @@ const ChallengeRecordResponse = t.Object({
   value: t.String(),
 })
 
-const CoexistenceResponse = t.Object({ maskedEmail: t.String(), provedAt: t.String() })
+const CoexistenceResponse = t.Union([
+  t.Object({ type: t.Literal("unnamed") }),
+  t.Object({ type: t.Literal("named"), maskedEmail: t.String(), provedAt: t.String() }),
+])
 
 export const ClaimResponse = t.Object({
   id: t.String(),

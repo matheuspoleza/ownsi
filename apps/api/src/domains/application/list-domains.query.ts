@@ -4,6 +4,7 @@ export type ListDomainsInput = {
   readonly userId: string
   readonly name: string | null
   readonly status: DomainStatus | null
+  readonly archived: boolean
   readonly after: string | null
   readonly limit: number
 }
@@ -17,9 +18,9 @@ export type DomainsPage = {
 export type ListDomains = (input: ListDomainsInput) => Promise<DomainsPage>
 
 export function listDomains(listing: DomainListing): ListDomains {
-  return async ({ userId, name, status, after, limit }) => {
+  return async ({ userId, name, status, archived, after, limit }) => {
     const [found, counts] = await Promise.all([
-      listing.listPage({ userId, name, status, after, limit: limit + 1 }),
+      listing.listPage({ userId, name, status, archived, after, limit: limit + 1 }),
       listing.countByStatus(userId),
     ])
 

@@ -14,8 +14,10 @@ export type {
   Diagnosis,
   DiagnosisCode,
   Explanation,
+  WaitsOn,
 } from "./domain/diagnosis.ts"
 export {
+  awaits,
   CHALLENGE_LABEL,
   CHALLENGE_TOKEN_PREFIX,
   challengeHost,
@@ -35,6 +37,7 @@ export type AttemptFailed = {
   readonly subjectId: string
   readonly ownerId: string
   readonly diagnosis: Diagnosis
+  readonly previousDiagnosis: Diagnosis | null
   readonly since: Date
   readonly at: Date
 }

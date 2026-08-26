@@ -1,11 +1,13 @@
 import type { Publish } from "../../shared/bus.ts"
 import { err, ok, type Result } from "../../shared/result.ts"
 import type { ClaimEvent } from "../claims.contract.ts"
-import { isOpen, prove } from "../domain/claim.ts"
+import { type Claim, isOpen, prove } from "../domain/claim.ts"
 import type {
   ClaimRepository,
   FindDomain,
   FindOtherClaimants,
+  FindRecipient,
+  PublishProof,
   SendNotice,
 } from "../domain/ports.ts"
 
@@ -22,6 +24,8 @@ export type ProveClaimDeps = {
   readonly claims: ClaimRepository
   readonly findDomain: FindDomain
   readonly otherClaimants: FindOtherClaimants
+  readonly findRecipient: FindRecipient
+  readonly publishProof: PublishProof
   readonly sendNotice: SendNotice
   readonly publish: Publish<ClaimEvent>
 }
@@ -50,7 +54,7 @@ export function proveClaim(deps: ProveClaimDeps): ProveClaim {
     })
 
     await deps.sendNotice({
-      notice: { kind: "proved", provedAt: at },
+      notice: { kind: "proved", provedAt: at, proofUrl: await published(deps, proved) },
       claimId: proved.id,
       userId: proved.userId,
       domainId: proved.domainId,
@@ -71,4 +75,11 @@ export function proveClaim(deps: ProveClaimDeps): ProveClaim {
 
     return ok(undefined)
   }
+}
+
+async function published(deps: ProveClaimDeps, claim: Claim): Promise<string | null> {
+  const recipient = await deps.findRecipient(claim.userId)
+  if (recipient === null) return null
+
+  return deps.publishProof({ userId: claim.userId, email: recipient.email, claimId: claim.id })
 }

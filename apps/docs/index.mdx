@@ -1,13 +1,13 @@
 ---
 title: "ownsi"
 sidebarTitle: "Introduction"
-description: "Prove what's yours. One TXT record, and an answer that tells you what is wrong when it is not there yet."
+description: "Prove you control a domain with one TXT record, and get told exactly what is wrong when it does not work the first time."
 icon: "house"
-mode: "wide"
 ---
 
-ownsi proves that a domain belongs to you. You add one TXT record, we read DNS, and you get one of
-three answers — proved, not yet, or here is exactly what is wrong with the record you created.
+ownsi proves that you control a domain's DNS. You add one TXT record, we read DNS from three public
+resolvers, and you get one of three answers — proved, not yet, or here is exactly what is wrong with
+the record you created.
 
 That third answer is the product. Most verification flows tell you "not verified" and leave you to
 guess. ownsi names the reason: the panel appended your domain to the host, the value came back with
@@ -15,54 +15,53 @@ quotes around it, the resolvers are still holding a cached "does not exist" for 
 
 <CardGroup cols={2}>
   <Card title="Quickstart" icon="rocket" href="/quickstart">
-    Claim a domain and read its answer, in four calls.
+    The whole thing, start to finish. About three minutes of work and some waiting.
   </Card>
-  <Card title="How verification works" icon="magnifying-glass" href="/concepts/verification">
-    Four steps, and only the first one decides.
+  <Card title="Diagnosing a Failure" icon="circle-question" href="/diagnostics/overview">
+    You added the record and nothing happened. Start here.
   </Card>
-  <Card title="Diagnostics catalogue" icon="stethoscope" href="/diagnostics/catalogue">
-    The thirteen codes, with the cause and the fix for each.
+  <Card title="Proof Scope" icon="shield-check" href="/concepts/what-a-proof-states">
+    What the attestation claims, what it does not, and why it never expires.
   </Card>
-  <Card title="API reference" icon="code" href="/api-reference/introduction">
-    Every endpoint, generated from the running server.
-  </Card>
-</CardGroup>
-
-## The two surfaces
-
-<CardGroup cols={2}>
-  <Card title="Read a zone" icon="globe" href="/concepts/zone-reading">
-    Public and unauthenticated. Give it a name and it streams what DNS says: who the nameservers
-    are, which provider they belong to, and how long that provider usually takes to publish.
-    Nothing is written, and no account is needed.
-  </Card>
-  <Card title="Claim a domain" icon="key" href="/concepts/challenge-record">
-    Belongs to an account. Issues a token, tells you the record to create, and keeps checking until
-    it finds it. The token is stable for the life of the claim.
+  <Card title="DNS Verification" icon="magnifying-glass" href="/concepts/verification">
+    Which resolvers decide, and why a negative always comes with a reason.
   </Card>
 </CardGroup>
 
-## What you can rely on
+## What you get
 
-<Steps>
-  <Step title="A failed lookup never carries records">
-    Outcomes are tagged unions. A DNS answer is either `{ type: "answered", records }` or
-    `{ type: "failed", reason }` — there is no shape where you can read records off a lookup that
-    did not happen.
-  </Step>
-  <Step title="Errors carry a stable code">
-    Every failure is `{ error: { code, message, docsUrl } }`. Branch on `code`; the `message` is
-    written for a person and may be reworded. `docsUrl` links to [the entry on this
-    site](/errors).
-  </Step>
-  <Step title="The token survives the lifecycle">
-    Archiving, restoring and rechecking all preserve it. A record still in the zone verifies
-    without the owner reopening their DNS panel.
-  </Step>
-</Steps>
+A dated attestation: *"on 15 June, this account demonstrated control of `acme.com`'s DNS zone."*
+
+<CardGroup cols={3}>
+  <Card title="It is about a moment" icon="clock">
+    A fact about the day it was granted, not a claim about today. That is what makes it something
+    you can show someone.
+  </Card>
+  <Card title="It never decays" icon="infinity">
+    Once granted it is never revoked and never re-checked. Delete the TXT record afterwards if you
+    like — the proof does not depend on it.
+  </Card>
+  <Card title="Nothing is locked behind it" icon="unlock">
+    No feature switches on. The attestation is the product, and you decide who sees it.
+  </Card>
+</CardGroup>
+
+## The three answers
+
+Every check ends in exactly one of these, and the third is not a worse version of the second.
+
+| Answer | What it means | What you do |
+|---|---|---|
+| **Proved** | The token is published and the resolvers agree. | Nothing. [Share it](/concepts/sharing-a-proof) if you want to. |
+| **Not there yet** | Nothing is wrong. DNS has not caught up. | Wait. ownsi tells you roughly how long. |
+| **Something is wrong** | The record exists but not the way it needs to. | One named [reason and one fix](/diagnostics/catalogue). |
+
+The gap between the second and the third is the whole point. Telling someone to fix a record that
+is already correct is the failure this product exists to avoid.
 
 <Note>
-  The API is internal today: same origin as the app, session cookie, no public keys. It is
-  documented here in full anyway, because the shape it will have when it opens is the shape it has
-  now. See [Authentication](/api-reference/authentication) for what changes when it does.
+  ownsi has an API, and it is not open yet. The routes that belong to an account answer only the
+  app's own session, and there are no public keys. It is [documented in
+  full](/api-reference/introduction) anyway, because the shape it will have when it opens is the
+  shape it has now.
 </Note>

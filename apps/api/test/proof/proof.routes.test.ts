@@ -6,8 +6,7 @@ import type {
   ProofLinkListResponse,
   ProofLinkResponse,
 } from "../../src/proof/api/proof-link.response.ts"
-import { PROOF_LINK_DAYS } from "../../src/proof/domain/proof-link.ts"
-import { daysAfter } from "../../src/shared/time.ts"
+import { daysAfter, secondsAfter } from "../../src/shared/time.ts"
 import type { AttemptOutcome } from "../../src/verification/verification.contract.ts"
 import { ADA, bodyOf, type ErrorBody, GRACE, harness, signedInAs, signedOut } from "../harness.ts"
 
@@ -50,7 +49,7 @@ describe("publishing a link to a proof", () => {
     expect(link.slug).not.toBe(claim.token)
     expect(link.url).toBe(`https://ownsi.dev/p/${link.slug}`)
     expect(link.standing).toBe("live")
-    expect(link.expiresAt).toBe(daysAfter(NOW, PROOF_LINK_DAYS).toISOString())
+    expect(link).not.toHaveProperty("expiresAt")
   })
 
   test("states the moment it shares, masking the account behind it", async () => {
@@ -65,7 +64,7 @@ describe("publishing a link to a proof", () => {
     })
   })
 
-  test("asking twice while one is live hands back the same slug", async () => {
+  test("asking twice hands back the same slug", async () => {
     const { app, claim } = await proved()
     const first = await bodyOf<LinkBody>(await app.post(`/api/claims/${claim.id}/proof_links`))
     const second = await bodyOf<LinkBody>(await app.post(`/api/claims/${claim.id}/proof_links`))
@@ -74,15 +73,15 @@ describe("publishing a link to a proof", () => {
     expect(app.proofLinks.all()).toHaveLength(1)
   })
 
-  test("a link that has expired is replaced rather than reused", async () => {
+  test("a year later it is still the same slug: nothing about it runs down", async () => {
     const { app, claim } = await proved()
     const first = await bodyOf<LinkBody>(await app.post(`/api/claims/${claim.id}/proof_links`))
 
-    app.at(daysAfter(NOW, PROOF_LINK_DAYS + 1))
+    app.at(daysAfter(NOW, 365))
     const second = await bodyOf<LinkBody>(await app.post(`/api/claims/${claim.id}/proof_links`))
 
-    expect(second.slug).not.toBe(first.slug)
-    expect(app.proofLinks.all()).toHaveLength(2)
+    expect(second.slug).toBe(first.slug)
+    expect(app.proofLinks.all()).toHaveLength(1)
   })
 
   test("a claim that was never proved has nothing to share", async () => {
@@ -102,18 +101,19 @@ describe("publishing a link to a proof", () => {
 })
 
 describe("the links already out", () => {
-  test("are listed newest first, expired and revoked included", async () => {
+  test("are listed newest first, revoked ones included", async () => {
     const { app, claim } = await proved()
     const first = await bodyOf<LinkBody>(await app.post(`/api/claims/${claim.id}/proof_links`))
+    await app.post(`/api/claims/${claim.id}/proof_links/${first.slug}/revoke`)
 
-    app.at(daysAfter(NOW, PROOF_LINK_DAYS + 1))
+    app.at(secondsAfter(NOW, 60))
     const second = await bodyOf<LinkBody>(await app.post(`/api/claims/${claim.id}/proof_links`))
 
     const { links } = await bodyOf<LinkListBody>(
       await app.get(`/api/claims/${claim.id}/proof_links`),
     )
     expect(links.map((link) => link.slug)).toEqual([second.slug, first.slug])
-    expect(links.map((link) => link.standing)).toEqual(["live", "expired"])
+    expect(links.map((link) => link.standing)).toEqual(["live", "revoked"])
   })
 
   test("revoking one stops it and leaves the proof and the other links alone", async () => {
@@ -196,7 +196,7 @@ describe("the page a stranger opens", () => {
   test("needs no account: the holder's session is nothing to do with it", async () => {
     const { app, claim } = await proved()
     const link = await bodyOf<LinkBody>(await app.post(`/api/claims/${claim.id}/proof_links`))
-    const stranger = harness({ now: NOW, overrides: { proof: { links: app.proofLinks } } })
+    const stranger = harness({ now: NOW, records: app.records })
 
     expect((await stranger.get(`/p/${link.slug}`)).status).toBe(200)
   })
@@ -209,27 +209,42 @@ describe("the page a stranger opens", () => {
     expect(await response.text()).not.toContain("acme.com")
   })
 
-  test("an expired link is gone, and says the proof behind it is not", async () => {
-    const { app, claim } = await proved()
-    const link = await bodyOf<LinkBody>(await app.post(`/api/claims/${claim.id}/proof_links`))
-
-    app.at(daysAfter(NOW, PROOF_LINK_DAYS))
-    const response = await app.get(`/p/${link.slug}`)
-    const page = await response.text()
-
-    expect(response.status).toBe(410)
-    expect(page).toContain("still true and still dated")
-    expect(page).not.toContain("acme.com")
-  })
-
   test("a revoked link is gone the same way", async () => {
     const { app, claim } = await proved()
     const link = await bodyOf<LinkBody>(await app.post(`/api/claims/${claim.id}/proof_links`))
     await app.post(`/api/claims/${claim.id}/proof_links/${link.slug}/revoke`)
 
     const response = await app.get(`/p/${link.slug}`)
+    const page = await response.text()
+
     expect(response.status).toBe(410)
-    expect(await response.text()).toContain("taken back")
+    expect(page).toContain("taken back")
+    expect(page).not.toContain("acme.com")
+  })
+
+  test("says nothing later has been proved, without naming who else holds one", async () => {
+    const { app, claim } = await proved()
+    const link = await bodyOf<LinkBody>(await app.post(`/api/claims/${claim.id}/proof_links`))
+    const page = await (await app.get(`/p/${link.slug}`)).text()
+
+    expect(page).toContain("Most recent proof")
+    expect(page).toContain("Nothing later has been proved for acme.com.")
+  })
+
+  test("a later proof of the same name is named by its date and nothing else", async () => {
+    const later = new Date("2026-09-03T11:00:00Z")
+    const app = harness({ now: NOW, answers: () => FOUND, latestProof: later })
+    const domain = await bodyOf<DomainBody>(await app.post("/api/domains", { domain: "acme.com" }))
+    const claim = await bodyOf<ClaimBody>(await app.post("/api/claims", { domainId: domain.id }))
+    await app.post(`/api/verifications/${claim.verificationId}/runs`)
+    const link = await bodyOf<LinkBody>(await app.post(`/api/claims/${claim.id}/proof_links`))
+
+    const page = await (await app.get(`/p/${link.slug}`)).text()
+
+    expect(page).toContain("Later proof on record")
+    expect(page).toContain("A later proof of acme.com was made on Sep 03, 2026.")
+    expect(page).toContain("Aug 24, 2026")
+    expect(page).not.toContain("g•••")
   })
 
   test("the badge is an SVG a README can embed, and it dates the proof", async () => {
@@ -238,7 +253,23 @@ describe("the page a stranger opens", () => {
     const response = await app.get(`/p/${link.slug}/badge.svg`)
 
     expect(response.headers.get("content-type")).toStartWith("image/svg+xml")
-    expect(await response.text()).toContain("proved Aug 24, 2026")
+    const svg = await response.text()
+    expect(svg).toContain("proved Aug 24, 2026")
+    expect(svg).toContain("#0f5c36")
+  })
+
+  test("the badge names a newer proof in the palette's info blue, never a warning", async () => {
+    const later = new Date("2026-09-03T11:00:00Z")
+    const app = harness({ now: NOW, answers: () => FOUND, latestProof: later })
+    const domain = await bodyOf<DomainBody>(await app.post("/api/domains", { domain: "acme.com" }))
+    const claim = await bodyOf<ClaimBody>(await app.post("/api/claims", { domainId: domain.id }))
+    await app.post(`/api/verifications/${claim.verificationId}/runs`)
+    const link = await bodyOf<LinkBody>(await app.post(`/api/claims/${claim.id}/proof_links`))
+
+    const svg = await (await app.get(`/p/${link.slug}/badge.svg`)).text()
+
+    expect(svg).toContain("proved Aug 24, 2026 · newer Sep 03, 2026")
+    expect(svg).toContain("#1d4ed8")
   })
 
   test("nothing about the account leaks into a page a stranger holds", async () => {
@@ -267,11 +298,7 @@ describe("the session", () => {
   test("the page itself needs none — it is what a stranger opens", async () => {
     const { app, claim } = await proved()
     const link = await bodyOf<LinkBody>(await app.post(`/api/claims/${claim.id}/proof_links`))
-    const stranger = harness({
-      now: NOW,
-      session: signedOut,
-      overrides: { proof: { links: app.proofLinks } },
-    })
+    const stranger = harness({ now: NOW, session: signedOut, records: app.records })
 
     expect((await stranger.get(`/p/${link.slug}`)).status).toBe(200)
   })

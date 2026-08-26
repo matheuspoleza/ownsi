@@ -71,17 +71,23 @@ What it would **not** change:
 - The error envelope. An invalid key would be one more `code` in [the catalogue](/errors).
 - The public zone read, which stays keyless.
 
-## Idempotency
+## Double submits
 
-`POST` requests accept an `Idempotency-Key` header. Retrying with the same key returns the original
-response rather than issuing a second token or a second claim.
+There is no `Idempotency-Key` header. The two `POST` requests a person can double-click are
+idempotent on their own terms instead:
+
+- `POST /api/domains` finds or creates. The same name on the same account answers with the same
+  domain, and a second call issues nothing.
+- `POST /api/claims` answers [`already_claimed`](/errors#already_claimed) while a claim is open on
+  the name. A second token is never issued behind your back — the error hands you back the claim
+  you already have.
 
 ```bash
 curl -X POST https://ownsi.dev/api/domains \
   -H "content-type: application/json" \
-  -H "Idempotency-Key: 1f0c9e2a-6d4b-4d0e-9a1c-77b4c2e5f8d1" \
   -b "$SESSION_COOKIE" \
   -d '{"domain":"acme.com"}'
 ```
 
-Use it on anything a user can double-click.
+Treat `already_claimed` as a normal branch rather than a failure. It is what a second click looks
+like.

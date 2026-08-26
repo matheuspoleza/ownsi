@@ -121,7 +121,7 @@ export const SAMPLES: Readonly<Record<(typeof DIAGNOSIS_CODES)[number], Diagnosi
 }
 
 const PREAMBLE = `---
-title: "Diagnostics catalogue"
+title: "Diagnostic Codes"
 description: "Every reason a check can fail to find your record, with the cause and the fix ownsi shows you."
 icon: "stethoscope"
 ---

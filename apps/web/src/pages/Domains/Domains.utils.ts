@@ -3,18 +3,14 @@ import type { Verification } from "../../api/verification.api.ts"
 import { normalizeDomain } from "../../lib/domain.utils.ts"
 import type { DomainStatus } from "../../lib/status.constants.ts"
 import { formatDuration, formatShortDate, secondsSince } from "../../lib/time.utils.ts"
-import {
-  EXPIRED_NEXT_STEP,
-  NEXT_STEPS,
-  PREVIEW_DOMAIN,
-  UNCLAIMED_NEXT_STEP,
-} from "./Domains.constants.ts"
+import { EXPIRED_NEXT_STEP, NEXT_STEPS, UNCLAIMED_NEXT_STEP } from "./Domains.constants.ts"
 import type { DomainRow } from "./hooks/useDashboardState.ts"
 
 export const nextStep = (
   listed: ListedDomain,
   verification: Verification | null,
 ): string | null => {
+  if (listed.archived) return null
   if (listed.status === "unclaimed") return UNCLAIMED_NEXT_STEP
   if (listed.status === "expired") return EXPIRED_NEXT_STEP
   if (listed.status !== "pending") return null
@@ -49,9 +45,5 @@ export const rowFor = (rows: readonly DomainRow[], typed: string): DomainRow | n
 
 /** A claim in play is opened, never started again; anything else is still a name to claim. */
 export const inPlay = (row: DomainRow): boolean =>
-  row.status === "pending" || row.status === "checking" || row.status === "proved"
-
-/** A claim still waiting on its record is the name the proof preview wears, before it holds one. */
-export const awaitingName = (rows: readonly DomainRow[]): string =>
-  rows.find((row) => row.status === "pending" || row.status === "checking")?.listed.unicodeName ??
-  PREVIEW_DOMAIN
+  !row.listed.archived &&
+  (row.status === "pending" || row.status === "checking" || row.status === "proved")

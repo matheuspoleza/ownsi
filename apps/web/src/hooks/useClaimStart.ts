@@ -7,6 +7,7 @@ import {
   findOrCreateDomain,
   isAlreadyClaimed,
   type OwnsiError,
+  unarchiveDomain,
 } from "../api/claim.api.ts"
 
 export interface UseClaimStartOptions {
@@ -27,7 +28,8 @@ export const useClaimStart = ({ onOpen }: UseClaimStartOptions = {}): UseClaimSt
 
   const mutation = useMutation<string, OwnsiError, string>({
     mutationFn: async (typed) => {
-      const domain = await findOrCreateDomain(typed)
+      const found = await findOrCreateDomain(typed)
+      const domain = found.archived ? await unarchiveDomain(found) : found
 
       try {
         await createClaim(domain.id)

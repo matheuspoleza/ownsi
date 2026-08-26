@@ -1,101 +1,94 @@
 ---
-title: "How verification works"
-description: "Four steps, and only the first one decides. The rest exist to explain a negative."
+title: "DNS Verification"
+description: "Three public resolvers decide, and when they say no, ownsi asks your nameservers why before telling you anything."
 icon: "magnifying-glass"
 ---
 
-A check is four steps. Only the first one decides whether you are proved; the other three exist so
-that a negative comes back with a reason attached.
+A check is three questions, and only the first one decides whether you are proved. The other two
+exist so that a "no" arrives with a reason attached instead of on its own.
 
 <Steps>
-  <Step title="Recursive resolvers decide" icon="scale-balanced">
-    A TXT query for `_ownsi-challenge.acme.com` goes to Google, Cloudflare and Quad9 in parallel,
-    over DNS-over-HTTPS. Majority of three wins.
+  <Step title="What does the internet see?" icon="globe">
+    ownsi asks three public resolvers — Google, Cloudflare and Quad9 — for the TXT records on
+    `_ownsi-challenge.acme.com`, at the same time. Majority of three wins.
 
-    Public resolvers are used rather than the authoritative nameservers because they are what the
-    rest of the internet sees. A record that only your own nameservers know about is not published
-    yet, and calling that "proved" would be proving something nobody else can check.
+    These are the resolvers the rest of the world actually uses, which is the point. A record that
+    only your own nameservers know about is not published yet, and calling that "proved" would be
+    proving something nobody else can check.
   </Step>
 
-  <Step title="The authoritative nameservers explain" icon="tower-broadcast">
-    Only on a negative. ownsi walks the labels up to the real authoritative zone, queries its
-    nameservers directly over UDP/53, and reads the SOA.
+  <Step title="If they say no — what do your nameservers say?" icon="tower-broadcast">
+    Only when the answer was negative. ownsi goes to the nameservers your domain is actually
+    delegated to and asks them directly.
 
-    This is the step that separates *"you have not created the record"* from *"you created it and
-    the internet has not caught up"*. Those look identical from a recursive resolver and need
-    completely different sentences.
+    This is the question that separates *"you have not created the record"* from *"you created it
+    and the internet has not caught up"*. From a public resolver those two look identical, and they
+    need completely different sentences.
   </Step>
 
-  <Step title="Twelve probes pattern-match" icon="stethoscope">
-    The probes run over the observation already collected — no further network. Each one recognises
-    one specific shape of wrongness and produces a [diagnosis](/diagnostics/catalogue) with its own
-    `cause` and `fix`.
-  </Step>
+  <Step title="Which known problem is this?" icon="stethoscope">
+    Thirteen checks run over what was already collected — no further queries. Each one recognises
+    one specific shape of wrongness: the record on the apex, the domain appended twice, the value in
+    quotes, a CNAME in the way, a previous token still sitting there.
 
-  <Step title="A pure function transitions the claim" icon="arrow-right-arrow-left">
-    `(claim, diagnosis, now)` in; the new state, the events to emit, and when to check next, out.
-    No I/O, so the whole transition table is testable without DNS.
+    Whichever matches produces [a named cause and a
+    fix](/diagnostics/overview) with your domain and your token in them.
   </Step>
 </Steps>
 
-## The three outcomes
+## The three answers
 
-Every attempt ends in exactly one of these, and the third is not a failure of the second.
+Every check ends in exactly one of these, and the third is not a worse version of the second.
 
 <CardGroup cols={3}>
-  <Card title="found" icon="circle-check">
-    The token is published and the majority of resolvers agree. The claim is proved.
+  <Card title="Found" icon="circle-check">
+    The token is published and the resolvers agree. You are proved, and the proof is dated by this
+    run.
   </Card>
-  <Card title="absent" icon="circle-xmark">
-    Resolvers answered, and the token is not there. This is where a diagnosis is produced.
+  <Card title="Absent" icon="circle-xmark">
+    The resolvers answered, and your token is not there. This is where a diagnosis or a wait comes
+    from.
   </Card>
-  <Card title="unresolvable" icon="circle-question">
-    We could not get a trustworthy answer. **This changes nothing** — no state transition, no
-    email, no consecutive-failure count.
+  <Card title="No trustworthy answer" icon="circle-question">
+    ownsi could not read DNS properly. **This changes nothing** — no state moves, no email is sent,
+    nothing counts against you.
   </Card>
 </CardGroup>
 
 <Note>
-  `unresolvable` being inert is deliberate. A resolver outage on our side must never look like your
-  record disappearing, and must never send you an email telling you it did. A mass outage sends
-  zero emails.
+  That third one is inert on purpose. A resolver outage on our side must never look like your record
+  disappearing, and must never send you an email saying it did. If DNS breaks for everyone at once,
+  ownsi sends zero emails.
 </Note>
 
 ## When the next check happens
 
-`nextCheckAt` is derived, not a fixed interval. It comes from the claim's age, its consecutive
-failure count, and the zone's SOA MINIMUM.
+ownsi picks the moment rather than polling on a fixed timer. It uses how old the claim is, how many
+checks have come back empty, and one number read from your own zone: how long resolvers cache a
+"does not exist" for names in it.
 
-That last input is why the waiting screen can be specific. RFC 2308 says the SOA MINIMUM is exactly
-how long a resolver keeps caching a "does not exist". If your record was created two minutes ago in
-a zone with a 300-second MINIMUM, the resolvers are going to keep saying no for about three more
-minutes no matter how often anyone asks — so ownsi says *"resolvers forget the 'does not exist' in
-about 3 min"* and schedules itself accordingly.
+That last one is why the waiting screen can be specific. If your record was created two minutes ago
+in a zone that caches negatives for five, then the resolvers will keep saying no for about three
+more minutes no matter how many times anyone asks — so ownsi says *"resolvers forget the 'does not
+exist' in about 3 min"* and schedules itself for then.
 
-That is the `waitEstimate` block:
+You can always ask for a check now, and there is a button for it. It does not make DNS answer any
+sooner.
 
-```json
-{ "reason": "negative_cache", "secondsRemaining": 180 }
-```
+## Never both empty
 
-| `reason` | What is being waited on |
-|---|---|
-| `first_check` | The claim was just created; the first attempt has not run. |
-| `negative_cache` | Your nameservers have the record; resolvers are still holding a cached negative. |
-| `provider_publishing` | Your provider has not pushed the edit to its own nameservers yet. |
+While a domain is not proved, you always have exactly one of two things, and they mean opposite
+things:
 
-## diagnosis or waitEstimate, never neither
+- **A wait.** Nothing needs changing. Here is roughly how much longer.
+- **A diagnosis.** Something needs changing. Here is what.
 
-A claim that is not yet proved always carries one of the two, and they mean opposite things:
+Never neither, and never both. [Working out which one you are looking
+at](/diagnostics/overview).
 
-- **`diagnosis` is set** — something about the record needs to change. `fix` says what.
-- **`waitEstimate` is set** — nothing needs to change. `secondsRemaining` says how long.
+## Once you are proved
 
-Reading `diagnosis` first and falling back to `waitEstimate` gives you the whole "what now" message
-for any pending claim.
+Nothing sweeps proved domains on a schedule, and nothing can quietly un-prove one. Prove the same
+name again later and that is a second proof with its own date — the dates only move forwards.
 
-## Reconfirmation
-
-Proved claims are not swept on a schedule. A later claim on the same name proves on its own date,
-so `lastConfirmedAt` only ever moves forward — nothing can un-prove a domain by accident, and
-`firstVerifiedAt` is the earliest claim's date whatever happens after it.
+[What the proof states, and what it does not](/concepts/what-a-proof-states).

@@ -27,7 +27,7 @@ type ClaimActions = {
   readonly cancel: () => Promise<Claim>
   /** Publishes a public link to this proof, or hands back the one already live. */
   readonly share: () => Promise<ProofLink>
-  /** Every link ever published on it, expired and revoked included. */
+  /** Every link ever published on it, revoked ones included. */
   readonly shares: () => Promise<readonly ProofLink[]>
   readonly refresh: () => Promise<ClaimDetail>
 }

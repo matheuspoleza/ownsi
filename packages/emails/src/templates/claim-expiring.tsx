@@ -39,3 +39,15 @@ export const ClaimExpiringEmail = ({
     </Section>
   </EmailLayout>
 )
+
+ClaimExpiringEmail.PreviewProps = {
+  domain: "acme.com",
+  host: "_ownsi-challenge.acme.com",
+  token: "ownsi_v1_9f3a1c7d5e2b48a0c6f1d93b7e4a2058",
+  cause:
+    "ns1.registrar.example and ns2.registrar.example answer for acme.com, and the record is not in what they serve.",
+  fix: "Create the record, or reopen it in your panel and confirm it saved — some panels hold zone changes in a draft until you publish them.",
+  url: "https://ownsi.dev/domains/dom_1",
+} satisfies ClaimExpiringEmailProps
+
+export default ClaimExpiringEmail

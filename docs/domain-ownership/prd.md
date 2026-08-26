@@ -155,7 +155,9 @@ Everything follows from that one sentence:
 **Sharing the proof**
 
 - A proved claim can issue a public proof link on demand. Its own slug — never the DNS token —
-  valid for 7 days.
+  and it resolves until the holder revokes it. Expiry is a property of the claim that was never
+  proved in time, not of the share of one that was, so nothing on this side of the line carries a
+  clock.
 - The page renders the stored attestation. It runs no DNS query when opened.
 
 **Coexistence**
@@ -334,7 +336,7 @@ verification_attempts  id, verification_id FK, trigger, outcome,
                        diagnosis jsonb, evidence jsonb, latency_ms,
                        created_at                    -- 30d retention
 
-proof_links            slug PK, claim_id, issued_at, expires_at, revoked_at
+proof_links            slug PK, claim_id, issued_at, revoked_at
 ```
 
 Eight columns came off `claims` in the split, and every one of them was verification state:
@@ -599,7 +601,7 @@ reviewer arriving at an arbitrary hour, and a first-party cookie behind one orig
 | Zone reading before sign-in | rate limit per IP, and `zones.observed_at` is the cache — without it this is an open DNS resolver |
 | Token | 128 bits of randomness, per claim, never reused |
 | Another account's email | `MaskedEmail` — masked local part, visible domain |
-| Public proof page | no DNS query on open; rate limited; expires in 7 days |
+| Public proof page | no DNS query on open; rate limited; revocable, never expiring |
 | Manual check | rate limited per claim |
 
 ### 3.9 Docs

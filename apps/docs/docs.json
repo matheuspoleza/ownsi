@@ -26,68 +26,95 @@
       "display": "interactive"
     },
     "examples": {
-      "languages": ["typescript", "curl"]
+      "languages": [
+        "typescript",
+        "curl"
+      ]
     }
   },
   "contextual": {
-    "options": ["copy", "view", "claude", "chatgpt", "cursor", "vscode", "mcp"]
+    "options": [
+      "copy",
+      "view",
+      "claude",
+      "chatgpt",
+      "cursor",
+      "vscode",
+      "mcp"
+    ]
   },
   "navigation": {
     "tabs": [
       {
-        "tab": "Documentation",
-        "icon": "book-open",
+        "tab": "Prove a domain",
+        "icon": "shield-check",
         "groups": [
           {
-            "group": "Get started",
-            "pages": ["index", "quickstart"]
-          },
-          {
-            "group": "How it works",
+            "group": "Getting Started",
             "pages": [
-              "concepts/zone-reading",
-              "concepts/challenge-record",
-              "concepts/verification",
-              "concepts/claim-lifecycle",
-              "concepts/sharing-a-proof"
+              "index",
+              "quickstart"
             ]
           },
           {
-            "group": "When it does not verify",
-            "pages": ["diagnostics/overview", "diagnostics/catalogue"]
+            "group": "Verification",
+            "pages": [
+              "concepts/zone-reading",
+              "concepts/challenge-record",
+              "concepts/verification"
+            ]
           },
           {
-            "group": "Guides",
-            "pages": ["guides/read-a-zone", "guides/claim-a-domain"]
+            "group": "Troubleshooting",
+            "pages": [
+              "diagnostics/overview",
+              "diagnostics/catalogue"
+            ]
+          },
+          {
+            "group": "Proofs",
+            "pages": [
+              "concepts/what-a-proof-states",
+              "concepts/sharing-a-proof",
+              "concepts/claim-lifecycle"
+            ]
           }
         ]
       },
       {
-        "tab": "API reference",
+        "tab": "API",
         "icon": "code",
         "groups": [
           {
             "group": "Using the API",
             "pages": [
               "api-reference/introduction",
+              "api-reference/quickstart",
               "api-reference/authentication",
               "api-reference/streaming",
+              "api-reference/diagnosis",
               "errors"
             ]
           },
           {
             "group": "Endpoints",
+            "tag": "Coming soon",
             "openapi": "openapi.json"
-          }
-        ]
-      },
-      {
-        "tab": "SDKs",
-        "icon": "cube",
-        "groups": [
+          },
           {
             "group": "Clients",
-            "pages": ["sdk/typescript", "sdk/http"]
+            "tag": "Coming soon",
+            "pages": [
+              "sdk/typescript",
+              "sdk/http"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/read-a-zone",
+              "guides/claim-a-domain"
+            ]
           }
         ]
       }
@@ -124,16 +151,31 @@
       {
         "header": "Product",
         "items": [
-          { "label": "ownsi.dev", "href": "https://ownsi.dev" },
-          { "label": "Quickstart", "href": "/quickstart" }
+          {
+            "label": "ownsi.dev",
+            "href": "https://ownsi.dev"
+          },
+          {
+            "label": "Quickstart",
+            "href": "/quickstart"
+          }
         ]
       },
       {
         "header": "Reference",
         "items": [
-          { "label": "API", "href": "/api-reference/introduction" },
-          { "label": "Diagnostics", "href": "/diagnostics/catalogue" },
-          { "label": "Errors", "href": "/errors" }
+          {
+            "label": "API",
+            "href": "/api-reference/introduction"
+          },
+          {
+            "label": "Diagnostics",
+            "href": "/diagnostics/catalogue"
+          },
+          {
+            "label": "Errors",
+            "href": "/errors"
+          }
         ]
       }
     ]

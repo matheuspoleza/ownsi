@@ -2,7 +2,7 @@ import type { Publish } from "../../shared/bus.ts"
 import { err, ok, type Result } from "../../shared/result.ts"
 import type { ClaimEvent } from "../claims.contract.ts"
 import { expire, isOpen } from "../domain/claim.ts"
-import type { ClaimRepository } from "../domain/ports.ts"
+import type { ClaimRepository, FindDomain, SendNotice } from "../domain/ports.ts"
 
 export type ExpireClaimInput = {
   readonly claimId: string
@@ -15,6 +15,8 @@ export type ExpireClaim = (input: ExpireClaimInput) => Promise<Result<void, Expi
 
 export type ExpireClaimDeps = {
   readonly claims: ClaimRepository
+  readonly findDomain: FindDomain
+  readonly sendNotice: SendNotice
   readonly publish: Publish<ClaimEvent>
 }
 
@@ -23,6 +25,9 @@ export function expireClaim(deps: ExpireClaimDeps): ExpireClaim {
     const found = await deps.claims.findById(claimId)
     if (found === null) return err({ type: "not_found" })
     if (!isOpen(found)) return err({ type: "claim_ended" })
+
+    const domain = await deps.findDomain({ userId: found.userId, domainId: found.domainId })
+    if (domain === null) return err({ type: "not_found" })
 
     const expired = expire(found, at)
     await deps.claims.save(expired)
@@ -36,6 +41,15 @@ export function expireClaim(deps: ExpireClaimDeps): ExpireClaim {
         reason: "expired",
         endedAt: expired.endedAt,
       },
+    })
+
+    await deps.sendNotice({
+      notice: { kind: "expired" },
+      claimId: expired.id,
+      userId: expired.userId,
+      domainId: expired.domainId,
+      domain: domain.nameAscii,
+      token: expired.token,
     })
 
     return ok(undefined)

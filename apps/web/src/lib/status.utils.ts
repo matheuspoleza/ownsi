@@ -17,12 +17,15 @@ export const claimStanding = (claim: { state: ClaimState } | null): DomainFilter
 
 /**
  * The server settles which claim is in play; the verification only tells the open ones
- * apart — one still looking from one already waiting on the person.
+ * apart — one still looking from one already waiting on the person. A domain off the list
+ * reads as archived whatever its claim did, because that is the fact the row is about.
  */
 export const domainStatus = (
   standing: DomainFilter,
   verification: Verification | null,
+  archived = false,
 ): DomainStatus => {
+  if (archived) return "archived"
   if (standing !== "pending") return standing
   if (verification === null) return "checking"
 

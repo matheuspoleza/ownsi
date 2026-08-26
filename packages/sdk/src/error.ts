@@ -5,10 +5,13 @@ export const OWNSI_ERROR_CODES = [
   "unauthenticated",
   "already_claimed",
   "claim_ended",
+  "domain_archived",
   "domain_not_found",
   "claim_not_found",
   "verification_not_found",
   "verification_not_running",
+  "proof_not_found",
+  "proof_revoked",
   "rate_limited",
   "unreachable",
 ] as const

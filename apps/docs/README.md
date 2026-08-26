@@ -142,17 +142,11 @@ error resolves to `docs.ownsi.dev/errors#<code>`, which is `errors.mdx` at this 
 
 ## Still to do
 
-- **`concepts/claim-lifecycle.mdx` documents the API as it is, and the PRD has moved past it.**
-  The page describes six statuses and an archive/restore pair, which is what `apps/api` still
-  serves. The PRD now has a claim run forwards only — `pending` to one of `proved`, `expired`,
-  `canceled` — with archiving a fact about a (user, domain) pair rather than a claim state, and
-  starting over meaning a second `POST /api/domains`. Rewrite this page in the same change that
-  moves the claims context, not before: published docs describe the endpoints that answer today.
-
 - **A navbar logo.** `docs/branding/assets/` ships ~900 KB SVGs that wrap a raster on an opaque
   white background, so neither the size nor dark mode works here. The site renders the name as text
   until there is a transparent mark, black and white, around 120 px tall. The favicon is the symbol
   at 256 px and is fine.
-- Endpoints that the PRD specifies and the API has not built yet — `DELETE /api/domains/:id`,
-  `/events`, `/proof_links`, `GET /p/:slug` — appear here the moment they exist, with no work in
-  this package.
+- Endpoints the PRD specifies and the API has not built yet appear here the moment they exist,
+  with no work in this package. `DELETE /api/domains/:id`, `/api/events`, `/proof_links` and
+  `GET /p/:slug` all ship today; `/p/:slug` serves HTML rather than JSON, so it is the one route
+  the OpenAPI document does not carry and `concepts/sharing-a-proof.mdx` documents by hand.

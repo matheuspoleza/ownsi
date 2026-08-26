@@ -146,6 +146,95 @@ describe("the list a dashboard reads", () => {
   })
 })
 
+describe("taking one off the list", () => {
+  const named = async (app: ReturnType<typeof harness>, name: string) =>
+    bodyOf<DomainBody>(await app.post("/api/domains", { domain: name }))
+
+  test("the archived shelf is its own page, and the tally counts it apart", async () => {
+    const app = harness()
+    await named(app, "kept.com")
+    const gone = await named(app, "old.com")
+    await app.post(`/api/domains/${gone.id}/archive`)
+
+    const list = await bodyOf<DomainListBody>(await app.get("/api/domains"))
+    expect(list.domains.map((domain) => domain.name)).toEqual(["kept.com"])
+    expect(list.counts).toMatchObject({ unclaimed: 1, archived: 1 })
+
+    const shelf = await bodyOf<DomainListBody>(await app.get("/api/domains?archived=true"))
+    expect(shelf.domains.map((domain) => domain.name)).toEqual(["old.com"])
+    expect(shelf.domains[0]?.archived).toBe(true)
+  })
+
+  test("naming one finds it whether or not it is archived", async () => {
+    const app = harness()
+    const gone = await named(app, "old.com")
+    await app.post(`/api/domains/${gone.id}/archive`)
+
+    const page = await bodyOf<DomainListBody>(await app.get("/api/domains?name=old.com"))
+
+    expect(page.domains.map((domain) => domain.id)).toEqual([gone.id])
+    expect(page.domains[0]?.archived).toBe(true)
+  })
+
+  test("an archived name opens no claim, and says why", async () => {
+    const app = harness()
+    const gone = await named(app, "old.com")
+    await app.post(`/api/domains/${gone.id}/archive`)
+
+    const refused = await app.post("/api/claims", { domainId: gone.id })
+
+    expect(refused.status).toBe(409)
+    expect((await bodyOf<ErrorBody>(refused)).error.code).toBe("domain_archived")
+    expect(await bodyOf<{ claims: readonly unknown[] }>(await app.get("/api/claims"))).toEqual({
+      claims: [],
+    })
+  })
+
+  test("asking for the same name back hands over the archived one, still archived", async () => {
+    const app = harness()
+    const gone = await named(app, "old.com")
+    await app.post(`/api/domains/${gone.id}/archive`)
+
+    const again = await named(app, "old.com")
+
+    expect(again).toMatchObject({ id: gone.id, archived: true })
+  })
+
+  test("unarchiving puts it back on the list, opening nothing", async () => {
+    const app = harness()
+    const gone = await named(app, "old.com")
+    await app.post(`/api/domains/${gone.id}/archive`)
+
+    const back = await bodyOf<DomainBody>(await app.post(`/api/domains/${gone.id}/unarchive`))
+    expect(back.archived).toBe(false)
+
+    const list = await bodyOf<DomainListBody>(await app.get("/api/domains"))
+    expect(list.domains).toMatchObject([{ id: gone.id, status: "unclaimed" }])
+    expect(list.counts).toMatchObject({ unclaimed: 1, archived: 0 })
+  })
+
+  test("archiving twice keeps the date it was first shelved", async () => {
+    const app = harness()
+    const gone = await named(app, "old.com")
+    await app.post(`/api/domains/${gone.id}/archive`)
+    app.at(new Date("2026-09-01T12:00:00Z"))
+
+    expect((await app.post(`/api/domains/${gone.id}/archive`)).status).toBe(200)
+    expect((await app.domains.findById(gone.id))?.archivedAt).toEqual(
+      new Date("2026-08-24T12:00:00Z"),
+    )
+  })
+
+  test("neither act reaches another account's domain", async () => {
+    const app = harness()
+    const mine = await named(app, "acme.com")
+    const theirs = harness({ session: signedInAs(GRACE) })
+
+    expect((await theirs.post(`/api/domains/${mine.id}/archive`)).status).toBe(404)
+    expect((await theirs.post(`/api/domains/${mine.id}/unarchive`)).status).toBe(404)
+  })
+})
+
 describe("erasing one", () => {
   test("delete answers 204 and the domain stops existing", async () => {
     const app = harness()
@@ -165,6 +254,7 @@ describe("the session", () => {
       await app.post("/api/domains", { domain: "acme.com" }),
       await app.get("/api/domains/dom_1"),
       await app.post("/api/domains/dom_1/archive"),
+      await app.post("/api/domains/dom_1/unarchive"),
       await app.del("/api/domains/dom_1"),
     ]) {
       expect(response.status).toBe(401)

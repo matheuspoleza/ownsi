@@ -1,7 +1,10 @@
 import {
   type RenderedEmail,
+  renderClaimExpiredEmail,
   renderClaimExpiringEmail,
   renderClaimNudgeEmail,
+  renderClaimOpenedEmail,
+  renderClaimProgressEmail,
   renderOtherAccountProvedEmail,
   renderProofGrantedEmail,
 } from "@ownsi/emails"
@@ -29,12 +32,24 @@ export function emailTheClaimant(deps: ClaimMailerDeps): SendNotice {
 
 function compose(announcement: ClaimAnnouncement, url: string): Promise<RenderedEmail> {
   const { notice, domain } = announcement
+  const host = challengeHost(domain)
 
   switch (notice.kind) {
     case "proved":
-      return renderProofGrantedEmail({ domain, provedAt: readable(notice.provedAt), url })
+      return renderProofGrantedEmail({
+        domain,
+        provedAt: readable(notice.provedAt),
+        url,
+        proofUrl: notice.proofUrl,
+      })
     case "coexistence":
       return renderOtherAccountProvedEmail({ domain, url })
+    case "expired":
+      return renderClaimExpiredEmail({ domain, url })
+    case "opened":
+      return renderClaimOpenedEmail({ domain, token: announcement.token, host, url })
+    case "progress":
+      return renderClaimProgressEmail(pending(announcement, notice.diagnosis, url))
     case "nudge":
       return renderClaimNudgeEmail(pending(announcement, notice.diagnosis, url))
     case "expiring":
@@ -58,6 +73,13 @@ function pending(
   }
 }
 
+const READABLE = new Intl.DateTimeFormat("en-GB", {
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+  timeZone: "UTC",
+})
+
 function readable(instant: Date): string {
-  return instant.toISOString().slice(0, 10)
+  return READABLE.format(instant)
 }

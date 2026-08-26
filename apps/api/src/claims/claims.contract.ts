@@ -5,6 +5,7 @@ import type { ClaimedDomain } from "./domain/ports.ts"
 
 export type { Claim, ClaimState, EndedState, OpenClaim } from "./domain/claim.ts"
 export { CLAIM_STATES, CLAIM_WINDOW_DAYS, isOpen } from "./domain/claim.ts"
+export type { LatestProof } from "./domain/latest-proof.ts"
 export type { ClaimedDomain } from "./domain/ports.ts"
 
 export type ClaimView = {

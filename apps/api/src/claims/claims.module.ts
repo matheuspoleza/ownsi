@@ -7,6 +7,8 @@ import { type CancelClaim, cancelClaim } from "./application/cancel-claim.use-ca
 import { type CreateClaim, createClaim } from "./application/create-claim.use-case.ts"
 import { type ExpireClaim, expireClaim } from "./application/expire-claim.use-case.ts"
 import { type GetClaim, getClaim } from "./application/get-claim.query.ts"
+import { type GetClaimStanding, getClaimStanding } from "./application/get-claim-standing.query.ts"
+import { type GetLatestProof, getLatestProof } from "./application/get-latest-proof.query.ts"
 import { type ListClaims, listClaims } from "./application/list-claims.query.ts"
 import { type NotifyClaimant, notifyClaimant } from "./application/notify-claimant.use-case.ts"
 import { type ProveClaim, proveClaim } from "./application/prove-claim.use-case.ts"
@@ -17,10 +19,12 @@ import type {
   FindCoexistence,
   FindDomain,
   FindDomains,
+  FindLatestProof,
   FindOtherClaimants,
   FindRecipient,
   GenerateId,
   GenerateToken,
+  PublishProof,
   SendNotice,
   SentNotices,
   StartVerifying,
@@ -29,8 +33,13 @@ import type {
 import { postgresClaimRepository } from "./infra/claim.repository.ts"
 import { emailTheClaimant } from "./infra/claim-mailer.service.ts"
 import { postgresClaimNotices } from "./infra/claim-notice.repository.ts"
-import { postgresCoexistence, postgresOtherClaimants } from "./infra/coexistence.repository.ts"
+import {
+  postgresCoexistence,
+  postgresLatestProof,
+  postgresOtherClaimants,
+} from "./infra/coexistence.repository.ts"
 import { atMostDaily } from "./infra/notice-ceiling.service.ts"
+import { bestEffort } from "./infra/notice-delivery.service.ts"
 import { postgresRecipients } from "./infra/recipient.repository.ts"
 import { randomToken } from "./infra/token.service.ts"
 
@@ -43,6 +52,7 @@ export type ClaimsModuleDeps = {
   readonly findDomains: FindDomains
   readonly startVerifying: StartVerifying
   readonly stopVerifying: StopVerifying
+  readonly publishProof: PublishProof
   readonly publish: Publish<ClaimEvent>
 }
 
@@ -52,6 +62,7 @@ export type ClaimsModuleOverrides = {
   readonly sentNotices?: SentNotices
   readonly findRecipient?: FindRecipient
   readonly findCoexistence?: FindCoexistence
+  readonly findLatestProof?: FindLatestProof
   readonly otherClaimants?: FindOtherClaimants
   readonly generateId?: GenerateId
   readonly generateToken?: GenerateToken
@@ -64,6 +75,8 @@ export type ClaimsModule = {
   readonly expireClaim: ExpireClaim
   readonly notifyClaimant: NotifyClaimant
   readonly getClaim: GetClaim
+  readonly getClaimStanding: GetClaimStanding
+  readonly getLatestProof: GetLatestProof
   readonly listClaims: ListClaims
 }
 
@@ -73,19 +86,23 @@ export function createClaimsModule(
 ): ClaimsModule {
   const claims = overrides.claims ?? postgresClaimRepository(deps.database)
   const findCoexistence = overrides.findCoexistence ?? postgresCoexistence(deps.database)
+  const findLatestProof = overrides.findLatestProof ?? postgresLatestProof(deps.database)
+  const findRecipient = overrides.findRecipient ?? postgresRecipients(deps.database)
   const { findDomain } = deps
 
-  const sendNotice = atMostDaily({
-    sendNotice:
-      overrides.sendNotice ??
-      emailTheClaimant({
-        sendEmail: deps.sendEmail,
-        findRecipient: overrides.findRecipient ?? postgresRecipients(deps.database),
-        appUrl: deps.config.appUrl,
-      }),
-    sent: overrides.sentNotices ?? postgresClaimNotices(deps.database),
-    clock: deps.clock,
-  })
+  const sendNotice = bestEffort(
+    atMostDaily({
+      sendNotice:
+        overrides.sendNotice ??
+        emailTheClaimant({
+          sendEmail: deps.sendEmail,
+          findRecipient,
+          appUrl: deps.config.appUrl,
+        }),
+      sent: overrides.sentNotices ?? postgresClaimNotices(deps.database),
+      clock: deps.clock,
+    }),
+  )
 
   return {
     createClaim: createClaim({
@@ -93,6 +110,7 @@ export function createClaimsModule(
       findDomain,
       findCoexistence,
       startVerifying: deps.startVerifying,
+      sendNotice,
       generateId: overrides.generateId ?? randomId,
       generateToken: overrides.generateToken ?? randomToken,
       clock: deps.clock,
@@ -108,12 +126,16 @@ export function createClaimsModule(
       claims,
       findDomain,
       otherClaimants: overrides.otherClaimants ?? postgresOtherClaimants(deps.database),
+      findRecipient,
+      publishProof: deps.publishProof,
       sendNotice,
       publish: deps.publish,
     }),
-    expireClaim: expireClaim({ claims, publish: deps.publish }),
+    expireClaim: expireClaim({ claims, findDomain, sendNotice, publish: deps.publish }),
     notifyClaimant: notifyClaimant({ claims, findDomain, sendNotice }),
     getClaim: getClaim({ claims, findDomain, findCoexistence }),
+    getClaimStanding: getClaimStanding({ claims, findDomain }),
+    getLatestProof: getLatestProof({ findLatestProof }),
     listClaims: listClaims({ claims, findDomains: deps.findDomains }),
   }
 }

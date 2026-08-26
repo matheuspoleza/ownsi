@@ -1,12 +1,13 @@
 import { err, ok, type Result } from "../../shared/result.ts"
 import type { Diagnosis } from "../../verification/verification.contract.ts"
 import { isOpen } from "../domain/claim.ts"
-import { noticesBetween } from "../domain/notice.ts"
+import { noticeForChange, noticesBetween } from "../domain/notice.ts"
 import type { ClaimRepository, FindDomain, SendNotice } from "../domain/ports.ts"
 
 export type NotifyClaimantInput = {
   readonly claimId: string
   readonly diagnosis: Diagnosis
+  readonly previousDiagnosis: Diagnosis | null
   readonly since: Date
   readonly at: Date
 }
@@ -24,12 +25,13 @@ export type NotifyClaimantDeps = {
 }
 
 export function notifyClaimant(deps: NotifyClaimantDeps): NotifyClaimant {
-  return async ({ claimId, diagnosis, since, at }) => {
+  return async ({ claimId, diagnosis, previousDiagnosis, since, at }) => {
     const found = await deps.claims.findById(claimId)
     if (found === null) return err({ type: "not_found" })
     if (!isOpen(found)) return err({ type: "claim_ended" })
 
-    const notices = noticesBetween(found.createdAt, since, at, diagnosis)
+    const changed = noticeForChange(previousDiagnosis, diagnosis)
+    const notices = changed ? [changed] : noticesBetween(found.createdAt, since, at, diagnosis)
     if (notices.length === 0) return ok(undefined)
 
     const domain = await deps.findDomain({ userId: found.userId, domainId: found.domainId })

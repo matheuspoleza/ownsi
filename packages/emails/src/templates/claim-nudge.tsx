@@ -32,3 +32,15 @@ export const ClaimNudgeEmail = ({ domain, host, token, cause, fix, url }: ClaimN
     </Section>
   </EmailLayout>
 )
+
+ClaimNudgeEmail.PreviewProps = {
+  domain: "acme.com",
+  host: "_ownsi-challenge.acme.com",
+  token: "ownsi_v1_9f3a1c7d5e2b48a0c6f1d93b7e4a2058",
+  cause:
+    "Your panel appended the domain to what you typed, so the record landed on _ownsi-challenge.acme.com.acme.com instead of _ownsi-challenge.acme.com.",
+  fix: "Put only _ownsi-challenge in the Host field — the panel adds acme.com for you.",
+  url: "https://ownsi.dev/domains/dom_1",
+} satisfies ClaimNudgeEmailProps
+
+export default ClaimNudgeEmail

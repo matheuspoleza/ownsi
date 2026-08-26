@@ -35,9 +35,17 @@ export interface DomainHeadingProps {
   menu: readonly DomainMenuItem[]
   /** The plate takes the tone of the proof: green once the name is proved, neutral before. */
   proved?: boolean
+  /** Off the list. The name still reads, and says so above itself. */
+  archived?: boolean
 }
 
-export const DomainHeading = ({ domain, action, menu, proved = false }: DomainHeadingProps) => (
+export const DomainHeading = ({
+  domain,
+  action,
+  menu,
+  proved = false,
+  archived = false,
+}: DomainHeadingProps) => (
   <div className="flex flex-col">
     <Link
       to="/domains"
@@ -64,8 +72,20 @@ export const DomainHeading = ({ domain, action, menu, proved = false }: DomainHe
         </AnimateIcon>
 
         <span className="flex min-w-0 flex-col gap-[3px]">
-          <span className="text-[12px] text-muted-foreground">Domain</span>
-          <h1 className="truncate font-mono font-medium text-[26px] text-foreground leading-none tracking-[-0.4px]">
+          <span className="flex items-center gap-2 text-[12px] text-muted-foreground">
+            Domain
+            {archived ? (
+              <span className="rounded-full bg-muted px-2 py-[2px] font-mono text-[11px] text-muted-foreground">
+                archived
+              </span>
+            ) : null}
+          </span>
+          <h1
+            className={cn(
+              "truncate font-mono font-medium text-[26px] leading-none tracking-[-0.4px]",
+              archived ? "text-muted-foreground" : "text-foreground",
+            )}
+          >
             {domain}
           </h1>
         </span>

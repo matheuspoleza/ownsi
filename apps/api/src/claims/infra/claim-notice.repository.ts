@@ -3,12 +3,15 @@ import { randomId } from "../../shared/identifiers.ts"
 import type { NoticeKind } from "../domain/notice.ts"
 import type { SentNotices } from "../domain/ports.ts"
 
-type NoticeRow = "PROVED" | "NUDGE" | "EXPIRING" | "COEXISTENCE"
+type NoticeRow = "OPENED" | "PROVED" | "PROGRESS" | "NUDGE" | "EXPIRING" | "EXPIRED" | "COEXISTENCE"
 
 const NOTICE_ROW: Record<NoticeKind, NoticeRow> = {
+  opened: "OPENED",
   proved: "PROVED",
+  progress: "PROGRESS",
   nudge: "NUDGE",
   expiring: "EXPIRING",
+  expired: "EXPIRED",
   coexistence: "COEXISTENCE",
 }
 

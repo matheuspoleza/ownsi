@@ -12,9 +12,8 @@ export const ProofLinkResponse = t.Object({
   challengeHost: t.String(),
   provider: t.Union([t.String(), t.Null()]),
   provedAt: t.String(),
-  standing: t.UnionEnum(["live", "expired", "revoked"]),
+  standing: t.UnionEnum(["live", "revoked"]),
   issuedAt: t.String(),
-  expiresAt: t.String(),
   revokedAt: t.Union([t.String(), t.Null()]),
 })
 
@@ -41,7 +40,6 @@ export function toProofLinkResponse(
     provedAt: link.attestation.provedAt.toISOString(),
     standing: standing.type,
     issuedAt: link.issuedAt.toISOString(),
-    expiresAt: link.expiresAt.toISOString(),
     revokedAt: link.revokedAt === null ? null : link.revokedAt.toISOString(),
   }
 }

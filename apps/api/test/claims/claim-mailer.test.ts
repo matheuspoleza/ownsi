@@ -54,14 +54,33 @@ describe("what lands in the claimant's inbox", () => {
     expect(app.outbox[0]?.text).toContain("a new token")
   })
 
-  test("the proof email carries the date the proof is dated by", async () => {
+  test("the proof email carries the date the proof is dated by, in words", async () => {
     const app = mailer()
     await app.sendNotice(
-      announcement({ kind: "proved", provedAt: new Date("2026-08-24T12:00:00Z") }),
+      announcement({
+        kind: "proved",
+        provedAt: new Date("2026-08-24T12:00:00Z"),
+        proofUrl: "https://ownsi.dev/p/9f3a1c7d",
+      }),
     )
 
     expect(app.outbox[0]?.subject).toBe("acme.com is proved")
-    expect(app.outbox[0]?.text).toContain("2026-08-24")
+    expect(app.outbox[0]?.text).toContain("24 August 2026")
+    expect(app.outbox[0]?.text).toContain("https://ownsi.dev/p/9f3a1c7d")
+  })
+
+  test("a proof nobody could publish a link for still says the claim is proved", async () => {
+    const app = mailer()
+    await app.sendNotice(
+      announcement({
+        kind: "proved",
+        provedAt: new Date("2026-08-24T12:00:00Z"),
+        proofUrl: null,
+      }),
+    )
+
+    expect(app.outbox[0]?.text).toContain("24 August 2026")
+    expect(app.outbox[0]?.text).not.toContain("no account needed")
   })
 
   test("the coexistence email says the other proof takes nothing away", async () => {
@@ -70,6 +89,30 @@ describe("what lands in the claimant's inbox", () => {
 
     expect(app.outbox[0]?.subject).toBe("Another account proved acme.com")
     expect(app.outbox[0]?.text).toContain("Your own claim is untouched")
+  })
+
+  test("a changed answer names the new reading, not the one that is gone", async () => {
+    const app = mailer()
+    await app.sendNotice(
+      announcement({
+        kind: "progress",
+        diagnosis: { code: "negative_cache", observed: { secondsRemaining: 240 } },
+      }),
+    )
+
+    const [sent] = app.outbox
+    expect(sent?.subject).toBe("What changed at acme.com")
+    expect(sent?.text).toContain("Nothing to do")
+    expect(sent?.text).not.toContain("still waiting")
+  })
+
+  test("the closed window says the record is still in the right place", async () => {
+    const app = mailer()
+    await app.sendNotice(announcement({ kind: "expired" }))
+
+    const [sent] = app.outbox
+    expect(sent?.subject).toBe("The window on acme.com closed")
+    expect(sent?.text).toContain("one edit to its value")
   })
 
   test("a recipient we cannot find is not an error, and sends nothing", async () => {

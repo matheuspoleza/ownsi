@@ -7,9 +7,15 @@ import {
 import { type GetProof, getProof } from "./application/get-proof.query.ts"
 import { type ListProofLinks, listProofLinks } from "./application/list-proof-links.query.ts"
 import { type RevokeProofLink, revokeProofLink } from "./application/revoke-proof-link.use-case.ts"
+import {
+  type RevokeProofLinks,
+  revokeProofLinks,
+} from "./application/revoke-proof-links.use-case.ts"
 import type {
+  FindLatestProof,
   FindProvedClaim,
   GenerateSlug,
+  IsPublished,
   ProofLinkRepository,
   ReadProvider,
 } from "./domain/ports.ts"
@@ -20,6 +26,8 @@ export type ProofModuleDeps = {
   readonly clock: Clock
   readonly database: Database
   readonly findProvedClaim: FindProvedClaim
+  readonly isPublished: IsPublished
+  readonly findLatestProof: FindLatestProof
   readonly readProvider: ReadProvider
 }
 
@@ -32,6 +40,7 @@ export type ProofModule = {
   readonly findOrCreateProofLink: FindOrCreateProofLink
   readonly listProofLinks: ListProofLinks
   readonly revokeProofLink: RevokeProofLink
+  readonly revokeProofLinks: RevokeProofLinks
   readonly getProof: GetProof
 }
 
@@ -50,8 +59,13 @@ export function createProofModule(
       generateSlug: overrides.generateSlug ?? randomSlug,
       clock,
     }),
-    listProofLinks: listProofLinks({ links, findProvedClaim, clock }),
+    listProofLinks: listProofLinks({ links, findProvedClaim }),
     revokeProofLink: revokeProofLink({ links, findProvedClaim, clock }),
-    getProof: getProof({ links, clock }),
+    revokeProofLinks: revokeProofLinks({ links, clock }),
+    getProof: getProof({
+      links,
+      isPublished: deps.isPublished,
+      findLatestProof: deps.findLatestProof,
+    }),
   }
 }

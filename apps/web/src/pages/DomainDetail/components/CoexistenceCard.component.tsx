@@ -1,8 +1,9 @@
 import { ArrowUpRight, Users } from "lucide-react"
 import { Avatar } from "../../../components/Avatar.component.tsx"
 import { HelpTip } from "../../../components/HelpTip.component.tsx"
+import { DOCS_COEXISTENCE } from "../../../lib/docs.constants.ts"
 import { formatDate } from "../../../lib/time.utils.ts"
-import { COEXISTENCE_TIP, DISPUTES_URL } from "../DomainDetail.constants.ts"
+import { COEXISTENCE_TIP } from "../DomainDetail.constants.ts"
 import type { Holder } from "../DomainDetail.utils.ts"
 
 interface HolderRowProps {
@@ -50,7 +51,7 @@ export const CoexistenceCard = ({ holders }: CoexistenceCardProps) => (
 
     <div className="flex justify-end px-4 py-[11px]">
       <a
-        href={DISPUTES_URL}
+        href={DOCS_COEXISTENCE}
         target="_blank"
         rel="noreferrer"
         className="flex items-center gap-1.5 font-mono text-[12.5px] text-muted-foreground transition-colors hover:text-foreground"

@@ -11,10 +11,11 @@ interface ActionProps {
   label: string
   onClick: () => void
   pending?: boolean
+  disabled?: boolean
 }
 
-const Action = ({ icon, label, onClick, pending = false }: ActionProps) => (
-  <button type="button" onClick={onClick} disabled={pending} className={ROW}>
+const Action = ({ icon, label, onClick, pending = false, disabled = false }: ActionProps) => (
+  <button type="button" onClick={onClick} disabled={pending || disabled} className={ROW}>
     <span className="flex shrink-0 text-muted-foreground [&_svg]:size-[15px]">
       {pending ? <LoaderCircle className="animate-spin" /> : icon}
     </span>
@@ -35,12 +36,17 @@ const CopyAction = ({ icon, label, value }: CopyActionProps) => {
   return <Action icon={icon} label={copied ? "Copied" : label} onClick={copy} />
 }
 
+const ARCHIVED_NOTE =
+  "This domain is off your list, and archiving took back every link published from it — those addresses stopped resolving. The proof stands as a record. Claim the domain again to prove it afresh and publish a new link."
+
 export interface ProofActionsProps {
   /** Null until a link has been published: a proof is private until its holder shares it. */
   publication: ProofPublication | null
   onPublish: () => void
   onRevoke: () => void
   isPublishing: boolean
+  /** The domain left the list, so the section says what that did and did not do to the link. */
+  archived?: boolean
 }
 
 export const ProofActions = ({
@@ -48,14 +54,21 @@ export const ProofActions = ({
   onPublish,
   onRevoke,
   isPublishing,
+  archived = false,
 }: ProofActionsProps) => (
   <section className="overflow-hidden rounded-xl border border-border bg-card">
+    {archived ? (
+      <p className="border-border border-b bg-muted px-4 py-[11px] text-[12.5px] text-muted-foreground leading-[1.5]">
+        {ARCHIVED_NOTE}
+      </p>
+    ) : null}
     {publication === null ? (
       <Action
         icon={<Link2 />}
         label="Publish a public link"
         onClick={onPublish}
         pending={isPublishing}
+        disabled={archived}
       />
     ) : (
       <>

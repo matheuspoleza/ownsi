@@ -1,62 +1,92 @@
 ---
-title: "Sharing a proof"
-description: "A proved claim can publish a link anyone can open. What that page states, how long the link lasts, and what taking it back does and does not do."
+title: "Proof Links"
+description: "Publish a link anyone can open, see what it shows them, and take it back whenever you want without touching the proof itself."
 icon: "share-nodes"
 ---
 
-A proof is private until its holder says otherwise. Nothing about a proved claim is public, and
-opening a claim publishes nothing — the only thing that reaches a stranger is a link somebody asked
-for.
+Your proof is private until you decide otherwise. Proving a domain publishes nothing, and your list
+of domains is yours. The only thing that ever reaches a stranger is a link you chose to hand them.
 
 ## Publishing one
 
-`POST /api/claims/:id/proof_links` mints it. The claim must be `proved`; a `pending`, `expired` or
-`canceled` one has nothing to share and answers `claim_not_proved`.
+You get a short link like `ownsi.dev/p/8f2k91mx4c`. Anyone with it can open it; nobody without it
+can find it.
 
-```json
-{
-  "slug": "8f2k91mx4c",
-  "url": "https://ownsi.dev/p/8f2k91mx4c",
-  "domain": "acme.com",
-  "heldBy": "m•••@acme.com",
-  "provedAt": "2026-08-24T12:00:00.000Z",
-  "standing": "live",
-  "expiresAt": "2026-08-31T12:00:00.000Z"
-}
-```
+The link has its own random slug. It is **never your DNS token** — that stays between your account
+and your zone, and on an ended claim it proves nothing anyway.
 
-The slug is the link's own. It is **never the DNS token**, which stays between the account and its
-zone — and which, on an ended claim, proves nothing anyway.
+Ask for a link twice and you get the same one back rather than collecting duplicates. There is one
+address per proof, and it stays that address.
 
-Asking twice while a link is still live hands back the same slug rather than minting a second one.
-A link that has expired is not reused: the next call issues a fresh one.
+## What the person sees
 
-## What the page states
+<CardGroup cols={2}>
+  <Card title="What is on the page" icon="file-lines">
+    The domain, the date it was proved, the masked address of the account that earned it
+    (`m•••@acme.com`), the DNS provider, and the token that was found.
+  </Card>
+  <Card title="What it does not do" icon="ban">
+    It runs no DNS query when someone opens it. It reads one stored row and prints what that row
+    says — so it states the same thing today as the day you published it.
+  </Card>
+</CardGroup>
 
-`GET /p/:slug` is server-rendered HTML with real link-preview tags, and it runs **no DNS query when
-it is opened**. It reads one stored row and prints what that row says: the domain, the date, the
-holder's masked address, and the token that was found.
+<Frame caption="What opens on the other end. The address under the QR code is the link itself.">
+  <img src="/images/proof-page.png" alt="A published ownsi proof page showing the domain acme.demo.ownsi.dev, the masked account that holds it, the date it was proved, the provider, the token, a QR code, and the dig command that reads the same record." />
+</Frame>
 
-That is the whole promise of the product in one page. The proof is a fact about a moment, so the
-record that earned it may already be gone — it is consumable by design, and removing it changes
-nothing the page states.
+That last part is the whole idea. The proof is a fact about a moment, so the record that earned it
+may well be gone by the time somebody reads the page, and
+[nothing about the page changes when it is](/concepts/what-a-proof-states).
 
-`GET /p/:slug/badge.svg` renders the same fact as a README badge.
+Whoever you send it to can check the DNS themselves if they want. The page shows them the exact
+command.
+
+The page also says whether a later proof of the same name exists — a fact about the name, not about
+your proof, and it [takes nothing away from it](/concepts/what-a-proof-states#two-proofs-of-one-name-have-an-order).
+
+There is a badge too, at `/p/:slug/badge.svg`, for a README.
+
+## A link does not run down
+
+Once published, it resolves until you take it back. Nothing about it expires on a clock.
+
+Expiry belongs to the other side of the claim: a claim that was never proved in time **expires**,
+because it was a question with a deadline. A proof answers the question, and the answer is about a
+moment that has already happened. A timer on the share would say nothing about the proof, so there
+is not one.
+
+That is what makes the address safe to paste somewhere permanent — a README, a site footer, an
+email signature.
 
 ## Taking one back
 
-`POST /api/claims/:id/proof_links/:slug/revoke` stops that slug resolving. It retracts nothing:
+Revoking a link stops that slug resolving, immediately. What it does **not** do:
 
-- the proof keeps its date, and `GET /api/claims/:id` still reads `proved`;
-- any other link on the same claim keeps working;
-- the account can publish a fresh link the moment it wants one.
+- your proof keeps its date, and your domain still reads as proved;
+- you can publish a new link a second later, and it gets its own slug;
+- the old slug stays dead, permanently.
 
-Links expire on their own after seven days. `standing` says which of the three a link is in —
-`live`, `expired` or `revoked` — and `GET /api/claims/:id/proof_links` lists them all, because what
-has been shared is part of the record.
+Someone opening a revoked link is told the link is no longer available, and nothing about the domain
+behind it. A slug nobody ever published looks the same as one that never existed.
 
-An expired or revoked link answers `410` and names nothing about the domain behind it. A slug
-nobody published answers `404`.
+<Note>
+  Every link you have published is listed, the revoked ones included. What has been shared is part of
+  the record, and hiding it from you would not un-share it.
+</Note>
 
-Deleting a domain with `DELETE /api/domains/:id` is the one thing that erases links, along with the
-claims they hang from. See [the claim lifecycle](/concepts/claim-lifecycle).
+## The two things that end a link you did not revoke
+
+**Archiving the domain** revokes every link published from it, in the same act. Saying "I am not
+working on this name any more" and leaving its address resolving for strangers are two different
+things, and archiving means the first. The proof is untouched — the claim keeps its state and its
+date — and [putting the domain back](/concepts/claim-lifecycle#archiving-is-not-deleting) does not
+bring the old slug back. Publish a new link, and it gets its own.
+
+**Deleting the domain** is the eraser: the domain, its claims and every link hanging off them go,
+permanently, and no record of what was shared survives it.
+
+Neither rests on a revocation having landed. The page reads the claim behind the slug on every
+open, so a link cannot outlive the decision to publish it — one that escaped its revocation reads
+as taken back all the same. A page already served is cached for five minutes, which is the longest
+a revoked link can still be on a reader's screen.

@@ -8,7 +8,9 @@ import type {
 } from "../domain/ports.ts"
 import { isLive, issueProofLink, type ProofLinkView, viewOf } from "../domain/proof-link.ts"
 
-export type ProofLinkUnavailable = { readonly type: "claim_not_proved" }
+export type ProofLinkUnavailable =
+  | { readonly type: "claim_not_proved" }
+  | { readonly type: "domain_archived" }
 
 export type FindOrCreateProofLinkInput = {
   readonly userId: string
@@ -32,11 +34,12 @@ export function findOrCreateProofLink(deps: FindOrCreateProofLinkDeps): FindOrCr
   return async (input) => {
     const proved = await deps.findProvedClaim(input)
     if (proved === null) return err({ type: "claim_not_proved" })
+    if (proved.archived) return err({ type: "domain_archived" })
 
     const now = deps.clock()
     const existing = await deps.links.listByClaim(proved.claimId)
-    const live = existing.find((link) => isLive(link, now))
-    if (live) return ok(viewOf(live, now))
+    const live = existing.find(isLive)
+    if (live) return ok(viewOf(live))
 
     const issued = issueProofLink({
       slug: deps.generateSlug(),
@@ -55,6 +58,6 @@ export function findOrCreateProofLink(deps: FindOrCreateProofLinkDeps): FindOrCr
 
     await deps.links.save(issued)
 
-    return ok(viewOf(issued, now))
+    return ok(viewOf(issued))
   }
 }

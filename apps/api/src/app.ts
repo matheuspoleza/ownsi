@@ -6,8 +6,9 @@ import type { ClaimEvent } from "./claims/claims.contract.ts"
 import { type ClaimsModuleOverrides, createClaimsModule } from "./claims/claims.module.ts"
 import type { AppConfig } from "./config.ts"
 import { domainsApp } from "./domains/domains.app.ts"
-import type { DomainEvent } from "./domains/domains.contract.ts"
+import { type DomainEvent, domainRef } from "./domains/domains.contract.ts"
 import { createDomainsModule, type DomainsModuleOverrides } from "./domains/domains.module.ts"
+import { proofUrl } from "./proof/api/proof-link.response.ts"
 import { proofApp, proofPageApp } from "./proof/proof.app.ts"
 import { createProofModule, type ProofModuleOverrides } from "./proof/proof.module.ts"
 import { type Broadcast, inProcessBroadcast } from "./shared/broadcast.ts"
@@ -98,15 +99,19 @@ export function createApp(config: AppConfig, overrides: AppOverrides = {}) {
       sendEmail,
       findDomain: async (input) => {
         const found = await domains.getDomain(input)
-        return found.ok ? found.value : null
+        return found.ok ? domainRef(found.value) : null
       },
-      findDomains: (userId) => domains.listDomainNames(userId),
+      findDomains: async (userId) => (await domains.listDomainNames(userId)).map(domainRef),
       startVerifying: async (input) => {
         const started = await verification.createVerification(input)
         return started.ok ? started.value.id : null
       },
       stopVerifying: async (input) => {
         await verification.stopVerification(input)
+      },
+      publishProof: async (input) => {
+        const issued = await proof.findOrCreateProofLink(input)
+        return issued.ok ? proofUrl(config.appUrl, issued.value.link.slug) : null
       },
       publish: bus.publish,
     },
@@ -126,6 +131,7 @@ export function createApp(config: AppConfig, overrides: AppOverrides = {}) {
 
         return {
           claimId: claim.id,
+          archived: domain.archived,
           domain: domain.nameAscii,
           unicodeDomain: domain.nameUnicode,
           heldBy: maskEmail(email),
@@ -133,6 +139,14 @@ export function createApp(config: AppConfig, overrides: AppOverrides = {}) {
           challengeHost: challengeHost(domain.nameAscii),
           provedAt: claim.endedAt,
         }
+      },
+      isPublished: async (claimId) => {
+        const standing = await claims.getClaimStanding(claimId)
+        return standing !== null && standing.state === "proved" && !standing.archived
+      },
+      findLatestProof: async (domain) => {
+        const latest = await claims.getLatestProof(domain)
+        return latest === null ? null : latest.provedAt
       },
       readProvider: async (domain) => {
         const described = await zones.describeZone(domain)
@@ -145,15 +159,19 @@ export function createApp(config: AppConfig, overrides: AppOverrides = {}) {
   bus.on("verification/attempt.succeeded", async ({ subjectId, at }) => {
     await claims.proveClaim({ claimId: subjectId, at })
   })
-  bus.on("verification/attempt.failed", async ({ subjectId, diagnosis, since, at }) => {
-    await claims.notifyClaimant({ claimId: subjectId, diagnosis, since, at })
-  })
+  bus.on(
+    "verification/attempt.failed",
+    async ({ subjectId, diagnosis, previousDiagnosis, since, at }) => {
+      await claims.notifyClaimant({ claimId: subjectId, diagnosis, previousDiagnosis, since, at })
+    },
+  )
   bus.on("verification/exhausted", async ({ subjectId, at }) => {
     await claims.expireClaim({ claimId: subjectId, at })
   })
   bus.on("domains/domain.archived", async ({ userId, domainId }) => {
     for (const { claim } of await claims.listClaims({ userId, domainId })) {
       if (claim.state === "pending") await claims.cancelClaim({ userId, claimId: claim.id })
+      await proof.revokeProofLinks({ claimId: claim.id })
     }
   })
 
@@ -171,6 +189,9 @@ export function createApp(config: AppConfig, overrides: AppOverrides = {}) {
   })
   bus.on("domains/domain.archived", async ({ userId, domainId }) => {
     broadcast.publish(userId, { type: "domain.archived", domainId })
+  })
+  bus.on("domains/domain.unarchived", async ({ userId, domainId }) => {
+    broadcast.publish(userId, { type: "domain.unarchived", domainId })
   })
 
   const session = sessionPlugin(auth.checkSession)

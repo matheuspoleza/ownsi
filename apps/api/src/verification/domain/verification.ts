@@ -1,7 +1,7 @@
 import { secondsAfter, secondsBetween } from "../../shared/time.ts"
 import type { AttemptOutcome, ChallengeRequest, VerificationMethodId } from "./attempt.ts"
 import { FIRST_RUN_SECONDS, intervalSeconds } from "./backoff.ts"
-import type { Diagnosis, DiagnosisCode } from "./diagnosis.ts"
+import { awaits, type Diagnosis } from "./diagnosis.ts"
 
 export const VERIFICATION_STATUSES = ["running", "proved", "exhausted", "stopped"] as const
 
@@ -45,22 +45,6 @@ export type NewVerification = {
   readonly challenge: ChallengeRequest
   readonly deadline: Date
   readonly startedAt: Date
-}
-
-const WHILE_RUNNING: Record<DiagnosisCode, Exclude<RunningState, "checking">> = {
-  domain_appended: "needs_attention",
-  record_at_apex: "needs_attention",
-  foreign_token: "needs_attention",
-  expired_token: "needs_attention",
-  value_formatted: "needs_attention",
-  no_matching_record: "needs_attention",
-  cname_conflict: "needs_attention",
-  record_absent: "needs_attention",
-  record_on_www: "needs_attention",
-  not_published: "needs_attention",
-  negative_cache: "propagating",
-  servfail: "needs_attention",
-  lame_delegation: "needs_attention",
 }
 
 export function start(params: NewVerification): Verification {
@@ -149,9 +133,17 @@ export function waitEstimate(verification: Verification, now: Date): WaitEstimat
     : null
 }
 
-export function runningState(verification: Verification): RunningState {
+export function lastDiagnosis(verification: Verification): Diagnosis | null {
   const { lastRun } = verification
-  return lastRun?.outcome === "absent" ? WHILE_RUNNING[lastRun.diagnosis.code] : "checking"
+
+  return lastRun?.outcome === "absent" ? lastRun.diagnosis : null
+}
+
+export function runningState(verification: Verification): RunningState {
+  const diagnosis = lastDiagnosis(verification)
+  if (diagnosis === null) return "checking"
+
+  return awaits(diagnosis) === "resolvers" ? "propagating" : "needs_attention"
 }
 
 function cacheSeconds(diagnosis: Diagnosis): number {

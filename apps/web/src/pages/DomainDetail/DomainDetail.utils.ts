@@ -52,7 +52,7 @@ export const railSteps = (
   if (DELEGATION_CODES.has(diagnosis.code)) {
     return [stepAt(0, "error"), stepAt(1, "idle"), stepAt(2, "idle")]
   }
-  if (diagnosis.code === "negative_cache") {
+  if (diagnosis.awaits === "resolvers") {
     return [stepAt(0, "success"), stepAt(1, "success"), stepAt(2, "running")]
   }
 
@@ -101,7 +101,7 @@ export const holdersOf = (
   accountEmail: string | null,
 ): readonly Holder[] => {
   if (claim === null || claim.state !== "proved" || claim.endedAt === null) return []
-  if (claim.coexistence === null || accountEmail === null) return []
+  if (claim.coexistence?.type !== "named" || accountEmail === null) return []
 
   const both = [
     { email: accountEmail, provedAt: claim.endedAt, isYou: true },
