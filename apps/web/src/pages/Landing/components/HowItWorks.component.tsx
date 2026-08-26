@@ -1,27 +1,19 @@
-const STEPS = [
-  {
-    title: "Add one TXT record",
-    body: "We give you the exact name and value, and the steps for your provider.",
-  },
-  {
-    title: "We read it back",
-    body: "From resolvers on six continents, and we show you what each one returned.",
-  },
-  {
-    title: "You get a proof",
-    body: "A link anyone can open, with the record, the time and the witnesses.",
-  },
-]
+import { STEPS } from "../Landing.constants.ts"
 
 export const HowItWorks = () => (
-  <ol className="grid gap-9 sm:grid-cols-3 sm:gap-6">
+  <ol className="flex flex-col gap-[22px]">
     {STEPS.map((step, index) => (
-      <li key={step.title} className="flex flex-col items-center gap-[9px] text-center">
-        <span className="flex size-6 items-center justify-center rounded-full border border-border font-medium text-[11px] text-muted-foreground">
-          {index + 1}
+      <li key={step.title} className="flex gap-4">
+        <span className="w-[26px] shrink-0 pt-[3px] font-mono text-[11.5px] text-muted-foreground tracking-[0.6px]">
+          {`0${index + 1}`}
         </span>
-        <h3 className="font-semibold text-foreground text-sm leading-[1.45]">{step.title}</h3>
-        <p className="max-w-[34ch] text-[13px] text-muted-foreground leading-[1.45]">{step.body}</p>
+
+        <div className="flex flex-col gap-[5px]">
+          <h3 className="font-semibold text-[14.5px] text-foreground tracking-[-0.2px]">
+            {step.title}
+          </h3>
+          <p className="font-body text-[13.5px] text-muted-foreground leading-[1.5]">{step.body}</p>
+        </div>
       </li>
     ))}
   </ol>

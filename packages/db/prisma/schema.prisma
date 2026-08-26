@@ -58,6 +58,7 @@ model Domain {
 
   @@unique([userId, nameAscii])
   @@index([nameAscii])
+  @@index([userId, createdAt, id])
 }
 
 /// `sequence` orders the claims of a domain; the highest is the one in play, the
@@ -76,6 +77,7 @@ model Claim {
   createdAt      DateTime
   notices        ClaimNotice[]
   verification   Verification?
+  proofLinks     ProofLink[]
 
   @@index([domainId, sequence])
   @@index([userId, state])
@@ -130,6 +132,25 @@ model VerificationAttempt {
   createdAt      DateTime
 
   @@index([verificationId, createdAt])
+}
+
+/// The share, not the proof. A slug anyone can open, dated and time-boxed; the attestation
+/// is copied onto the row because it states a past moment, and a past moment does not move.
+/// It hangs off the claim so that deleting permanently reaches it.
+model ProofLink {
+  slug          String    @id
+  claimId       String
+  claim         Claim     @relation(fields: [claimId], references: [id], onDelete: Cascade)
+  domainAscii   String
+  domainUnicode String
+  heldBy        String
+  token         String
+  provedAt      DateTime
+  issuedAt      DateTime
+  expiresAt     DateTime
+  revokedAt     DateTime?
+
+  @@index([claimId, issuedAt])
 }
 
 /// `requestedName` is what a caller asked about; `name` is the zone that answered, which

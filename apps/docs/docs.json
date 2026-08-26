@@ -48,7 +48,8 @@
               "concepts/zone-reading",
               "concepts/challenge-record",
               "concepts/verification",
-              "concepts/claim-lifecycle"
+              "concepts/claim-lifecycle",
+              "concepts/sharing-a-proof"
             ]
           },
           {

@@ -1,6 +1,6 @@
 import { Button } from "@ownsi/ui"
 import { Check, Copy } from "lucide-react"
-import { useCopy } from "../hooks/useCopy.ts"
+import { useCopy } from "../../../hooks/useCopy.ts"
 
 export interface RecordRowProps {
   label: string

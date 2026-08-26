@@ -12,6 +12,20 @@ export const PROVIDER_IDS = [
 
 export type ProviderId = (typeof PROVIDER_IDS)[number]
 
+const NAMES: Readonly<Record<ProviderId, string>> = {
+  cloudflare: "Cloudflare",
+  route53: "Amazon Route 53",
+  godaddy: "GoDaddy",
+  namecheap: "Namecheap",
+  "google-domains": "Google Domains",
+  vercel: "Vercel",
+  other: "Other",
+}
+
+export function providerName(provider: ProviderId): string {
+  return NAMES[provider]
+}
+
 type ProviderPattern = readonly [RegExp, ProviderId]
 
 const PATTERNS: readonly ProviderPattern[] = [

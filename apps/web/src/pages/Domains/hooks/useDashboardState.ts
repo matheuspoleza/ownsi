@@ -1,9 +1,10 @@
-import { useQueries, useQuery } from "@tanstack/react-query"
+import { keepPreviousData, useInfiniteQuery, useQueries, useQuery } from "@tanstack/react-query"
 import {
   ALL_CLAIMS_KEY,
   type Claim,
-  DOMAINS_KEY,
-  type Domain,
+  type DomainCounts,
+  domainsKey,
+  type ListedDomain,
   listClaims,
   listDomains,
 } from "../../../api/claim.api.ts"
@@ -12,82 +13,83 @@ import {
   type Verification,
   verificationKey,
 } from "../../../api/verification.api.ts"
+import type { DomainFilter, DomainStatus } from "../../../lib/status.constants.ts"
+import { domainStatus } from "../../../lib/status.utils.ts"
 
-export interface OpenClaim {
-  claim: Claim
-  domain: Domain
+export interface DomainRow {
+  listed: ListedDomain
   verification: Verification | null
-}
-
-export interface ProvedClaim {
-  claim: Claim
-  domain: Domain
-}
-
-export interface DomainSummary {
-  domain: Domain
-  /** How the last attempt on this name ended, or null before the first one. */
-  latest: Claim | null
+  status: DomainStatus
 }
 
 export interface UseDashboardStateResult {
-  open: readonly OpenClaim[]
-  proved: readonly ProvedClaim[]
-  domains: readonly DomainSummary[]
+  rows: readonly DomainRow[]
+  counts: DomainCounts | null
+  proofs: readonly Claim[]
   isResolving: boolean
+  hasMore: boolean
+  isLoadingMore: boolean
+  loadMore: () => void
 }
 
-const NO_DOMAINS: readonly Domain[] = []
+const NO_ROWS: readonly ListedDomain[] = []
 const NO_CLAIMS: readonly Claim[] = []
 
-const POLL_MS = 10_000
+const SAFETY_NET_MS = 60_000
 
 export interface UseDashboardStateOptions {
   enabled: boolean
+  filter: DomainFilter | null
 }
 
 export const useDashboardState = ({
   enabled,
+  filter,
 }: UseDashboardStateOptions): UseDashboardStateResult => {
-  const domains = useQuery({ queryKey: DOMAINS_KEY, queryFn: listDomains, enabled })
+  const page = useInfiniteQuery({
+    queryKey: domainsKey(filter),
+    queryFn: ({ pageParam }) =>
+      listDomains({ status: filter ?? undefined, cursor: pageParam ?? undefined }),
+    initialPageParam: null as string | null,
+    getNextPageParam: (last) => last.nextCursor,
+    placeholderData: keepPreviousData,
+    enabled,
+  })
+
   const claims = useQuery({ queryKey: ALL_CLAIMS_KEY, queryFn: () => listClaims(), enabled })
 
-  const byId = new Map((domains.data ?? NO_DOMAINS).map((domain) => [domain.id, domain]))
-  const found = claims.data ?? NO_CLAIMS
-
-  const pending = found.filter((claim) => claim.state === "pending")
+  const listed = page.data?.pages.flatMap((one) => one.domains) ?? NO_ROWS
+  const open = listed.filter((one) => one.status === "pending" && one.verificationId !== null)
 
   const verifications = useQueries({
-    queries: pending.map((claim) => ({
-      queryKey: verificationKey(claim.verificationId),
+    queries: open.map((one) => ({
+      queryKey: verificationKey(one.verificationId),
       queryFn: () =>
-        claim.verificationId === null
-          ? Promise.resolve(null)
-          : readVerification(claim.verificationId),
-      enabled: enabled && claim.verificationId !== null,
-      refetchInterval: POLL_MS,
+        one.verificationId === null ? Promise.resolve(null) : readVerification(one.verificationId),
+      enabled: enabled && one.verificationId !== null,
+      refetchInterval: SAFETY_NET_MS,
     })),
   })
 
-  const open = pending.flatMap((claim, index) => {
-    const domain = byId.get(claim.domainId)
-    if (!domain) return []
+  const runningOn = new Map(open.map((one, index) => [one.id, verifications[index]?.data ?? null]))
 
-    return [{ claim, domain, verification: verifications[index]?.data ?? null }]
+  const rows = listed.map((one) => {
+    const verification = runningOn.get(one.id) ?? null
+
+    return { listed: one, verification, status: domainStatus(one.status, verification) }
   })
 
-  const proved = found.flatMap((claim) => {
-    const domain = byId.get(claim.domainId)
-    return claim.state === "proved" && domain ? [{ claim, domain }] : []
-  })
+  const proofs = (claims.data ?? NO_CLAIMS).filter((claim) => claim.state === "proved")
 
   return {
-    open,
-    proved,
-    domains: (domains.data ?? NO_DOMAINS).map((domain) => ({
-      domain,
-      latest: found.find((claim) => claim.domainId === domain.id) ?? null,
-    })),
-    isResolving: enabled && (domains.isPending || claims.isPending),
+    rows,
+    counts: page.data?.pages[0]?.counts ?? null,
+    proofs,
+    isResolving: enabled && page.isPending,
+    hasMore: page.hasNextPage,
+    isLoadingMore: page.isFetchingNextPage,
+    loadMore: () => {
+      void page.fetchNextPage()
+    },
   }
 }

@@ -1,6 +1,7 @@
+import type { Publish } from "../../shared/bus.ts"
 import type { Clock } from "../../shared/clock.ts"
 import { err, ok, type Result } from "../../shared/result.ts"
-import type { ClaimView } from "../claims.contract.ts"
+import type { ClaimEvent, ClaimView } from "../claims.contract.ts"
 import { cancel, isOpen } from "../domain/claim.ts"
 import type { ClaimRepository, FindDomain, StopVerifying } from "../domain/ports.ts"
 
@@ -17,6 +18,7 @@ export type CancelClaimDeps = {
   readonly claims: ClaimRepository
   readonly findDomain: FindDomain
   readonly stopVerifying: StopVerifying
+  readonly publish: Publish<ClaimEvent>
   readonly clock: Clock
 }
 
@@ -35,6 +37,17 @@ export function cancelClaim(deps: CancelClaimDeps): CancelClaim {
     if (canceled.verificationId !== null) {
       await deps.stopVerifying({ verificationId: canceled.verificationId })
     }
+
+    await deps.publish({
+      name: "claims/claim.ended",
+      data: {
+        claimId: canceled.id,
+        userId: canceled.userId,
+        domainId: canceled.domainId,
+        reason: "canceled",
+        endedAt: canceled.endedAt,
+      },
+    })
 
     return ok({ claim: canceled, domain })
   }

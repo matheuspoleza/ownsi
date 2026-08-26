@@ -1,4 +1,11 @@
-import type { Claim, ClaimDetail, Domain } from "@ownsi/sdk"
+import {
+  type Claim,
+  type ClaimDetail,
+  type Domain,
+  type DomainPage,
+  type DomainQuery,
+  isOwnsiError,
+} from "@ownsi/sdk"
 import { ownsi } from "./ownsi.client.ts"
 
 export type {
@@ -8,10 +15,19 @@ export type {
   ClaimState,
   Coexistence,
   Domain,
+  DomainCounts,
+  DomainPage,
+  DomainQuery,
+  DomainStatus,
+  ListedDomain,
   OwnsiError,
 } from "@ownsi/sdk"
 
 export const DOMAINS_KEY = ["domains"] as const
+
+export const domainsKey = (status: string | null) => [...DOMAINS_KEY, "by", status] as const
+
+export const domainNameKey = (name: string) => [...DOMAINS_KEY, "named", name] as const
 
 export const CLAIMS_KEY = ["claims"] as const
 
@@ -24,7 +40,8 @@ export const claimsKey = (domainId: string) => [...CLAIMS_KEY, "on", domainId] a
 
 export const claimKey = (claimId: string | null) => [...CLAIM_KEY, claimId] as const
 
-export const listDomains = (): Promise<readonly Domain[]> => ownsi.domains.list()
+export const listDomains = (query: DomainQuery = {}): Promise<DomainPage> =>
+  ownsi.domains.list(query)
 
 export const findOrCreateDomain = (name: string): Promise<Domain> =>
   ownsi.domains.findOrCreate(name)
@@ -37,3 +54,10 @@ export const createClaim = (domainId: string): Promise<ClaimDetail> => ownsi.cla
 export const readClaim = (claimId: string): Promise<ClaimDetail> => ownsi.claims.get(claimId)
 
 export const cancelClaim = (claim: Claim): Promise<Claim> => claim.cancel()
+
+export const readDomain = (domainId: string): Promise<Domain> => ownsi.domains.get(domainId)
+
+export const archiveDomain = (domain: Domain): Promise<Domain> => domain.archive()
+
+export const isAlreadyClaimed = (thrown: unknown): boolean =>
+  isOwnsiError(thrown) && thrown.code === "already_claimed"

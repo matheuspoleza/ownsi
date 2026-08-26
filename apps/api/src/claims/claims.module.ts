@@ -1,3 +1,4 @@
+import type { Publish } from "../shared/bus.ts"
 import type { Clock } from "../shared/clock.ts"
 import type { Database } from "../shared/database.ts"
 import type { SendEmail } from "../shared/email.ts"
@@ -10,6 +11,7 @@ import { type ListClaims, listClaims } from "./application/list-claims.query.ts"
 import { type NotifyClaimant, notifyClaimant } from "./application/notify-claimant.use-case.ts"
 import { type ProveClaim, proveClaim } from "./application/prove-claim.use-case.ts"
 import type { ClaimsConfig } from "./claims.config.ts"
+import type { ClaimEvent } from "./claims.contract.ts"
 import type {
   ClaimRepository,
   FindCoexistence,
@@ -41,6 +43,7 @@ export type ClaimsModuleDeps = {
   readonly findDomains: FindDomains
   readonly startVerifying: StartVerifying
   readonly stopVerifying: StopVerifying
+  readonly publish: Publish<ClaimEvent>
 }
 
 export type ClaimsModuleOverrides = {
@@ -98,6 +101,7 @@ export function createClaimsModule(
       claims,
       findDomain,
       stopVerifying: deps.stopVerifying,
+      publish: deps.publish,
       clock: deps.clock,
     }),
     proveClaim: proveClaim({
@@ -105,8 +109,9 @@ export function createClaimsModule(
       findDomain,
       otherClaimants: overrides.otherClaimants ?? postgresOtherClaimants(deps.database),
       sendNotice,
+      publish: deps.publish,
     }),
-    expireClaim: expireClaim(claims),
+    expireClaim: expireClaim({ claims, publish: deps.publish }),
     notifyClaimant: notifyClaimant({ claims, findDomain, sendNotice }),
     getClaim: getClaim({ claims, findDomain, findCoexistence }),
     listClaims: listClaims({ claims, findDomains: deps.findDomains }),

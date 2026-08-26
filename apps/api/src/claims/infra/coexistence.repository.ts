@@ -1,5 +1,5 @@
 import type { Database } from "../../shared/database.ts"
-import { maskEmail } from "../domain/coexistence.ts"
+import { maskEmail } from "../../shared/masked-email.ts"
 import type { Claimant, FindCoexistence, FindOtherClaimants } from "../domain/ports.ts"
 
 export function postgresCoexistence(database: Database): FindCoexistence {

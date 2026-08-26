@@ -91,6 +91,17 @@ canceled — so there is nothing left to run.
 
 Claim the domain again. That opens a new claim with a new token and a verification of its own.
 
+## claim_not_proved
+
+**404.** No proved claim with that id belongs to your account. A proof link shares a proof, so
+there is nothing to publish until one is granted — and a pending, expired or canceled claim never
+had one.
+
+## proof_link_not_found
+
+**404.** No link with that slug was ever published on that claim. Revoking one twice returns this
+too: what is already taken back is no longer there to take back.
+
 ## rate_limited
 
 **429.** Too many requests. Carries a `Retry-After` header in seconds.
@@ -114,4 +125,6 @@ verification on `POST /api/verifications/:id/runs`.
 | `claim_not_found` | 404 | No. |
 | `verification_not_found` | 404 | No. |
 | `verification_not_running` | 409 | No — claim the domain again. |
+| `claim_not_proved` | 404 | No — nothing is proved to share. |
+| `proof_link_not_found` | 404 | No. |
 | `rate_limited` | 429 | Yes, after `Retry-After`. |

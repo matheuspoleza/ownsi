@@ -52,7 +52,7 @@ export function runVerification(deps: RunVerificationDeps): RunVerification {
       at,
     })
 
-    const subject = { verificationId, subjectId: found.subjectId, at }
+    const subject = { verificationId, subjectId: found.subjectId, ownerId: found.ownerId, at }
 
     if (outcome.type === "found") {
       await deps.publish({ name: "verification/attempt.succeeded", data: subject })
@@ -84,7 +84,12 @@ async function giveUp(
   await deps.verifications.save(exhausted)
   await deps.publish({
     name: "verification/exhausted",
-    data: { verificationId: verification.id, subjectId: verification.subjectId, at },
+    data: {
+      verificationId: verification.id,
+      subjectId: verification.subjectId,
+      ownerId: verification.ownerId,
+      at,
+    },
   })
 
   return exhausted

@@ -4,6 +4,8 @@ import { Hero, HeroSubtitle, HeroTitle } from "../../components/Hero.component.t
 import { MagicLinkPanel } from "../../components/MagicLinkPanel.component.tsx"
 import { Page } from "../../components/Page.component.tsx"
 import { ProviderGlyph } from "../../components/ProviderGlyph.component.tsx"
+import { Reveal } from "../../components/Reveal.component.tsx"
+import { Sentinel } from "../../components/Sentinel.component.tsx"
 import { useSessionState } from "../../hooks/useSessionState.ts"
 import { useZoneState } from "../../hooks/useZoneState.ts"
 import { providerName } from "../../lib/providers.utils.ts"
@@ -20,9 +22,11 @@ export const ClaimPage = () => {
 
   if (account !== null) return <Navigate to="/domains/$domain" params={{ domain }} replace />
 
+  const signIn = !isResolvingSession && !failure
+
   return (
     <Page logIn={false}>
-      <Hero>
+      <Hero story="checking" className="min-h-[290px]">
         {delegation ? (
           <Badge>
             <span className="flex size-[19px] shrink-0 items-center justify-center rounded-[5px] border border-border bg-card">
@@ -41,22 +45,34 @@ export const ClaimPage = () => {
             publishingMinutes: publishing?.publishingMinutes,
           })}
         </HeroSubtitle>
-
-        {isReading ? (
-          <div className="flex w-full flex-col items-center pt-4">
-            <ZoneReadout delegation={delegation} publishing={publishing} isSlow={isSlow} />
-          </div>
-        ) : null}
       </Hero>
 
-      <div className="mx-auto flex w-full max-w-[534px] flex-col gap-4 px-6 pt-[30px]">
-        {isReading || isResolvingSession || failure ? null : (
-          <MagicLinkPanel
-            title="Log in to get your record"
-            description={SIGN_IN_DESCRIPTION}
-            domain={domain}
-          />
+      <div className="mx-auto grid w-full max-w-[1000px] items-start gap-x-16 gap-y-10 px-6 lg:grid-cols-[minmax(0,468px)_minmax(0,1fr)]">
+        {failure ? null : (
+          <div className="relative w-full">
+            <Sentinel
+              typed=""
+              className="right-[6px] bottom-[calc(100%-30px)] h-[48px] w-[124px]"
+            />
+
+            <ZoneReadout
+              domain={domain}
+              delegation={delegation}
+              publishing={publishing}
+              isSlow={isSlow}
+            />
+          </div>
         )}
+
+        {signIn ? (
+          <Reveal delayMs={80} className="flex w-full justify-center">
+            <MagicLinkPanel
+              title="Log in to get your record"
+              description={SIGN_IN_DESCRIPTION}
+              domain={domain}
+            />
+          </Reveal>
+        ) : null}
       </div>
     </Page>
   )

@@ -59,6 +59,7 @@ describe("the zone another context may speak about", () => {
       type: "delegated",
       zoneName: "acme.com",
       nameservers: ["kate.ns.cloudflare.com", "rob.ns.cloudflare.com"],
+      provider: "cloudflare",
       authority: { type: "answered", negativeCacheTtlSeconds: 240 },
     })
   })
@@ -70,6 +71,7 @@ describe("the zone another context may speak about", () => {
       type: "delegated",
       zoneName: "acme.com",
       nameservers: ["kate.ns.cloudflare.com", "rob.ns.cloudflare.com"],
+      provider: "cloudflare",
       authority: { type: "silent" },
     })
   })
@@ -99,6 +101,7 @@ describe("the zone another context may speak about", () => {
     expect(Object.keys(description).sort()).toEqual([
       "authority",
       "nameservers",
+      "provider",
       "type",
       "zoneName",
     ])

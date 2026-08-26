@@ -1,32 +1,18 @@
 import type { ClaimDetail } from "../../api/claim.api.ts"
 import type { Diagnosis, Verification } from "../../api/verification.api.ts"
+import { claimStanding, domainStatus } from "../../lib/status.utils.ts"
 import {
   CANCELED_MESSAGE,
   CHECKING_MESSAGE,
-  CLAIM_STATUS_PILLS,
   EXPIRED_MESSAGE,
   type MessageCopy,
   NO_CLAIM_MESSAGE,
   PROVED_MESSAGE,
-  RUNNING_STATUS_PILLS,
+  STATUS_TONES,
   STEP_LABELS,
-  type StatusPill,
   type StepTone,
   type Tone,
 } from "./DomainDetail.constants.ts"
-
-const IDLE_PILL: StatusPill = { label: "No claim", tone: "idle" }
-
-export const statusPill = (
-  claim: ClaimDetail | null,
-  verification: Verification | null,
-): StatusPill => {
-  if (claim === null) return IDLE_PILL
-  if (claim.state !== "pending") return CLAIM_STATUS_PILLS[claim.state]
-  if (verification === null) return RUNNING_STATUS_PILLS.checking
-
-  return RUNNING_STATUS_PILLS[verification.status]
-}
 
 /** The delegation itself failed, so the record was never the problem. */
 const DELEGATION_CODES: ReadonlySet<Diagnosis["code"]> = new Set([
@@ -93,4 +79,34 @@ export const verificationMessage = (
 }
 
 export const messageTone = (claim: ClaimDetail | null, verification: Verification | null): Tone =>
-  statusPill(claim, verification).tone
+  STATUS_TONES[domainStatus(claimStanding(claim), verification)]
+
+export interface Holder {
+  email: string
+  provedAt: string
+  ordinal: string
+  isYou: boolean
+}
+
+const ORDINALS = ["1st", "2nd", "3rd", "4th"] as const
+
+const ordinalAt = (index: number): string => ORDINALS[index] ?? `${index + 1}th`
+
+/**
+ * Everyone whose proof stands on this name, oldest first. Empty when nobody else got there:
+ * a list of one is a fact about the page, not about coexistence.
+ */
+export const holdersOf = (
+  claim: ClaimDetail | null,
+  accountEmail: string | null,
+): readonly Holder[] => {
+  if (claim === null || claim.state !== "proved" || claim.endedAt === null) return []
+  if (claim.coexistence === null || accountEmail === null) return []
+
+  const both = [
+    { email: accountEmail, provedAt: claim.endedAt, isYou: true },
+    { email: claim.coexistence.maskedEmail, provedAt: claim.coexistence.provedAt, isYou: false },
+  ].sort((one, other) => (one.provedAt < other.provedAt ? -1 : 1))
+
+  return both.map((holder, index) => ({ ...holder, ordinal: ordinalAt(index) }))
+}

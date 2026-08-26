@@ -1,19 +1,20 @@
-import { Hero, HeroSubtitle, HeroTitle } from "../../components/Hero.component.tsx"
-import { MagicLinkPanel } from "../../components/MagicLinkPanel.component.tsx"
-import { Page } from "../../components/Page.component.tsx"
+import { Link } from "@tanstack/react-router"
+import { MagicLinkScreen } from "../../components/MagicLinkScreen.component.tsx"
+
+const LEAD =
+  "We email you a link. Open it and you are back on your claims, their tokens and every proof you have issued."
 
 export const LogInPage = () => (
-  <Page logIn={false}>
-    <Hero>
-      <HeroTitle>Log in</HeroTitle>
-      <HeroSubtitle>Your claims, their tokens and every proof you have issued.</HeroSubtitle>
-    </Hero>
-
-    <div className="mx-auto flex max-w-[1180px] justify-center px-6 pt-[30px]">
-      <MagicLinkPanel
-        title="Log in to ownsi"
-        description="We email you a link. Open it and you are back where you left off — no password to remember, on any device."
-      />
-    </div>
-  </Page>
+  <MagicLinkScreen
+    title="Log in"
+    lead={LEAD}
+    footer={
+      <>
+        No account yet?{" "}
+        <Link to="/sign-up" className="text-foreground underline underline-offset-4">
+          Claim a domain — one is made for you.
+        </Link>
+      </>
+    }
+  />
 )

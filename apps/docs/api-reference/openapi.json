@@ -25,11 +25,144 @@
       "description": "The episode: one token, one seven-day window, one outcome. A claim is never reopened, so the list of them is the account's history. Session required."
     },
     {
+      "name": "Events",
+      "description": "One stream per open tab, telling an account's screens what moved. It carries no state: a message names the resource, the client reads it back. Session required."
+    },
+    {
+      "name": "Proof",
+      "description": "A proved claim, shared. A link carries its own slug — never the DNS token — and resolves for seven days at `/p/:slug`, where the page states one moment and reads no DNS. Session required to publish one."
+    },
+    {
       "name": "Verifications",
       "description": "The process behind a claim: the runs it has made, the named diagnosis of the last one, and when the next lands. Session required."
     }
   ],
   "paths": {
+    "/api/events": {
+      "get": {
+        "tags": [
+          "Events"
+        ],
+        "summary": "Watch this account for changes",
+        "description": "Server-sent events, one connection per open tab. Every message arrives on the default `message` event and its `type` field says what moved; it carries no state of its own, so the client reads the resource back over its own route. A `heartbeat` every twenty seconds keeps the connection off an idle proxy's timer and tells a client that has heard nothing that it is still connected.",
+        "responses": {
+          "200": {
+            "description": "The stream, open until the client closes it.",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "required": [
+                        "type"
+                      ],
+                      "properties": {
+                        "type": {
+                          "const": "heartbeat",
+                          "type": "string"
+                        }
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "required": [
+                        "type",
+                        "verificationId",
+                        "claimId"
+                      ],
+                      "properties": {
+                        "type": {
+                          "const": "verification.ran",
+                          "type": "string"
+                        },
+                        "verificationId": {
+                          "type": "string"
+                        },
+                        "claimId": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "required": [
+                        "type",
+                        "claimId",
+                        "domainId"
+                      ],
+                      "properties": {
+                        "type": {
+                          "const": "claim.ended",
+                          "type": "string"
+                        },
+                        "claimId": {
+                          "type": "string"
+                        },
+                        "domainId": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "required": [
+                        "type",
+                        "domainId"
+                      ],
+                      "properties": {
+                        "type": {
+                          "const": "domain.archived",
+                          "type": "string"
+                        },
+                        "domainId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No session.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "docsUrl"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "docsUrl": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "operationId": "getApiEvents"
+      }
+    },
     "/api/zones/{name}": {
       "get": {
         "tags": [
@@ -467,7 +600,54 @@
           "Domains"
         ],
         "summary": "List the domains on this account",
-        "description": "Archived domains are left out; they are still readable by id.",
+        "description": "Newest first, one page at a time: pass `nextCursor` back as `cursor` for the next one. Each domain carries the state of the claim in play on it, and `counts` tallies every status on the account, not only this page. `name` narrows to one, which is how a page reads a domain it only knows by name. Archived domains are left out; they are still readable by id.",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "minLength": 1,
+              "maxLength": 253,
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "unclaimed",
+                "pending",
+                "proved",
+                "expired",
+                "canceled"
+              ]
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Response for status 200",
@@ -476,7 +656,9 @@
                 "schema": {
                   "type": "object",
                   "required": [
-                    "domains"
+                    "domains",
+                    "counts",
+                    "nextCursor"
                   ],
                   "properties": {
                     "domains": {
@@ -488,7 +670,12 @@
                           "name",
                           "unicodeName",
                           "archived",
-                          "createdAt"
+                          "createdAt",
+                          "status",
+                          "claimId",
+                          "verificationId",
+                          "claimStartedAt",
+                          "claimEndedAt"
                         ],
                         "properties": {
                           "id": {
@@ -505,9 +692,96 @@
                           },
                           "createdAt": {
                             "type": "string"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "unclaimed",
+                              "pending",
+                              "proved",
+                              "expired",
+                              "canceled"
+                            ]
+                          },
+                          "claimId": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "verificationId": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "claimStartedAt": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "claimEndedAt": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
                           }
                         }
                       }
+                    },
+                    "counts": {
+                      "type": "object",
+                      "required": [
+                        "unclaimed",
+                        "pending",
+                        "proved",
+                        "expired",
+                        "canceled"
+                      ],
+                      "properties": {
+                        "unclaimed": {
+                          "type": "number"
+                        },
+                        "pending": {
+                          "type": "number"
+                        },
+                        "proved": {
+                          "type": "number"
+                        },
+                        "expired": {
+                          "type": "number"
+                        },
+                        "canceled": {
+                          "type": "number"
+                        }
+                      }
+                    },
+                    "nextCursor": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
                     }
                   }
                 }
@@ -1795,6 +2069,522 @@
           }
         },
         "operationId": "postApiClaimsByIdCancel"
+      }
+    },
+    "/api/claims/{id}/proof_links": {
+      "post": {
+        "tags": [
+          "Proof"
+        ],
+        "summary": "Publish a link to this proof",
+        "description": "Idempotent while one is live: asking twice hands back the same slug. The slug is its own — never the DNS token — and it stops resolving after seven days.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Response for status 201",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "slug",
+                    "url",
+                    "claimId",
+                    "domain",
+                    "unicodeDomain",
+                    "heldBy",
+                    "token",
+                    "provedAt",
+                    "standing",
+                    "issuedAt",
+                    "expiresAt",
+                    "revokedAt"
+                  ],
+                  "properties": {
+                    "slug": {
+                      "type": "string"
+                    },
+                    "url": {
+                      "type": "string"
+                    },
+                    "claimId": {
+                      "type": "string"
+                    },
+                    "domain": {
+                      "type": "string"
+                    },
+                    "unicodeDomain": {
+                      "type": "string"
+                    },
+                    "heldBy": {
+                      "type": "string"
+                    },
+                    "token": {
+                      "type": "string"
+                    },
+                    "provedAt": {
+                      "type": "string"
+                    },
+                    "standing": {
+                      "default": "live",
+                      "type": "string",
+                      "enum": [
+                        "live",
+                        "expired",
+                        "revoked"
+                      ]
+                    },
+                    "issuedAt": {
+                      "type": "string"
+                    },
+                    "expiresAt": {
+                      "type": "string"
+                    },
+                    "revokedAt": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Response for status 401",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "docsUrl"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "docsUrl": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Response for status 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "docsUrl"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "docsUrl": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "operationId": "postApiClaimsByIdProof_links"
+      },
+      "get": {
+        "tags": [
+          "Proof"
+        ],
+        "summary": "List the links published for this proof",
+        "description": "Newest first, expired and revoked ones included — what was shared is part of the record. `standing` says which of them still resolves.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Response for status 200",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "links"
+                  ],
+                  "properties": {
+                    "links": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "slug",
+                          "url",
+                          "claimId",
+                          "domain",
+                          "unicodeDomain",
+                          "heldBy",
+                          "token",
+                          "provedAt",
+                          "standing",
+                          "issuedAt",
+                          "expiresAt",
+                          "revokedAt"
+                        ],
+                        "properties": {
+                          "slug": {
+                            "type": "string"
+                          },
+                          "url": {
+                            "type": "string"
+                          },
+                          "claimId": {
+                            "type": "string"
+                          },
+                          "domain": {
+                            "type": "string"
+                          },
+                          "unicodeDomain": {
+                            "type": "string"
+                          },
+                          "heldBy": {
+                            "type": "string"
+                          },
+                          "token": {
+                            "type": "string"
+                          },
+                          "provedAt": {
+                            "type": "string"
+                          },
+                          "standing": {
+                            "default": "live",
+                            "type": "string",
+                            "enum": [
+                              "live",
+                              "expired",
+                              "revoked"
+                            ]
+                          },
+                          "issuedAt": {
+                            "type": "string"
+                          },
+                          "expiresAt": {
+                            "type": "string"
+                          },
+                          "revokedAt": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Response for status 401",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "docsUrl"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "docsUrl": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Response for status 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "docsUrl"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "docsUrl": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "operationId": "getApiClaimsByIdProof_links"
+      }
+    },
+    "/api/claims/{id}/proof_links/{slug}/revoke": {
+      "post": {
+        "tags": [
+          "Proof"
+        ],
+        "summary": "Stop sharing one link",
+        "description": "The slug stops resolving from here on. It retracts nothing: the proof keeps its date, and any other link to it keeps working.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Response for status 200",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "slug",
+                    "url",
+                    "claimId",
+                    "domain",
+                    "unicodeDomain",
+                    "heldBy",
+                    "token",
+                    "provedAt",
+                    "standing",
+                    "issuedAt",
+                    "expiresAt",
+                    "revokedAt"
+                  ],
+                  "properties": {
+                    "slug": {
+                      "type": "string"
+                    },
+                    "url": {
+                      "type": "string"
+                    },
+                    "claimId": {
+                      "type": "string"
+                    },
+                    "domain": {
+                      "type": "string"
+                    },
+                    "unicodeDomain": {
+                      "type": "string"
+                    },
+                    "heldBy": {
+                      "type": "string"
+                    },
+                    "token": {
+                      "type": "string"
+                    },
+                    "provedAt": {
+                      "type": "string"
+                    },
+                    "standing": {
+                      "default": "live",
+                      "type": "string",
+                      "enum": [
+                        "live",
+                        "expired",
+                        "revoked"
+                      ]
+                    },
+                    "issuedAt": {
+                      "type": "string"
+                    },
+                    "expiresAt": {
+                      "type": "string"
+                    },
+                    "revokedAt": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Response for status 401",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "docsUrl"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "docsUrl": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Response for status 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "docsUrl"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "docsUrl": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "operationId": "postApiClaimsByIdProof_linksBySlugRevoke"
       }
     },
     "/api/verifications/{id}": {
