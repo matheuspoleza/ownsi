@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { DomainField } from "../../../components/DomainField.component.tsx"
 import { Sentinel } from "../../../components/Sentinel.component.tsx"
+import { DEMO_DOMAINS } from "../../../lib/demo.constants.ts"
 import { inPlay, rowFor } from "../Domains.utils.ts"
 import type { DomainRow } from "../hooks/useDashboardState.ts"
 
@@ -39,8 +40,13 @@ export const DomainsHeading = ({
 
       <div className="relative pt-[18px]">
         <DomainField
+          demoDomains={DEMO_DOMAINS}
           submitLabel={opens ? "Open" : "Claim"}
-          onSubmit={(domain) => (known && opens ? onOpen(known.listed.name) : onClaim(domain))}
+          onSubmit={(domain) => {
+            const submitted = rowFor(rows, domain)
+            if (submitted && inPlay(submitted)) onOpen(submitted.listed.name)
+            else onClaim(domain)
+          }}
           onValueChange={(value) => {
             setTyped(value)
             onEdit()

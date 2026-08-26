@@ -16,7 +16,7 @@ export interface FieldBarProps {
   value: string
   onValueChange: (value: string) => void
   /** Runs once the ink has swept the bar, so the beat is the same everywhere. */
-  onSubmit: () => void
+  onSubmit: (value: string) => void
   /** Nothing typed here is submittable yet. */
   ready: boolean
   /** Sits at the head of the bar and turns as the ink passes under it. */
@@ -32,9 +32,15 @@ export interface FieldBarProps {
   /** What was typed here came back refused. */
   invalid?: boolean
   onKeyDown?: (event: KeyboardEvent<HTMLInputElement>) => void
+  /** The person reached for the bar, as opposed to it having been focused for them. */
+  onReach?: () => void
+  onBlur?: () => void
   describedBy?: string
-  /** A popover the field owns, hung under the bar. */
-  children?: ReactNode
+  /**
+   * A popover the field owns, hung under the bar. `commit` runs the same beat the button runs,
+   * on a value nobody typed — what a suggestion needs.
+   */
+  children?: (commit: (value: string) => void) => ReactNode
 }
 
 export const FieldBar = ({
@@ -51,6 +57,8 @@ export const FieldBar = ({
   pending = false,
   invalid = false,
   onKeyDown,
+  onReach,
+  onBlur,
   describedBy,
   children,
 }: FieldBarProps) => {
@@ -59,6 +67,21 @@ export const FieldBar = ({
   const reducedMotion = usePrefersReducedMotion()
 
   const committing = submitting || pending
+
+  const beat = (submitted: string) => {
+    if (submitting) return
+
+    setSubmitting(true)
+    setTimeout(() => {
+      setSubmitting(false)
+      onSubmit(submitted)
+    }, SUBMIT_BEAT_MS)
+  }
+
+  const commit = (chosen: string) => {
+    onValueChange(chosen)
+    beat(chosen)
+  }
 
   const ink = {
     clipPath: committing ? INK_OPEN : INK_CLOSED,
@@ -72,13 +95,7 @@ export const FieldBar = ({
       className="relative w-full"
       onSubmit={(event) => {
         event.preventDefault()
-        if (!ready || submitting) return
-
-        setSubmitting(true)
-        setTimeout(() => {
-          setSubmitting(false)
-          onSubmit()
-        }, SUBMIT_BEAT_MS)
+        if (ready) beat(value)
       }}
     >
       <AnimateIcon asChild animateOnHover>
@@ -119,6 +136,8 @@ export const FieldBar = ({
             readOnly={committing}
             onChange={(event) => onValueChange(event.target.value)}
             onKeyDown={onKeyDown}
+            onPointerDown={onReach}
+            onBlur={onBlur}
             placeholder={placeholder}
             aria-label={label}
             aria-invalid={invalid ? true : undefined}
@@ -146,7 +165,7 @@ export const FieldBar = ({
         </div>
       </AnimateIcon>
 
-      {children}
+      {committing ? null : children?.(commit)}
     </form>
   )
 }

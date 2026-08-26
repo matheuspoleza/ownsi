@@ -24,7 +24,7 @@ export const EmailField = ({
     <FieldBar
       value={email}
       onValueChange={setEmail}
-      onSubmit={() => onSubmit(email.trim().toLowerCase())}
+      onSubmit={(submitted) => onSubmit(submitted.trim().toLowerCase())}
       ready={EMAIL.test(email.trim())}
       icon={<MailIcon className="size-4" strokeWidth={1.6} />}
       submitLabel="Send link"
