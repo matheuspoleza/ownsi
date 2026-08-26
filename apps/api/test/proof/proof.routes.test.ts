@@ -157,6 +157,33 @@ describe("the page a stranger opens", () => {
     expect(app.asked).toHaveLength(asked)
   })
 
+  test("names the provider that served the zone when the link went out", async () => {
+    const { app, claim } = await proved()
+    const link = await bodyOf<LinkBody>(await app.post(`/api/claims/${claim.id}/proof_links`))
+    const page = await (await app.get(`/p/${link.slug}`)).text()
+
+    expect(link.provider).toBe("Cloudflare")
+    expect(page).toContain("Cloudflare")
+  })
+
+  test("hands the reader the lookup, so nobody has to take our word for it", async () => {
+    const { app, claim } = await proved()
+    const link = await bodyOf<LinkBody>(await app.post(`/api/claims/${claim.id}/proof_links`))
+    const page = await (await app.get(`/p/${link.slug}`)).text()
+
+    expect(link.challengeHost).toBe("_ownsi-challenge.acme.com")
+    expect(page).toContain("dig TXT _ownsi-challenge.acme.com +short")
+  })
+
+  test("commits to one palette: a black ticket needs a page that stays light", async () => {
+    const { app, claim } = await proved()
+    const link = await bodyOf<LinkBody>(await app.post(`/api/claims/${claim.id}/proof_links`))
+    const page = await (await app.get(`/p/${link.slug}`)).text()
+
+    expect(page).not.toContain("prefers-color-scheme")
+    expect(page).not.toContain("color-scheme")
+  })
+
   test("carries the tags a link preview reads", async () => {
     const { app, claim } = await proved()
     const link = await bodyOf<LinkBody>(await app.post(`/api/claims/${claim.id}/proof_links`))

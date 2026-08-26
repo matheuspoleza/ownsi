@@ -32,12 +32,13 @@ import {
   manualStopSchedule,
 } from "./verification/infra/verification-schedule.service.ts"
 import { verificationApp } from "./verification/verification.app.ts"
-import type { VerificationEvent } from "./verification/verification.contract.ts"
+import { challengeHost, type VerificationEvent } from "./verification/verification.contract.ts"
 import {
   createVerificationModule,
   type VerificationModuleOverrides,
 } from "./verification/verification.module.ts"
 import { zonesApp } from "./zones/zones.app.ts"
+import { providerName } from "./zones/zones.contract.ts"
 import { createZonesModule, type ZonesModuleOverrides } from "./zones/zones.module.ts"
 
 export type AppEvent = VerificationEvent | DomainEvent | ClaimEvent
@@ -126,14 +127,17 @@ export function createApp(config: AppConfig, overrides: AppOverrides = {}) {
 
         return {
           claimId: claim.id,
-          attestation: {
-            domain: domain.nameAscii,
-            unicodeDomain: domain.nameUnicode,
-            heldBy: maskEmail(email),
-            token: claim.token,
-            provedAt: claim.endedAt,
-          },
+          domain: domain.nameAscii,
+          unicodeDomain: domain.nameUnicode,
+          heldBy: maskEmail(email),
+          token: claim.token,
+          challengeHost: challengeHost(domain.nameAscii),
+          provedAt: claim.endedAt,
         }
+      },
+      readProvider: async (domain) => {
+        const described = await zones.describeZone(domain)
+        return described.type === "delegated" ? providerName(described.provider) : null
       },
     },
     overrides.proof,

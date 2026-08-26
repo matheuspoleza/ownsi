@@ -11,6 +11,7 @@ import { inMemoryDomainListing } from "./domains/in-memory-domain-listing.ts"
 import { inMemoryDomainRepository } from "./domains/in-memory-domain-repository.ts"
 import { inMemoryProofLinkRepository } from "./proof/in-memory-proof-link-repository.ts"
 import { inMemoryVerificationRepository } from "./verification/in-memory-verification-repository.ts"
+import { inMemoryZoneRepository } from "./zones/in-memory-zone-repository.ts"
 
 export const ADA: SessionUser = { id: "usr_ada", email: "ada@example.com", name: "Ada" }
 
@@ -84,6 +85,7 @@ export function harness(options: HarnessOptions = {}) {
     clock: () => now,
     sendEmail: async () => {},
     auth: { checkSession: options.session ?? signedInAs(ADA) },
+    zones: { zones: inMemoryZoneRepository() },
     domains: {
       domains,
       listing: inMemoryDomainListing(domains, claims),

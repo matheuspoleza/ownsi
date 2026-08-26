@@ -7,7 +7,12 @@ import {
 import { type GetProof, getProof } from "./application/get-proof.query.ts"
 import { type ListProofLinks, listProofLinks } from "./application/list-proof-links.query.ts"
 import { type RevokeProofLink, revokeProofLink } from "./application/revoke-proof-link.use-case.ts"
-import type { FindProvedClaim, GenerateSlug, ProofLinkRepository } from "./domain/ports.ts"
+import type {
+  FindProvedClaim,
+  GenerateSlug,
+  ProofLinkRepository,
+  ReadProvider,
+} from "./domain/ports.ts"
 import { postgresProofLinkRepository } from "./infra/proof-link.repository.ts"
 import { randomSlug } from "./infra/slug.service.ts"
 
@@ -15,6 +20,7 @@ export type ProofModuleDeps = {
   readonly clock: Clock
   readonly database: Database
   readonly findProvedClaim: FindProvedClaim
+  readonly readProvider: ReadProvider
 }
 
 export type ProofModuleOverrides = {
@@ -40,6 +46,7 @@ export function createProofModule(
     findOrCreateProofLink: findOrCreateProofLink({
       links,
       findProvedClaim,
+      readProvider: deps.readProvider,
       generateSlug: overrides.generateSlug ?? randomSlug,
       clock,
     }),
