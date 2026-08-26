@@ -969,10 +969,7 @@
         ],
         "responses": {
           "204": {
-            "description": "Response for status 204",
-            "content": {
-              "type": "void"
-            }
+            "description": "Response for status 204"
           },
           "401": {
             "description": "Response for status 401",

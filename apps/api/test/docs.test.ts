@@ -22,6 +22,14 @@ describe("the emitted documentation", () => {
     expect(committed).toBe(diagnosticsCatalogue())
   })
 
+  test("a documented response carries a media type, or no body at all", async () => {
+    const document = JSON.parse(await openApiDocument())
+    const bodies = responseBodies(document)
+
+    expect(bodies.length).toBeGreaterThan(0)
+    expect(bodies.filter(({ content }) => !content.every((type) => type.includes("/")))).toEqual([])
+  })
+
   test("every error code the API returns has an entry on the errors page", async () => {
     const page = await Bun.file(join(DOCS_DIRECTORY, "errors.mdx")).text()
     const headings = new Set(captures(page, /^## (\w+)$/gm))
@@ -36,6 +44,21 @@ describe("the emitted documentation", () => {
     expect([...emitted].filter((code) => !headings.has(code))).toEqual([])
   })
 })
+
+function responseBodies(document: unknown): { at: string; content: string[] }[] {
+  const paths = (document as { paths: Record<string, Record<string, Operation>> }).paths
+  return Object.entries(paths).flatMap(([path, operations]) =>
+    Object.entries(operations).flatMap(([method, operation]) =>
+      Object.entries(operation.responses ?? {}).flatMap(([status, response]) =>
+        response.content
+          ? [{ at: `${method} ${path} ${status}`, content: Object.keys(response.content) }]
+          : [],
+      ),
+    ),
+  )
+}
+
+type Operation = { responses?: Record<string, { content?: Record<string, unknown> }> }
 
 function captures(source: string, pattern: RegExp): string[] {
   return [...source.matchAll(pattern)].flatMap(([, captured]) => (captured ? [captured] : []))
