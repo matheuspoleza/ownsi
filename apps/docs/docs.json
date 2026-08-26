@@ -1,7 +1,7 @@
 {
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
-  "name": "ownsi",
+  "name": "ownsi.dev",
   "description": "Prove what's yours. Domain ownership, proved with one TXT record.",
   "colors": {
     "primary": "#000000",
