@@ -10,8 +10,8 @@
   },
   "routes": [{ "pattern": "ownsi.dev", "custom_domain": true }],
   "ratelimits": [
-    { "name": "RL_ZONES", "namespace_id": "1", "simple": { "limit": 12, "period": 60 } },
-    { "name": "RL_PROOF", "namespace_id": "2", "simple": { "limit": 30, "period": 60 } }
+    { "name": "RL_ZONES", "namespace_id": "1001", "simple": { "limit": 12, "period": 60 } },
+    { "name": "RL_PROOF", "namespace_id": "1002", "simple": { "limit": 30, "period": 60 } }
   ],
   "vars": {
     // The Railway service. /api/* and /p/* are proxied here so the browser only ever
