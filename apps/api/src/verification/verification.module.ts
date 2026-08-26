@@ -28,6 +28,7 @@ import type {
   VerificationRepository,
 } from "./domain/ports.ts"
 import { nodeAuthoritativeTxt } from "./infra/authoritative-txt.service.ts"
+import { demoZoneTxtLookup, pendingTokensIn } from "./infra/demo-zone.service.ts"
 import { dohTxtLookup } from "./infra/doh-txt-lookup.service.ts"
 import { fakeAuthoritativeTxt, fakeTxtLookup } from "./infra/fake-txt.service.ts"
 import { postgresVerificationRepository } from "./infra/verification.repository.ts"
@@ -106,9 +107,13 @@ function dnsChallengeCheck(
     checkTxtChallenge: checkTxtChallenge({
       lookupTxt:
         overrides.lookupTxt ??
-        (faked
-          ? fakeTxtLookup({})
-          : dohTxtLookup(config.recursiveResolvers, config.resolverTimeoutMs)),
+        demoZoneTxtLookup({
+          readPendingTokens: pendingTokensIn(deps.database),
+          resolvers: config.recursiveResolvers,
+          elsewhere: faked
+            ? fakeTxtLookup({})
+            : dohTxtLookup(config.recursiveResolvers, config.resolverTimeoutMs),
+        }),
       askAuthoritative:
         overrides.askAuthoritative ??
         (faked ? fakeAuthoritativeTxt({}) : nodeAuthoritativeTxt(config.authoritativeBudgetMs)),

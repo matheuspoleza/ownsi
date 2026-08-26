@@ -8,6 +8,7 @@ import { Perforation } from "../../components/Perforation.component.tsx"
 import { ProofTicket } from "../../components/ProofTicket.component.tsx"
 import { Reveal } from "../../components/Reveal.component.tsx"
 import { Sentinel } from "../../components/Sentinel.component.tsx"
+import { DEMO_DOMAINS } from "../../lib/demo.constants.ts"
 import { EXAMPLE_PROOF, EXAMPLE_PUBLICATION } from "../../lib/proof.constants.ts"
 import { HowItWorks } from "./components/HowItWorks.component.tsx"
 import { WitnessReadout } from "./components/WitnessReadout.component.tsx"
@@ -49,6 +50,7 @@ export const LandingPage = () => {
 
               <DomainField
                 onValueChange={setTyped}
+                demoDomains={DEMO_DOMAINS}
                 onSubmit={(domain) => navigate({ to: "/claim/$domain", params: { domain } })}
               />
             </Reveal>
