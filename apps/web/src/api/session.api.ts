@@ -9,6 +9,7 @@ export interface Account {
 export const SESSION_KEY = ["session"] as const
 
 const SESSION_FAILED = "We could not read your session."
+const SIGN_OUT_FAILED = "We could not log you out. Try again."
 
 export const readSession = async (): Promise<Account | null> => {
   const { data, error } = await authClient.getSession()
@@ -20,5 +21,6 @@ export const readSession = async (): Promise<Account | null> => {
 }
 
 export const endSession = async (): Promise<void> => {
-  await authClient.signOut()
+  const { error } = await authClient.signOut()
+  if (error) throw new Error(error.message ?? SIGN_OUT_FAILED)
 }
