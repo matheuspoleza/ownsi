@@ -8,7 +8,7 @@ import {
   listClaims,
   listDomains,
   readClaim,
-} from "../../../api/claim.api.ts"
+} from "../api/claim.api.ts"
 
 export interface UseClaimStateOptions {
   domain: string

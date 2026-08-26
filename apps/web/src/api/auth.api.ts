@@ -12,7 +12,7 @@ export interface MagicLinkResponse {
 
 const SEND_FAILED = "We could not send that link. Try again."
 
-const landingFor = (domain?: string) => (domain ? `/domains/${domain}` : "/domains")
+const landingFor = (domain?: string) => (domain ? `/claim/${domain}` : "/domains")
 
 export const sendMagicLink = async ({
   email,
