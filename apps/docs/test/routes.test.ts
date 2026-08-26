@@ -14,7 +14,7 @@ const OUTSIDE_THE_DOCUMENT = ["/api/auth", "/api/inngest", "/api/health"]
 
 type Document = { readonly paths: Record<string, unknown> }
 
-const document = (await Bun.file(join(DOCS, "api-reference/openapi.json")).json()) as Document
+const document = (await Bun.file(join(DOCS, "openapi.json")).json()) as Document
 
 const documented = Object.keys(document.paths).map(segmentsOf)
 
