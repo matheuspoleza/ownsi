@@ -28,5 +28,13 @@ export function nameDomain({ id, userId, name, createdAt }: NewDomain): Domain {
 }
 
 export function archive(domain: Domain, at: Date): Domain {
-  return { ...domain, archivedAt: at }
+  return { ...domain, archivedAt: domain.archivedAt ?? at }
+}
+
+export function unarchive(domain: Domain): Domain {
+  return { ...domain, archivedAt: null }
+}
+
+export function isArchived(domain: Domain): boolean {
+  return domain.archivedAt !== null
 }

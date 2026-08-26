@@ -1,6 +1,6 @@
 import { AnimateIcon, Button, cn } from "@ownsi/ui"
 import { CornerDownLeft } from "lucide-react"
-import type { KeyboardEvent, ReactNode } from "react"
+import type { KeyboardEvent, ReactNode, RefObject } from "react"
 import { useState } from "react"
 import { useAutoFocus } from "../hooks/useAutoFocus.ts"
 import { usePrefersReducedMotion } from "../hooks/usePrefersReducedMotion.ts"
@@ -35,6 +35,8 @@ export interface FieldBarProps {
   onKeyDown?: (event: KeyboardEvent<HTMLInputElement>, commit: (value: string) => void) => void
   /** The person reached for the bar, as opposed to it having been focused for them. */
   onReach?: () => void
+  /** Lets whoever owns the bar put the caret back in it, from a control sitting outside it. */
+  fieldRef?: RefObject<HTMLInputElement | null>
   onBlur?: () => void
   describedBy?: string
   /** The row the arrow keys are resting on, for a screen reader to read out. */
@@ -62,12 +64,13 @@ export const FieldBar = ({
   onKeyDown,
   onReach,
   onBlur,
+  fieldRef,
   describedBy,
   activeDescendant,
   children,
 }: FieldBarProps) => {
   const [submitting, setSubmitting] = useState(false)
-  const field = useAutoFocus<HTMLInputElement>()
+  const field = useAutoFocus<HTMLInputElement>(fieldRef)
   const reducedMotion = usePrefersReducedMotion()
 
   const committing = submitting || pending

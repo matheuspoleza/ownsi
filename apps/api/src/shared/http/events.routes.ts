@@ -12,6 +12,7 @@ export const StreamEventResponse = t.Union([
   }),
   t.Object({ type: t.Literal("claim.ended"), claimId: t.String(), domainId: t.String() }),
   t.Object({ type: t.Literal("domain.archived"), domainId: t.String() }),
+  t.Object({ type: t.Literal("domain.unarchived"), domainId: t.String() }),
 ])
 
 export type StreamEvent = Static<typeof StreamEventResponse>

@@ -21,12 +21,16 @@ export type ListedDomain = {
   readonly claimEndedAt: Date | null
 }
 
-export type DomainCounts = Readonly<Record<DomainStatus, number>>
+export type DomainCounts = Readonly<Record<DomainStatus, number>> & {
+  readonly archived: number
+}
 
 export type DomainPageRequest = {
   readonly userId: string
+  /** Naming one finds it whether or not it is archived: a name is a lookup, not a browse. */
   readonly name: string | null
   readonly status: DomainStatus | null
+  readonly archived: boolean
   readonly after: string | null
   readonly limit: number
 }

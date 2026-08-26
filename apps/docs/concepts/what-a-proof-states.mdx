@@ -1,0 +1,108 @@
+---
+title: "Proof Scope"
+description: "A proof says one account controlled one domain's DNS on one day. What that is good for, and what it deliberately is not."
+icon: "shield-check"
+---
+
+A proof is one sentence:
+
+> On 15 June 2026, this account demonstrated control of `acme.com`'s DNS zone.
+
+Everything else on this page follows from reading that sentence carefully.
+
+## It is about a moment, not about now
+
+The proof is dated because control is a thing that changes. [Domains get
+sold](/concepts/claim-lifecycle#when-the-domain-changes-hands), teams get reorganised, people leave. A system that told you "acme.com belongs to this person" in the present tense would be
+lying the moment either of those happened, and it would have no way to know.
+
+So ownsi states the smaller thing it can actually stand behind: on this day, whoever held this
+account could write to this zone. Someone reading it later decides for themselves whether a proof
+from June is good enough for what they are doing in December.
+
+<Check>
+  This is why the proof survives you deleting the record. What was demonstrated in June stays
+  demonstrated. The record was the demonstration, not the evidence being stored.
+</Check>
+
+## It never decays and is never revoked
+
+Nothing re-checks a proved domain on a schedule. There is no expiry on the attestation, no
+background job that can quietly turn it off, and no way for us to withdraw it.
+
+If you prove the same domain again later, that is a second proof with its own date. Both are true.
+The dates only ever move forwards: `firstVerifiedAt` is the earliest one you ever earned, and
+`lastConfirmedAt` the most recent.
+
+## Two proofs of one name have an order
+
+There is no owner to pick and nothing here picks one. But proofs are dated, and dates put them in
+an order, so a page that shows you one also says whether a later one exists:
+
+| | |
+|---|---|
+| **Most recent proof** | nothing later has been proved for this name |
+| **Later proof on record** | the same name was proved again afterwards, and the date says when |
+
+Neither line takes anything away. The earlier proof keeps its date and is exactly as true as it was
+the day it was granted. What changes is only what a reader knows: that a fresher demonstration
+exists, and that they can ask whoever holds it.
+
+Programs read the same fact as `recency` on `GET /api/proofs/:slug`. It states the order and stops
+there — what being the most recent is worth is the reader's call, not ours.
+
+## Nothing is locked behind it
+
+No feature switches on when a domain is proved. There is no plan gate, no capability, no API key
+that appears. The attestation **is** the product.
+
+That is a deliberate design choice and it changes what the proof is for. It is not a permission
+system, so it is safe to share: handing someone a proof grants them nothing.
+
+## What it does not claim
+
+Being precise here is most of the value, so it is worth being blunt about the limits.
+
+<CardGroup cols={2}>
+  <Card title="Not legal ownership" icon="scale-balanced">
+    It says you could write to the DNS zone. Who the registrant is, who paid for the domain, and
+    who owns the trademark are different questions with different answers.
+  </Card>
+  <Card title="Not exclusive" icon="users">
+    Two accounts can each prove the same domain, and often should — two people at the same company
+    both control the zone. [Neither one cancels the other](/concepts/claim-lifecycle#when-someone-else-proves-the-same-domain).
+  </Card>
+  <Card title="Not a statement about today" icon="calendar">
+    A proof from March says nothing about March plus one day. If recency matters for your purpose,
+    ask for a recent one.
+  </Card>
+  <Card title="Not about subdomains" icon="sitemap">
+    Proving `acme.com` proves `acme.com`. It grants nothing over `app.acme.com`, which is its own
+    name with its own zone.
+  </Card>
+</CardGroup>
+
+## Who can see it
+
+Nothing is public until you decide it is. Proving a domain publishes nothing, and your list of
+domains is yours.
+
+When you want to show someone, you [publish a link](/concepts/sharing-a-proof). That link is the
+only thing that reaches a stranger, it carries its own slug rather than your DNS token, and you can
+take it back.
+
+## Checking one you received
+
+If somebody sent you an ownsi link, the page states the domain, the date, the masked address of the
+account that earned it, and the token that was found. It runs no DNS query when you open it: it
+reads one stored row and prints what that row says.
+
+You do not have to take our word for it. The page shows the exact `dig` command that reads the same
+record we read:
+
+```bash
+dig TXT _ownsi-challenge.acme.com +short
+```
+
+If the domain has since changed hands, or the owner removed the record, that command comes back
+empty — and the proof is still true, because it was always a statement about the day it was made.

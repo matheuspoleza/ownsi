@@ -15,6 +15,7 @@ import { ActivityTimeline } from "./components/ActivityTimeline.component.tsx"
 import { type ActivityEntry, attemptEntry } from "./components/ActivityTimeline.utils.ts"
 import { AutomaticChecks } from "./components/AutomaticChecks.component.tsx"
 import { CoexistenceCard } from "./components/CoexistenceCard.component.tsx"
+import { CoexistenceNotice } from "./components/CoexistenceNotice.component.tsx"
 import { DnsCard } from "./components/DnsCard.component.tsx"
 import { DomainFacts } from "./components/DomainFacts.component.tsx"
 import {
@@ -40,7 +41,7 @@ export const DomainDetailPage = () => {
   const { account, isResolving: isResolvingSession } = useSessionState()
 
   const signedIn = account !== null
-  const { claim, isResolving } = useClaimState({ domain, enabled: signedIn })
+  const { domain: held, claim, isResolving } = useClaimState({ domain, enabled: signedIn })
   const { verification } = useVerificationState({ verificationId: claim?.verificationId ?? null })
   const { attempts } = useAttemptsState({ verification })
   const { delegation } = useZoneState({ domain })
@@ -48,7 +49,7 @@ export const DomainDetailPage = () => {
   const start = useClaimStart()
   const cancel = useClaimCancel({ claim })
   const archive = useDomainArchive({
-    domainId: claim?.domainId ?? null,
+    domain: held,
     onArchived: () => navigate({ to: "/domains" }),
   })
   const run = useVerificationRun({ verification })
@@ -62,16 +63,29 @@ export const DomainDetailPage = () => {
   const open = claim?.state === "pending" ? claim : null
   const proved = claim?.state === "proved" ? claim : null
   const record = open?.records[0] ?? null
+  const archived = held?.archived ?? false
+  const shelfFailure = archive.failure?.message ?? null
 
   const menu: readonly DomainMenuItem[] = [
     ...(open ? [{ label: "End this claim", icon: <TrashIcon />, onSelect: cancel.cancel }] : []),
-    {
-      label: "Archive domain",
-      icon: <ArchiveIcon />,
-      onSelect: archive.archive,
-      separated: open !== null,
-    },
+    ...(archived
+      ? []
+      : [
+          {
+            label: "Archive domain",
+            icon: <ArchiveIcon />,
+            onSelect: archive.archive,
+            separated: open !== null,
+          },
+        ]),
   ]
+
+  /** Coming back off the shelf is claiming the name again, never a restore of what it held. */
+  const claimAction: DomainAction = {
+    label: claim === null ? "claim it" : "claim it again",
+    pending: start.isStarting,
+    onClick: () => start.start(domain),
+  }
 
   if (proved) {
     const holders = holdersOf(proved, account?.email ?? null)
@@ -80,7 +94,19 @@ export const DomainDetailPage = () => {
     return (
       <Page logIn={false}>
         <div className="mx-auto w-full max-w-[1180px] px-6">
-          <DomainHeading domain={proved.unicodeDomain} action={null} menu={menu} proved />
+          <DomainHeading
+            domain={proved.unicodeDomain}
+            action={archived ? claimAction : null}
+            menu={menu}
+            proved={!archived}
+            archived={archived}
+          />
+
+          {shelfFailure ? (
+            <p role="alert" className="pt-3 text-[12px] text-error">
+              {shelfFailure}
+            </p>
+          ) : null}
 
           <div className="flex flex-col gap-7 pt-7 lg:flex-row">
             <div className="flex w-full shrink-0 flex-col gap-3 lg:w-[400px]">
@@ -96,6 +122,7 @@ export const DomainDetailPage = () => {
                 onPublish={share.publish}
                 onRevoke={share.revoke}
                 isPublishing={share.isPublishing}
+                archived={archived}
               />
 
               {share.failure ? (
@@ -127,13 +154,10 @@ export const DomainDetailPage = () => {
   const tone = messageTone(claim, verification)
   const { headline, body } = verificationMessage(claim, verification)
 
-  const action: DomainAction = open
-    ? { label: "check again", pending: run.isRunning, onClick: run.run }
-    : {
-        label: claim === null ? "claim it" : "claim it again",
-        pending: start.isStarting,
-        onClick: () => start.start(domain),
-      }
+  const action: DomainAction =
+    open && !archived
+      ? { label: "check again", pending: run.isRunning, onClick: run.run }
+      : claimAction
 
   const entries: readonly ActivityEntry[] =
     claim === null
@@ -146,22 +170,26 @@ export const DomainDetailPage = () => {
   return (
     <Page logIn={false}>
       <div className="mx-auto w-full max-w-[1180px] px-6">
-        <DomainHeading domain={domain} action={action} menu={menu} />
+        <DomainHeading domain={domain} action={action} menu={menu} archived={archived} />
 
-        {start.failure ? (
+        {(start.failure ?? shelfFailure) ? (
           <p role="alert" className="pt-3 text-[12px] text-error">
-            {start.failure.message}
+            {start.failure?.message ?? shelfFailure}
           </p>
         ) : null}
 
         <DomainFacts
-          status={domainStatus(claimStanding(claim), verification)}
+          status={domainStatus(claimStanding(claim), verification, archived)}
           provider={delegation?.provider ?? "other"}
           added={claim === null ? "—" : formatDate(claim.createdAt)}
           lastChecked={
             verification?.lastRunAt ? formatAge(secondsSince(verification.lastRunAt, now)) : "Never"
           }
         />
+
+        {claim?.coexistence?.type === "unnamed" ? (
+          <CoexistenceNotice domain={claim.unicodeDomain} />
+        ) : null}
 
         <div className="flex flex-col pt-[28px] lg:flex-row">
           <div className="flex min-w-0 flex-1 flex-col lg:pr-12">

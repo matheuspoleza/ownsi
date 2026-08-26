@@ -14,17 +14,28 @@ export type ProofLink = ProofLinkData & {
   readonly revoke: () => Promise<ProofLink>
 }
 
+type ProofRequest = Awaited<ReturnType<ReturnType<Treaty["proofs"]>["get"]>>
+
+export type ProofData = NonNullable<ProofRequest["data"]>
+
 export type ProofLinks = {
   /** Idempotent while one is live: asking twice hands back the same slug. */
   readonly publish: (claimId: string) => Promise<ProofLink>
   readonly list: (claimId: string) => Promise<readonly ProofLink[]>
+  /** What a slug attests, for anyone holding it. No account, and no DNS is read. */
+  readonly read: (slug: string) => Promise<ProofData>
 }
 
 export function proof(api: Treaty): ProofLinks {
   return {
     publish: (claimId) => publishProofLink(api, claimId),
     list: (claimId) => listProofLinks(api, claimId),
+    read: (slug) => readProof(api, slug),
   }
+}
+
+export async function readProof(api: Treaty, slug: string): Promise<ProofData> {
+  return unwrap(api.proofs({ slug }).get())
 }
 
 export async function publishProofLink(api: Treaty, claimId: string): Promise<ProofLink> {

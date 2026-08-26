@@ -4,6 +4,22 @@ description: "Base URL, conventions, and what is guaranteed to stay stable."
 icon: "code"
 ---
 
+<Note>
+  **The API is not open yet.** There are no public keys, so the routes that belong to an account
+  answer only the app's own session. This reference is complete anyway: the shape it documents is
+  the shape it will have when it opens, so anything you design against it now stays valid.
+</Note>
+
+Two surfaces already answer anyone, with no account and no key:
+
+| Surface | What it does |
+| --- | --- |
+| [`GET /api/zones/:name`](/concepts/zone-reading) | Reads a zone and streams what DNS says. Rate limited per IP. |
+| [`GET /p/:slug`](/concepts/sharing-a-proof) | A proof page somebody shared with you, and its badge. |
+
+Everything else — domains, claims, verifications, proof links — needs a session, and the session is
+issued to the product's own front end.
+
 The reference under **Endpoints** is generated from the running server: every route declares its
 `params`, `body` and `response` schemas, and the OpenAPI document is emitted from those. A route
 that changes shape changes this reference in the same commit.
@@ -62,11 +78,6 @@ header in seconds.
 forcing runs in a loop does not make DNS answer faster.
 
 ## Stability
-
-<Note>
-  The API is **internal today** — same origin, session cookie, no public keys. This reference
-  documents it in full because the shape it has now is the shape it will have when it opens.
-</Note>
 
 What is safe to depend on:
 

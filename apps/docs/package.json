@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "npx --yes mint@latest dev",
-    "links": "npx --yes mint@latest broken-links",
+    "dev": "PUPPETEER_SKIP_DOWNLOAD=true npx --yes mint@latest dev",
+    "links": "PUPPETEER_SKIP_DOWNLOAD=true npx --yes mint@latest broken-links",
     "test": "bun test",
     "lint": "biome check test",
     "typecheck": "tsc --noEmit"

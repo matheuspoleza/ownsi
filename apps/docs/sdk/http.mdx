@@ -1,5 +1,5 @@
 ---
-title: "Any other language"
+title: "HTTP"
 description: "There is no SDK to install. The OpenAPI document is the contract, and you can generate a client from it."
 icon: "terminal"
 ---
@@ -18,8 +18,9 @@ The same document backs every endpoint page under **Endpoints**, and can be down
 menu at the top of any of them.
 
 <Note>
-  The API is internal today — same origin, session cookie. A generated client works, but you have
-  to bring your own session. See [Authentication](/api-reference/authentication).
+  The API is not open yet. A generated client works today only against the zone read and the
+  public proof page; every other route wants a session the app issues, and there are no public keys
+  to stand in for one. See [Authentication](/api-reference/authentication).
 </Note>
 
 ## Generating a client
@@ -63,7 +64,6 @@ curl -N https://ownsi.dev/api/zones/acme.com
 ```bash Add the name
 curl -X POST https://ownsi.dev/api/domains \
   -H "content-type: application/json" \
-  -H "Idempotency-Key: $(uuidgen)" \
   -b "$SESSION_COOKIE" \
   -d '{"domain":"acme.com"}'
 ```

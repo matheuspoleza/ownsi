@@ -14,6 +14,7 @@ const RETRY_AFTER_SECONDS = 60
 const RATE_LIMITED_PATHS: ReadonlyArray<readonly [string, keyof Env]> = [
   ["/api/zones/", "RL_ZONES"],
   ["/p/", "RL_PROOF"],
+  ["/api/proofs/", "RL_PROOF"],
 ]
 
 const PROXIED_PREFIXES = ["/api/", "/p/"]

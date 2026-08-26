@@ -1,25 +1,49 @@
 import type { Database } from "../../shared/database.ts"
 import { maskEmail } from "../../shared/masked-email.ts"
-import type { Claimant, FindCoexistence, FindOtherClaimants } from "../domain/ports.ts"
+import type {
+  Claimant,
+  FindCoexistence,
+  FindLatestProof,
+  FindOtherClaimants,
+} from "../domain/ports.ts"
+
+const PROVED_NEWEST_FIRST = {
+  state: "PROVED",
+  orderBy: { endedAt: "desc" },
+  include: { domain: { include: { user: { select: { email: true } } } } },
+} as const
 
 export function postgresCoexistence(database: Database): FindCoexistence {
   return async (nameAscii, exceptUserId) => {
-    const other = await database.domain.findFirst({
+    const proved = await database.claim.findFirst({
       where: {
-        nameAscii,
-        userId: { not: exceptUserId },
-        claims: { some: { state: "PROVED" } },
+        state: PROVED_NEWEST_FIRST.state,
+        domain: { nameAscii, userId: { not: exceptUserId } },
       },
-      include: {
-        user: { select: { email: true } },
-        claims: { where: { state: "PROVED" }, orderBy: { endedAt: "asc" }, take: 1 },
-      },
+      orderBy: PROVED_NEWEST_FIRST.orderBy,
+      include: PROVED_NEWEST_FIRST.include,
     })
 
-    const provedAt = other?.claims[0]?.endedAt
-    if (!other || !provedAt) return null
+    if (!proved?.endedAt) return null
 
-    return { maskedEmail: maskEmail(other.user.email), provedAt: provedAt.toISOString() }
+    return {
+      maskedEmail: maskEmail(proved.domain.user.email),
+      provedAt: proved.endedAt.toISOString(),
+    }
+  }
+}
+
+export function postgresLatestProof(database: Database): FindLatestProof {
+  return async (nameAscii) => {
+    const proved = await database.claim.findFirst({
+      where: { state: PROVED_NEWEST_FIRST.state, domain: { nameAscii } },
+      orderBy: PROVED_NEWEST_FIRST.orderBy,
+      include: PROVED_NEWEST_FIRST.include,
+    })
+
+    if (!proved?.endedAt) return null
+
+    return { maskedEmail: maskEmail(proved.domain.user.email), provedAt: proved.endedAt }
   }
 }
 

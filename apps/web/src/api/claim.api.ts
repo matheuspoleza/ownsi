@@ -2,6 +2,7 @@ import {
   type Claim,
   type ClaimDetail,
   type Domain,
+  type DomainActions,
   type DomainPage,
   type DomainQuery,
   isOwnsiError,
@@ -15,6 +16,7 @@ export type {
   ClaimState,
   Coexistence,
   Domain,
+  DomainActions,
   DomainCounts,
   DomainPage,
   DomainQuery,
@@ -25,7 +27,7 @@ export type {
 
 export const DOMAINS_KEY = ["domains"] as const
 
-export const domainsKey = (status: string | null) => [...DOMAINS_KEY, "by", status] as const
+export const domainsKey = (tab: string | null) => [...DOMAINS_KEY, "by", tab] as const
 
 export const domainNameKey = (name: string) => [...DOMAINS_KEY, "named", name] as const
 
@@ -55,9 +57,9 @@ export const readClaim = (claimId: string): Promise<ClaimDetail> => ownsi.claims
 
 export const cancelClaim = (claim: Claim): Promise<Claim> => claim.cancel()
 
-export const readDomain = (domainId: string): Promise<Domain> => ownsi.domains.get(domainId)
+export const archiveDomain = (domain: DomainActions): Promise<Domain> => domain.archive()
 
-export const archiveDomain = (domain: Domain): Promise<Domain> => domain.archive()
+export const unarchiveDomain = (domain: DomainActions): Promise<Domain> => domain.unarchive()
 
 export const isAlreadyClaimed = (thrown: unknown): boolean =>
   isOwnsiError(thrown) && thrown.code === "already_claimed"

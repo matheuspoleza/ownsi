@@ -4,7 +4,7 @@ import type { SessionPlugin } from "../../shared/http/session.ts"
 import type { FindOrCreateProofLink } from "../application/find-or-create-proof-link.use-case.ts"
 import type { ListProofLinks } from "../application/list-proof-links.query.ts"
 import type { RevokeProofLink } from "../application/revoke-proof-link.use-case.ts"
-import { claimNotProved, proofLinkNotFound } from "./proof.errors.ts"
+import { claimNotProved, proofLinkNotFound, toProofLinkError } from "./proof.errors.ts"
 import {
   ProofLinkListResponse,
   ProofLinkResponse,
@@ -37,20 +37,30 @@ export function proofLinkRoutes(
           email: user.email,
           claimId: params.id,
         })
-        if (!issued.ok) return status(claimNotProved.status, claimNotProved.body)
+        if (!issued.ok) {
+          const failure = toProofLinkError(issued.error)
+          return status(failure.status, failure.body)
+        }
 
         return status(201, toProofLinkResponse(issued.value, appUrl))
       },
       {
         params: Identifier,
         session: true,
-        response: { 201: ProofLinkResponse, 401: ErrorResponse, 404: ErrorResponse },
+        response: {
+          201: ProofLinkResponse,
+          401: ErrorResponse,
+          404: ErrorResponse,
+          409: ErrorResponse,
+        },
         detail: {
           tags: ["Proof"],
           summary: "Publish a link to this proof",
           description:
-            "Idempotent while one is live: asking twice hands back the same slug. The slug is " +
-            "its own — never the DNS token — and it stops resolving after seven days.",
+            "Idempotent: asking twice hands back the same slug. The slug is its own — never the " +
+            "DNS token — and it resolves until the holder takes it back. An archived domain " +
+            "publishes nothing: archiving revoked its links, and it has to be back on the list " +
+            "before a new one is minted.",
         },
       },
     )
@@ -74,8 +84,8 @@ export function proofLinkRoutes(
           tags: ["Proof"],
           summary: "List the links published for this proof",
           description:
-            "Newest first, expired and revoked ones included — what was shared is part of the " +
-            "record. `standing` says which of them still resolves.",
+            "Newest first, revoked ones included — what was shared is part of the record. " +
+            "`standing` says which of them still resolves.",
         },
       },
     )

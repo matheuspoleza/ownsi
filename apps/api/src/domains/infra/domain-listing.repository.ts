@@ -1,5 +1,6 @@
 import type { Prisma } from "@ownsi/db"
 import type { Database } from "../../shared/database.ts"
+import type { Domain } from "../domain/domain.ts"
 import type { DomainListing, DomainStatus, ListedDomain } from "../domain/ports.ts"
 
 type ClaimStateColumn = "PENDING" | "PROVED" | "EXPIRED" | "CANCELED"
@@ -30,12 +31,11 @@ const CLAIM_IN_PLAY = {
 
 export function postgresDomainListing(database: Database): DomainListing {
   return {
-    async listPage({ userId, name, status, after, limit }) {
+    async listPage({ userId, name, status, archived, after, limit }) {
       const rows = await database.domain.findMany({
         where: {
           userId,
-          archivedAt: null,
-          ...(name === null ? {} : { nameAscii: name }),
+          ...(name === null ? shelf(archived) : { nameAscii: name }),
           ...standing(status),
         },
         orderBy: [{ createdAt: "desc" }, { id: "desc" }],
@@ -49,19 +49,26 @@ export function postgresDomainListing(database: Database): DomainListing {
 
     async countByStatus(userId) {
       const owned = (where: Prisma.DomainWhereInput) =>
-        database.domain.count({ where: { userId, archivedAt: null, ...where } })
+        database.domain.count({ where: { userId, ...shelf(false), ...where } })
 
-      const [unclaimed, pending, proved, expired, canceled] = await database.$transaction([
-        owned(standing("unclaimed")),
-        owned(standing("pending")),
-        owned(standing("proved")),
-        owned(standing("expired")),
-        owned(standing("canceled")),
-      ])
+      const [unclaimed, pending, proved, expired, canceled, archived] = await database.$transaction(
+        [
+          owned(standing("unclaimed")),
+          owned(standing("pending")),
+          owned(standing("proved")),
+          owned(standing("expired")),
+          owned(standing("canceled")),
+          database.domain.count({ where: { userId, ...shelf(true) } }),
+        ],
+      )
 
-      return { unclaimed, pending, proved, expired, canceled }
+      return { unclaimed, pending, proved, expired, canceled, archived }
     },
   }
+}
+
+function shelf(archived: boolean): Prisma.DomainWhereInput {
+  return { archivedAt: archived ? { not: null } : null }
 }
 
 function standing(status: DomainStatus | null): Prisma.DomainWhereInput {
@@ -76,10 +83,7 @@ function standing(status: DomainStatus | null): Prisma.DomainWhereInput {
   }
 }
 
-function toListedDomain(
-  domain: { id: string; userId: string; nameAscii: string; nameUnicode: string; createdAt: Date },
-  claims: readonly ClaimRow[],
-): ListedDomain {
+function toListedDomain(domain: Domain, claims: readonly ClaimRow[]): ListedDomain {
   const carrying = CLAIMED_STATUSES.map(
     (status) => [status, claims.find((claim) => claim.state === COLUMN_OF[status])] as const,
   ).find(([, claim]) => claim !== undefined)
@@ -87,7 +91,7 @@ function toListedDomain(
   const claim = carrying?.[1] ?? null
 
   return {
-    domain: { ...domain, archivedAt: null },
+    domain,
     status: carrying?.[0] ?? "unclaimed",
     claimId: claim?.id ?? null,
     verificationId: claim?.verificationId ?? null,

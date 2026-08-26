@@ -1,13 +1,22 @@
 import { GlobeIcon } from "@ownsi/ui"
 import { CornerDownLeft, Plus } from "lucide-react"
-import { useId, useState } from "react"
+import { useId, useRef, useState } from "react"
+import { useLinger } from "../hooks/useLinger.ts"
+import { usePrefersReducedMotion } from "../hooks/usePrefersReducedMotion.ts"
+import { DEMO_LABEL } from "../lib/demo.constants.ts"
 import { parseClaimInput } from "../lib/domain.utils.ts"
 import { stepThrough, suggestionsFor } from "./DomainField.utils.ts"
 import { FieldBar } from "./FieldBar.component.tsx"
 import { ProviderGlyph } from "./ProviderGlyph.component.tsx"
 
 const POPOVER =
-  "absolute top-[calc(100%+4px)] left-0 z-50 w-full rounded-lg border border-border bg-popover p-[5px] text-left shadow-[0_8px_24px_-12px_rgb(0_0_0/0.18)]"
+  "absolute top-[calc(100%+4px)] left-0 z-50 w-full origin-top rounded-lg border border-border bg-popover p-[5px] text-left shadow-[0_8px_24px_-12px_rgb(0_0_0/0.18)]"
+
+const OPENING_MS = 150
+
+const CLOSING_MS = 110
+
+const EASING = "cubic-bezier(0.33, 1, 0.68, 1)"
 
 const ROW =
   "group flex w-full cursor-pointer items-center gap-[9px] rounded-sm px-[9px] py-2 text-left transition-colors active:bg-border"
@@ -28,6 +37,13 @@ const DEMO_CAPTION = "Demo domains"
 const DEMO_NOTE =
   "Ownsi publishes the record for these itself, so you can watch a real verification run without touching DNS."
 
+const INVITATION_QUESTION = "No domain yet?"
+
+const INVITATION_ACTION = "Use one of our demo domains."
+
+const INVITATION_LINK =
+  "cursor-pointer font-medium text-foreground underline decoration-border underline-offset-[3px] transition-colors hover:decoration-foreground"
+
 /** Clicking a row must not blur the field first, or the field closes the row out from under it. */
 const keepFocus = (event: { preventDefault: () => void }) => event.preventDefault()
 
@@ -41,8 +57,10 @@ export interface DomainFieldProps {
   invalid?: boolean
   /** What the button offers to do with the name, when it is not a claim. */
   submitLabel?: string
-  /** Names Ownsi answers for itself, offered when the field is reached for. */
+  /** Names Ownsi answers for itself, offered once the person types the word that asks for them. */
   demoDomains?: readonly string[]
+  /** Says under the bar that Ownsi has names of its own, for the page where nobody has one yet. */
+  invitesDemo?: boolean
 }
 
 export const DomainField = ({
@@ -52,16 +70,34 @@ export const DomainField = ({
   invalid = false,
   submitLabel = "Claim",
   demoDomains = [],
+  invitesDemo = false,
 }: DomainFieldProps) => {
   const [value, setValue] = useState("")
   const [open, setOpen] = useState(false)
   const [active, setActive] = useState(-1)
   const listId = useId()
+  const field = useRef<HTMLInputElement>(null)
+  const reducedMotion = usePrefersReducedMotion()
 
   const parsed = parseClaimInput(value)
   const fromEmail = parsed.email !== null && parsed.domain !== null
-  const offered = fromEmail ? [] : suggestionsFor(demoDomains, value)
+  const askingForDemo = value.trim().toLowerCase().includes(DEMO_LABEL)
+  const offered = fromEmail || !askingForDemo ? [] : suggestionsFor(demoDomains, value)
   const suggesting = open && !pending && (fromEmail || offered.length > 0)
+  const closingMs = reducedMotion ? 0 : CLOSING_MS
+  const showing = useLinger(suggesting, closingMs)
+
+  const shown = useRef(offered)
+  if (offered.length > 0) shown.current = offered
+  const rows = offered.length > 0 ? offered : shown.current
+
+  const motion = reducedMotion
+    ? undefined
+    : {
+        animation: suggesting
+          ? `ownsi-popover-in ${OPENING_MS}ms ${EASING} both`
+          : `ownsi-popover-out ${CLOSING_MS}ms ${EASING} both`,
+      }
 
   const rowId = (index: number) => `${listId}-${index}`
 
@@ -76,8 +112,17 @@ export const DomainField = ({
     onValueChange?.(domain)
   }
 
-  return (
+  const askForDemo = () => {
+    setValue(DEMO_LABEL)
+    setOpen(true)
+    setActive(0)
+    onValueChange?.(DEMO_LABEL)
+    field.current?.focus()
+  }
+
+  const bar = (
     <FieldBar
+      fieldRef={field}
       value={value}
       onValueChange={(next) => {
         setValue(next)
@@ -137,8 +182,13 @@ export const DomainField = ({
       }}
     >
       {(commit) =>
-        suggesting ? (
-          <div id={listId} className={POPOVER}>
+        showing ? (
+          <div
+            id={listId}
+            className={`${POPOVER} ${suggesting ? "" : "pointer-events-none"}`}
+            style={motion}
+            aria-hidden={suggesting ? undefined : true}
+          >
             {fromEmail ? (
               <>
                 <p className={CAPTION}>From your email</p>
@@ -166,7 +216,7 @@ export const DomainField = ({
                 <p className={CAPTION}>{DEMO_CAPTION}</p>
 
                 <ul>
-                  {offered.map((suggestion, index) => (
+                  {rows.map((suggestion, index) => (
                     <li key={suggestion.domain}>
                       <button
                         id={rowId(index)}
@@ -207,5 +257,25 @@ export const DomainField = ({
         ) : null
       }
     </FieldBar>
+  )
+
+  if (!invitesDemo) return bar
+
+  return (
+    <div className="flex flex-col">
+      {bar}
+
+      <p className="pt-[10px] text-[12.5px] text-muted-foreground">
+        {INVITATION_QUESTION}{" "}
+        <button
+          type="button"
+          onMouseDown={keepFocus}
+          onClick={askForDemo}
+          className={INVITATION_LINK}
+        >
+          {INVITATION_ACTION}
+        </button>
+      </p>
+    </div>
   )
 }

@@ -27,6 +27,8 @@ export type DomainActions = {
   readonly claim: () => Promise<ClaimDetail>
   readonly claims: () => Promise<readonly Claim[]>
   readonly archive: () => Promise<Domain>
+  /** Puts an archived name back on the list, with every claim it ever carried. */
+  readonly unarchive: () => Promise<Domain>
   /** The only eraser. Claims, verifications and proof links go with it. */
   readonly delete: () => Promise<void>
   /** Proved on the first date, most recently on the second. Null until something proves it. */
@@ -43,6 +45,8 @@ export type DomainQuery = {
   /** Narrows to one name, in punycode. The way a page reads a domain it knows by name. */
   readonly name?: string
   readonly status?: DomainStatus
+  /** Browses the archived shelf instead of the list. A `name` finds its domain either way. */
+  readonly archived?: boolean
   /** The `nextCursor` of the page before this one. Absent asks for the first. */
   readonly cursor?: string
   readonly limit?: number
@@ -92,6 +96,8 @@ function asDomain<Data extends DomainData>(api: Treaty, data: Data): Data & Doma
     claims: async () => (await claimsOn()).map((claim) => asClaim(api, claim)),
     proof: async () => proofOf(await claimsOn()),
     archive: async () => asDomain(api, await unwrap(api.domains({ id: data.id }).archive.post())),
+    unarchive: async () =>
+      asDomain(api, await unwrap(api.domains({ id: data.id }).unarchive.post())),
     delete: () => expectNoContent(api.domains({ id: data.id }).delete()),
     refresh: () => readDomain(api, data.id),
   }

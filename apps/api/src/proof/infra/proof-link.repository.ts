@@ -13,7 +13,6 @@ type Row = {
   readonly provider: string | null
   readonly provedAt: Date
   readonly issuedAt: Date
-  readonly expiresAt: Date
   readonly revokedAt: Date | null
 }
 
@@ -51,7 +50,6 @@ function toProofLink(row: Row): ProofLink {
       provedAt: row.provedAt,
     },
     issuedAt: row.issuedAt,
-    expiresAt: row.expiresAt,
     revokedAt: row.revokedAt,
   }
 }
@@ -68,7 +66,6 @@ function toRow(link: ProofLink): Row {
     provider: link.attestation.provider,
     provedAt: link.attestation.provedAt,
     issuedAt: link.issuedAt,
-    expiresAt: link.expiresAt,
     revokedAt: link.revokedAt,
   }
 }

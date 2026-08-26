@@ -17,6 +17,8 @@ export const ADA: SessionUser = { id: "usr_ada", email: "ada@example.com", name:
 
 export const GRACE: SessionUser = { id: "usr_grace", email: "grace@example.com", name: "Grace" }
 
+const PEOPLE: readonly SessionUser[] = [ADA, GRACE]
+
 export const TEST_CONFIG: AppConfig = {
   port: 0,
   appUrl: "https://ownsi.dev",
@@ -60,18 +62,32 @@ export const signedOut: CheckSession = async () => ({ type: "anonymous" })
 
 export const UNREACHABLE: AttemptOutcome = { type: "unresolvable", resolvers: [] }
 
+/** The storage one app writes to, so a second app can read the same records back. */
+export type Records = {
+  readonly claims: ReturnType<typeof inMemoryClaimRepository>
+  readonly domains: ReturnType<typeof inMemoryDomainRepository>
+  readonly verifications: ReturnType<typeof inMemoryVerificationRepository>
+  readonly proofLinks: ReturnType<typeof inMemoryProofLinkRepository>
+}
+
 export type HarnessOptions = {
   readonly now?: Date
+  /** Another harness's records, for a second app reading what the first one wrote. */
+  readonly records?: Records
   readonly session?: CheckSession
   readonly answers?: () => AttemptOutcome
+  /** When another account has proved the same name more recently than the claim under test. */
+  readonly latestProof?: Date
+  /** Somebody else's proof of the same name, as the repository would hand it over. */
+  readonly coexistence?: { readonly maskedEmail: string; readonly provedAt: string }
   readonly overrides?: AppOverrides
 }
 
 export function harness(options: HarnessOptions = {}) {
-  const claims = inMemoryClaimRepository()
-  const domains = inMemoryDomainRepository()
-  const verifications = inMemoryVerificationRepository()
-  const proofLinks = inMemoryProofLinkRepository()
+  const claims = options.records?.claims ?? inMemoryClaimRepository()
+  const domains = options.records?.domains ?? inMemoryDomainRepository()
+  const verifications = options.records?.verifications ?? inMemoryVerificationRepository()
+  const proofLinks = options.records?.proofLinks ?? inMemoryProofLinkRepository()
   const notified: ClaimAnnouncement[] = []
   const asked: Parameters<CheckChallenge>[] = []
 
@@ -94,7 +110,15 @@ export function harness(options: HarnessOptions = {}) {
     claims: {
       claims,
       sentNotices: inMemorySentNotices(),
-      findCoexistence: async () => null,
+      findCoexistence: async () => options.coexistence ?? null,
+      findRecipient: async (userId) => {
+        const person = PEOPLE.find((one) => one.id === userId)
+        return person === undefined ? null : { email: person.email, name: person.name }
+      },
+      findLatestProof: async () =>
+        options.latestProof === undefined
+          ? null
+          : { maskedEmail: "g•••@example.com", provedAt: options.latestProof },
       otherClaimants: async () => [],
       sendNotice: async (announcement) => {
         notified.push(announcement)
@@ -132,6 +156,7 @@ export function harness(options: HarnessOptions = {}) {
     domains,
     verifications,
     proofLinks,
+    records: { claims, domains, verifications, proofLinks },
     notified,
     asked,
     at: (instant: Date) => {

@@ -34,7 +34,7 @@ export { proofOf } from "./domains.ts"
 export type { OwnsiError, OwnsiErrorCode } from "./error.ts"
 export { isOwnsiError, OWNSI_ERROR_CODES, RETRYABLE } from "./error.ts"
 export type { Events, StreamEvent } from "./events.ts"
-export type { ProofLink, ProofLinkData, ProofLinkStanding, ProofLinks } from "./proof.ts"
+export type { ProofData, ProofLink, ProofLinkData, ProofLinkStanding, ProofLinks } from "./proof.ts"
 export type {
   AttemptData,
   Diagnosis,

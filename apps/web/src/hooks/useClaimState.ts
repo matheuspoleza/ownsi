@@ -5,6 +5,7 @@ import {
   claimKey,
   claimsKey,
   domainNameKey,
+  type ListedDomain,
   listClaims,
   listDomains,
   readClaim,
@@ -16,6 +17,8 @@ export interface UseClaimStateOptions {
 }
 
 export interface UseClaimStateResult {
+  /** The name as the account holds it, archived or not. Null while nobody has added it. */
+  domain: ListedDomain | null
   /** The claim in play — the open one, or the last one this account made on the name. */
   claim: ClaimDetail | null
   earlier: readonly Claim[]
@@ -39,7 +42,8 @@ export const useClaimState = ({ domain, enabled }: UseClaimStateOptions): UseCla
     enabled,
   })
 
-  const domainId = named.data?.domains[0]?.id ?? null
+  const held = named.data?.domains[0] ?? null
+  const domainId = held?.id ?? null
 
   const claims = useQuery({
     queryKey: claimsKey(domainId ?? UNCLAIMED),
@@ -60,6 +64,7 @@ export const useClaimState = ({ domain, enabled }: UseClaimStateOptions): UseCla
   const resolvingDetail = latest !== undefined && detail.isPending
 
   return {
+    domain: held,
     claim: detail.data ?? null,
     earlier,
     isResolving: resolvingDomain || resolvingClaims || resolvingDetail,

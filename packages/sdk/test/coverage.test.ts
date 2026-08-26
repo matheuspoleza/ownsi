@@ -9,6 +9,7 @@ const REACHED: Readonly<Record<string, string>> = {
   "GET /api/domains/": "ownsi.domains.list",
   "GET /api/domains/{id}": "ownsi.domains.get",
   "POST /api/domains/{id}/archive": "domain.archive",
+  "POST /api/domains/{id}/unarchive": "domain.unarchive",
   "DELETE /api/domains/{id}": "domain.delete",
   "POST /api/claims/": "ownsi.claims.create · domain.claim",
   "GET /api/claims/": "ownsi.claims.list · domain.claims · domain.proof",
@@ -20,6 +21,7 @@ const REACHED: Readonly<Record<string, string>> = {
   "GET /api/verifications/{id}": "ownsi.verifications.get · claim.verification",
   "GET /api/verifications/{id}/attempts": "verification.attempts",
   "POST /api/verifications/{id}/runs": "verification.run · claim.recheck",
+  "GET /api/proofs/{slug}": "ownsi.proof.read",
   "GET /api/zones/{name}": "ownsi.zones.read",
   "GET /api/events": "ownsi.events.subscribe",
 }

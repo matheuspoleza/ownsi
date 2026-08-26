@@ -7,7 +7,14 @@ import { runningState, type Verification, waitEstimate } from "../domain/verific
 const diagnosisOf = <Code extends Diagnosis["code"], Observed extends TSchema>(
   code: Code,
   observed: Observed,
-) => t.Object({ code: t.Literal(code), cause: t.String(), fix: t.String(), observed })
+) =>
+  t.Object({
+    code: t.Literal(code),
+    cause: t.String(),
+    fix: t.String(),
+    awaits: t.UnionEnum(["claimant", "resolvers"]),
+    observed,
+  })
 
 const AbsentAnswer = t.Union([
   t.Object({ type: t.Literal("nxdomain") }),

@@ -80,8 +80,9 @@ which kind of thing a file holds. The reasoning is in
 **The verbs are a closed set.** Queries are `get<Thing>` (one, by id, scoped to the caller),
 `list<Things>` (many, always scoped) and `findOrCreate<Thing>` (idempotent on a natural key —
 the only compound verb). Commands take one imperative verb from `create`, `cancel`, `archive`,
-`delete`, `run`, `stop`, `revoke`, `prove`, `expire`, `notify`. Events are `<Entity><Verb>ed`,
-derived from the command that caused them: `ClaimCreated`, never `ClaimIssued`.
+`unarchive`, `delete`, `run`, `stop`, `revoke`, `prove`, `expire`, `notify`. Events are
+`<Entity><Verb>ed`, derived from the command that caused them: `ClaimCreated`, never
+`ClaimIssued`.
 
 An act that wants a verb outside the set is usually two acts. Widening the set is a decision;
 reaching for `apply`, `request`, `announce`, `handle` or `process` is not.
@@ -292,7 +293,10 @@ description }`, then regenerating; there is no page to write.
 code passed to `errorResponse()` must have a `## <code>` heading there, and the test checks it.
 
 Prose pages are hand-written and follow the same voice as the rest of the repo: name the true
-thing, show the failure next to the success, no "simply" and no "just".
+thing, show the failure next to the success, no "simply" and no "just". The full pass — page
+types, frontmatter, the machine-written patterns to unwrite, and how a diagnosis code is named —
+is the `docs-conventions` skill. `.claude/hooks/check-docs.sh` asserts the mechanical half of it
+on every edit under `apps/docs`.
 
 ## Testing
 
@@ -322,7 +326,9 @@ and they need no DOM — adding the first one is what puts `test` back in its `p
 | Every route written in prose is one the API still serves | `apps/docs/test/routes.test.ts` |
 | Every route the API publishes is reached by the SDK, or waived | `packages/sdk/test/coverage.test.ts` |
 | Every docs page is navigated, has frontmatter and links somewhere real | `apps/docs/test/conventions.test.ts` |
-| All of the above, on every edit | `.claude/hooks/check-api.sh`, `.claude/hooks/check-web.sh` |
+| Docs voice, page types, frontmatter, how a diagnosis code is named | the rules above, and the `docs-conventions` skill |
+| No generated page edited by hand, no marketing vocabulary, British spelling, MDX that renders | `.claude/hooks/check-docs.sh` |
+| All of the above, on every edit | `.claude/hooks/check-api.sh`, `.claude/hooks/check-web.sh`, `.claude/hooks/check-docs.sh` |
 
 When a guard fires, move the code. Do not widen the rule.
 

@@ -51,6 +51,7 @@ export const LandingPage = () => {
               <DomainField
                 onValueChange={setTyped}
                 demoDomains={DEMO_DOMAINS}
+                invitesDemo
                 onSubmit={(domain) => navigate({ to: "/claim/$domain", params: { domain } })}
               />
             </Reveal>

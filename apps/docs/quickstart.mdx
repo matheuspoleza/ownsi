@@ -1,134 +1,95 @@
 ---
 title: "Quickstart"
-description: "Read a zone, claim a domain, create the record, and watch it turn proved."
+description: "Add your domain, create one TXT record, and get a dated proof. About three minutes of work, plus however long DNS takes."
 icon: "rocket"
 ---
 
-Four calls, in the order the product makes them. Everything runs against the same origin as the
-app, so a browser session is all the credentials you need.
-
-The TypeScript side uses [`@ownsi/sdk`](/api-reference/introduction), which is typed off the
-server's own routes — a renamed route is a compile error, not a runtime surprise. The `curl`
-side shows what it does underneath.
+Five steps. Four of them are yours and take about three minutes; the last one is DNS, and how long
+it takes is not up to either of us.
 
 <Steps>
-  <Step title="Read the zone before you sign anyone in">
-    This is the only public endpoint. It streams, so the provider lands on screen before the
-    publishing estimate does.
+  <Step title="Type your domain" icon="keyboard">
+    You do not need an account for this part. ownsi reads your zone straight away and tells you who
+    answers for the name — Cloudflare, Route 53, GoDaddy, whoever — so the instructions you get next
+    use your panel's own wording instead of generic ones.
 
-    <CodeGroup>
-    ```ts TypeScript
-    import { createOwnsi } from "@ownsi/sdk"
+    Type it however you have it. `HTTPS://WWW.Acme.com/pricing` becomes `acme.com`, and ownsi says
+    what it changed rather than quietly reading something else.
 
-    const ownsi = createOwnsi({ baseUrl: "https://ownsi.dev" })
-
-    for await (const step of ownsi.zones.read("acme.com")) {
-      console.log(step.step, step)
-    }
-    ```
-
-    ```bash curl
-    curl -N https://ownsi.dev/api/zones/acme.com
-    ```
-    </CodeGroup>
-
-    ```text Two events, in this order
-    event: delegation
-    data: {"step":"delegation","name":"acme.com","provider":"cloudflare","nameservers":["dana.ns.cloudflare.com","rick.ns.cloudflare.com"],"cached":false,...}
-
-    event: publishing
-    data: {"step":"publishing","publishingMinutes":1,"negativeCacheTtlSeconds":300}
-    ```
-
-    Knowing the provider is what lets the next screen say "in Cloudflare, go to DNS → Records"
-    instead of "add a TXT record somewhere".
+    [More about what it reads before you sign in](/concepts/zone-reading).
   </Step>
 
-  <Step title="Claim the domain">
-    Now a session is required. The response carries the record to create.
+  <Step title="Sign in" icon="envelope">
+    A magic link to your email, or Google.
 
-    <CodeGroup>
-    ```ts TypeScript
-    const domain = await ownsi.domains.findOrCreate("acme.com")
-    const claim = await domain.claim()
-
-    console.log(claim.record)
-    // { host: "_ownsi-challenge", name: "_ownsi-challenge.acme.com",
-    //   type: "TXT", value: "ownsi_v1_9f3a2c8d1e4b7a6053c21f8e4d7b0a95" }
-    ```
-
-    ```bash curl
-    DOMAIN_ID=$(curl -s -X POST https://ownsi.dev/api/domains \
-      -H "content-type: application/json" \
-      -b "$SESSION_COOKIE" \
-      -d '{"domain":"acme.com"}' | jq -r .id)
-
-    curl -X POST https://ownsi.dev/api/claims \
-      -H "content-type: application/json" \
-      -b "$SESSION_COOKIE" \
-      -d "{\"domainId\":\"$DOMAIN_ID\"}"
-    ```
-    </CodeGroup>
-
-    <Note>
-      Two resources, not one: a domain is a name on your account, and a claim is one attempt at
-      proving it. `@ownsi/sdk` recomposes them into a sentence; over HTTP it is two calls, and
-      the claim comes back with a `verificationId` — the process that will do the reading.
-    </Note>
-
-    <Warning>
-      Put **only** `_ownsi-challenge` in your panel's Host field. Most panels append the domain
-      themselves; typing the full name is the single most common way to end up with
-      [`domain_appended`](/diagnostics/catalogue#domain_appended).
-    </Warning>
+    **No token exists before this point**, on purpose. A token belongs to an account, so nothing is
+    ever issued that you might have to redo once you sign in.
   </Step>
 
-  <Step title="Create the record in your DNS panel">
+  <Step title="Create the record" icon="key">
+    ownsi gives you exactly one record to create:
+
     | Field | Value |
     |---|---|
     | Type | `TXT` |
     | Host / Name | `_ownsi-challenge` |
-    | Value | the `record.value` from the previous step, verbatim |
-    | TTL | whatever your panel defaults to |
+    | Value | the token ownsi shows you, copied verbatim |
+    | TTL | whatever your panel suggests |
 
-    No quotes, no trailing spaces. If your panel adds quotes on save, that is
-    [`value_formatted`](/diagnostics/catalogue#value_formatted) and the fix is to retype the value.
+    <Warning>
+      Put **only** `_ownsi-challenge` in the Host field. Almost every panel adds your domain to
+      whatever you type, so entering the full name produces
+      `_ownsi-challenge.acme.com.acme.com` — the single most common mistake, and its own named
+      failure, [`domain_appended`](/diagnostics/catalogue#domain_appended).
+    </Warning>
+
+    No quotes around the value, no trailing spaces. If your panel adds quotes when it saves, that
+    has a name too, and the fix is to retype it:
+    [`value_formatted`](/diagnostics/catalogue#value_formatted).
+
+    [More about the record, and why it is safe to leave in place](/concepts/challenge-record).
   </Step>
 
-  <Step title="Read the verification back">
-    ownsi runs on its own. Poll the verification, or force a run with
-    `POST /api/verifications/:id/runs`.
+  <Step title="Wait" icon="hourglass">
+    Nothing else is asked of you. ownsi checks on its own schedule, derived from your provider and
+    from your zone, and it keeps checking until it finds the token or the window closes.
 
-    <CodeGroup>
-    ```ts TypeScript
-    const checked = await claim.verification()   // or claim.recheck() to run one now
+    While it waits, the screen says one of two things and never both: how much longer the wait
+    should be, or what is wrong with the record. If you are looking at it now and it does not say
+    proved, [start here](/diagnostics/overview).
+  </Step>
 
-    if (checked.status === "proved") console.log("proved at", checked.lastRunAt)
-    else console.log(checked.diagnosis?.fix ?? checked.waitEstimate)
-    ```
+  <Step title="Proved" icon="circle-check">
+    You get a dated attestation: *"on 15 June, this account demonstrated control of `acme.com`'s
+    DNS zone."*
 
-    ```bash curl
-    curl https://ownsi.dev/api/verifications/vrf_01H8X -b "$SESSION_COOKIE"
-    ```
-    </CodeGroup>
+    It is yours and it is private. Nothing about it is public until you
+    [publish a link](/concepts/sharing-a-proof), and you can take that link back afterwards.
 
-    While it is not proved you get one of two blocks, never both empty:
-
-    - `diagnosis` — something about the record is wrong, and `fix` says what to change.
-    - `waitEstimate` — nothing is wrong, DNS just has not caught up. `secondsRemaining` is how long.
-
-    The claim ends `proved` the moment the verification does; read it back at
-    `GET /api/claims/:id` for the date the proof is dated by.
+    You can delete the TXT record now if you want to. The proof does not depend on it —
+    [here is why](/concepts/what-a-proof-states).
   </Step>
 </Steps>
 
-## Next
+## How long it should take
 
-<CardGroup cols={2}>
-  <Card title="The claim lifecycle" icon="arrows-rotate" href="/concepts/claim-lifecycle">
-    What the six statuses mean, and what archiving does to the token.
-  </Card>
-  <Card title="Diagnostics catalogue" icon="stethoscope" href="/diagnostics/catalogue">
-    The thirteen codes, with the exact sentences the API returns.
-  </Card>
-</CardGroup>
+Usually minutes. Two things are running:
+
+- **Your provider publishing the edit** to its own nameservers. Cloudflare is often under a minute;
+  some registrars take longer.
+- **Resolvers forgetting** that the name did not exist. If anything asked for that name before you
+  created it — including ownsi's own first check — the "does not exist" answer is cached for a set
+  time and repeated until it expires.
+
+ownsi reads both numbers off your zone and shows you the real one instead of "up to 72 hours".
+
+<Note>
+  A claim stays open for seven days. If it closes without a proof, nothing is lost: claim the domain
+  again and, because the record is already in the right place, you change one value rather than
+  starting over. [Expiry and starting again](/concepts/claim-lifecycle).
+</Note>
+
+## Doing this from code
+
+The whole flow is four HTTP calls, and they are documented — but the API is not open yet, so today
+they answer only the product's own session. [The four calls, in order](/api-reference/quickstart).

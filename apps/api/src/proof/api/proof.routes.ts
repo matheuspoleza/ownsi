@@ -8,7 +8,8 @@ const HTML = "text/html; charset=utf-8"
 
 const SVG = "image/svg+xml; charset=utf-8"
 
-/** The attestation never changes, so what is cached can only be the truth. */
+/** The attestation cannot change. The order it sits in can, and five minutes is how late
+ * a reader may learn that a newer proof of the same name exists. */
 const CACHED = "public, max-age=300"
 
 /** A slug that resolves to nothing today may resolve tomorrow, so nothing holds on to it. */

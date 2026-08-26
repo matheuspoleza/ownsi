@@ -1,0 +1,137 @@
+---
+title: "Quickstart"
+description: "Read a zone, claim a domain, create the record, read the verification back. The whole flow over HTTP, in order."
+icon: "terminal"
+---
+
+The product flow is four calls, in this order. Everything runs against the same origin as the app,
+so a browser session is all the credentials there are.
+
+<Note>
+  Three of these four need a session the app issues, and there are no public keys yet. Only the
+  first one answers anyone. [What is open today](/api-reference/introduction).
+</Note>
+
+The TypeScript side uses [`@ownsi/sdk`](/sdk/typescript), which is typed off the server's own routes
+— a renamed route is a compile error, not a runtime surprise. The `curl` side shows what it does
+underneath.
+
+<Steps>
+  <Step title="Read the zone before you sign anyone in">
+    This is the only public endpoint. It streams, so the provider lands on screen before the
+    publishing estimate does.
+
+    <CodeGroup>
+    ```ts TypeScript
+    import { createOwnsi } from "@ownsi/sdk"
+
+    const ownsi = createOwnsi({ baseUrl: "https://ownsi.dev" })
+
+    for await (const step of ownsi.zones.read("acme.com")) {
+      console.log(step.step, step)
+    }
+    ```
+
+    ```bash curl
+    curl -N https://ownsi.dev/api/zones/acme.com
+    ```
+    </CodeGroup>
+
+    ```text Two events, in this order
+    event: delegation
+    data: {"step":"delegation","name":"acme.com","provider":"cloudflare","nameservers":["dana.ns.cloudflare.com","rick.ns.cloudflare.com"],"cached":false,...}
+
+    event: publishing
+    data: {"step":"publishing","publishingMinutes":1,"negativeCacheTtlSeconds":300}
+    ```
+
+    Knowing the provider is what lets the next screen say "in Cloudflare, go to DNS → Records"
+    instead of "add a TXT record somewhere".
+  </Step>
+
+  <Step title="Claim the domain">
+    Now a session is required. The response carries the record to create.
+
+    <CodeGroup>
+    ```ts TypeScript
+    const domain = await ownsi.domains.findOrCreate("acme.com")
+    const claim = await domain.claim()
+
+    console.log(claim.record)
+    // { host: "_ownsi-challenge", name: "_ownsi-challenge.acme.com",
+    //   type: "TXT", value: "ownsi_v1_9f3a2c8d1e4b7a6053c21f8e4d7b0a95" }
+    ```
+
+    ```bash curl
+    DOMAIN_ID=$(curl -s -X POST https://ownsi.dev/api/domains \
+      -H "content-type: application/json" \
+      -b "$SESSION_COOKIE" \
+      -d '{"domain":"acme.com"}' | jq -r .id)
+
+    curl -X POST https://ownsi.dev/api/claims \
+      -H "content-type: application/json" \
+      -b "$SESSION_COOKIE" \
+      -d "{\"domainId\":\"$DOMAIN_ID\"}"
+    ```
+    </CodeGroup>
+
+    <Note>
+      Two resources, not one: a domain is a name on your account, and a claim is one attempt at
+      proving it. `@ownsi/sdk` recomposes them into a sentence; over HTTP it is two calls, and
+      the claim comes back with a `verificationId` — the process that will do the reading.
+    </Note>
+
+    Over HTTP the claim carries `records`, an array, empty once the claim has ended. The SDK narrows
+    it to `record`, one object or `null`.
+  </Step>
+
+  <Step title="Create the record in the DNS panel">
+    | Field | Value |
+    |---|---|
+    | Type | `TXT` |
+    | Host / Name | `_ownsi-challenge` |
+    | Value | the `record.value` from the previous step, verbatim |
+    | TTL | whatever the panel defaults to |
+
+    Render `record.host`, never `record.name`: a copy button that hands over the fully qualified
+    name is how people end up with
+    [`domain_appended`](/diagnostics/catalogue#domain_appended).
+  </Step>
+
+  <Step title="Read the verification back">
+    ownsi runs on its own. Poll the verification, or force a run with
+    `POST /api/verifications/:id/runs`.
+
+    <CodeGroup>
+    ```ts TypeScript
+    const checked = await claim.verification()   // or claim.recheck() to run one now
+
+    if (checked.status === "proved") console.log("proved at", checked.lastRunAt)
+    else console.log(checked.diagnosis?.fix ?? checked.waitEstimate)
+    ```
+
+    ```bash curl
+    curl https://ownsi.dev/api/verifications/vrf_01H8X -b "$SESSION_COOKIE"
+    ```
+    </CodeGroup>
+
+    While it is not proved you get one of two blocks, never both empty:
+
+    - `diagnosis` — something about the record is wrong, and `fix` says what to change.
+    - `waitEstimate` — nothing is wrong, DNS has not caught up yet. `secondsRemaining` is how long.
+
+    The claim ends `proved` the moment the verification does; read it back at
+    `GET /api/claims/:id` for the date the proof is dated by.
+  </Step>
+</Steps>
+
+## Next
+
+<CardGroup cols={2}>
+  <Card title="Diagnosis Payload" icon="stethoscope" href="/api-reference/diagnosis">
+    The field shapes behind the thirteen codes, and how to narrow on them.
+  </Card>
+  <Card title="Claim Flow" icon="hourglass" href="/guides/claim-a-domain">
+    How the product's own polling, states and copy are put together.
+  </Card>
+</CardGroup>

@@ -15,9 +15,12 @@ enum ClaimState {
 }
 
 enum NoticeKind {
+  OPENED
   PROVED
+  PROGRESS
   NUDGE
   EXPIRING
+  EXPIRED
   COEXISTENCE
 }
 
@@ -149,7 +152,6 @@ model ProofLink {
   provider      String?
   provedAt      DateTime
   issuedAt      DateTime
-  expiresAt     DateTime
   revokedAt     DateTime?
 
   @@index([claimId, issuedAt])

@@ -30,10 +30,9 @@ export function revokeProofLink(deps: RevokeProofLinkDeps): RevokeProofLink {
     const link = await deps.links.findBySlug(input.slug)
     if (link === null || link.claimId !== proved.claimId) return err({ type: "not_found" })
 
-    const now = deps.clock()
-    const taken = revoked(link, now)
+    const taken = revoked(link, deps.clock())
     await deps.links.save(taken)
 
-    return ok(viewOf(taken, now))
+    return ok(viewOf(taken))
   }
 }

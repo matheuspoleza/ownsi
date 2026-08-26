@@ -11,6 +11,7 @@ import {
 import { type GetDomain, getDomain } from "./application/get-domain.query.ts"
 import { type ListDomainNames, listDomainNames } from "./application/list-domain-names.query.ts"
 import { type ListDomains, listDomains } from "./application/list-domains.query.ts"
+import { type UnarchiveDomain, unarchiveDomain } from "./application/unarchive-domain.use-case.ts"
 import type { DomainListing, DomainRepository, GenerateId } from "./domain/ports.ts"
 import type { DomainEvent } from "./domains.contract.ts"
 import { postgresDomainRepository } from "./infra/domain.repository.ts"
@@ -31,6 +32,7 @@ export type DomainsModuleOverrides = {
 export type DomainsModule = {
   readonly findOrCreateDomain: FindOrCreateDomain
   readonly archiveDomain: ArchiveDomain
+  readonly unarchiveDomain: UnarchiveDomain
   readonly deleteDomain: DeleteDomain
   readonly getDomain: GetDomain
   readonly listDomains: ListDomains
@@ -51,6 +53,7 @@ export function createDomainsModule(
       clock: deps.clock,
     }),
     archiveDomain: archiveDomain({ domains, publish: deps.publish, clock: deps.clock }),
+    unarchiveDomain: unarchiveDomain({ domains, publish: deps.publish }),
     deleteDomain: deleteDomain(domains),
     getDomain: getDomain(domains),
     listDomains: listDomains(listing),

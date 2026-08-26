@@ -14,9 +14,8 @@ import {
 import { Link } from "@tanstack/react-router"
 import type { Account } from "../api/session.api.ts"
 import { useSessionEnd } from "../hooks/useSessionEnd.ts"
+import { DOCS_HOME } from "../lib/docs.constants.ts"
 import { Avatar } from "./Avatar.component.tsx"
-
-const DOCS_URL = "https://docs.ownsi.dev"
 
 export interface AccountMenuProps {
   account: Account
@@ -49,7 +48,7 @@ export const AccountMenu = ({ account }: AccountMenuProps) => {
 
         <AnimateIcon asChild animateOnHover>
           <DropdownMenuItem asChild>
-            <a href={DOCS_URL} target="_blank" rel="noreferrer">
+            <a href={DOCS_HOME} target="_blank" rel="noreferrer">
               <ExternalLinkIcon />
               Docs
             </a>

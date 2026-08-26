@@ -1,0 +1,89 @@
+---
+title: "Diagnosis Payload"
+description: "The shape a named failure arrives in, how to narrow on it, and how to render the whole what-now message from two fields."
+icon: "stethoscope"
+---
+
+When a check does not find the token, the verification comes back carrying a `diagnosis`: a named
+code, the cause in one sentence, the fix in one sentence, and the evidence the probe matched on.
+
+```json
+{
+  "code": "record_at_apex",
+  "cause": "The token is on acme.com itself, not on _ownsi-challenge.acme.com.",
+  "fix": "Move the record to the _ownsi-challenge host and leave the records on acme.com alone.",
+  "observed": { "name": "acme.com", "value": "ownsi_v1_9f3a2c8d1e4b7a6053c21f8e4d7b0a95" }
+}
+```
+
+[What each code means, for a person](/diagnostics/overview), and [the generated catalogue of all
+thirteen](/diagnostics/catalogue).
+
+## The fields
+
+<ResponseField name="code" type="string" required>
+  A stable identifier. Branch on this — it will not be reworded. One of the thirteen in the
+  catalogue.
+</ResponseField>
+
+<ResponseField name="cause" type="string" required>
+  One sentence saying what is actually true right now, with the real names and values in it. Render
+  it; do not match on it.
+</ResponseField>
+
+<ResponseField name="fix" type="string" required>
+  One sentence saying what to change. For the cases where nothing needs changing — `negative_cache`
+  — it says so and gives the wait.
+</ResponseField>
+
+<ResponseField name="observed" type="object" required>
+  The evidence the probe matched on, and its shape depends on `code`. `record_at_apex` carries
+  `{ name, value }`; `servfail` carries `{ resolvers }`; `negative_cache` carries
+  `{ secondsRemaining }`.
+</ResponseField>
+
+<Warning>
+  `observed` is a tagged union keyed on `code`. Narrow on `code` before reading it — there is no
+  field common to all thirteen.
+</Warning>
+
+## Where it comes from
+
+The probes run over an observation that has already been collected — recursive resolvers first, then
+the authoritative nameservers if the answer was negative. No probe issues a query of its own, which
+is why a verification can carry a diagnosis without any extra DNS traffic when you read it back.
+
+See [DNS Verification](/concepts/verification) for the three questions a check asks.
+
+## Rendering one
+
+A verification that has not proved always carries exactly one of `diagnosis` or `waitEstimate`, and
+they mean opposite things. That makes the whole "what now" message two fields:
+
+```ts
+const whatNow = (verification: Verification) =>
+  verification.diagnosis
+    ? { title: verification.diagnosis.cause, action: verification.diagnosis.fix }
+    : { title: "Waiting for DNS", action: waitSentence(verification.waitEstimate) }
+```
+
+`diagnosis` means something has to change. `waitEstimate` means nothing does, and its `reason`
+says what is being waited on:
+
+| `reason` | What is being waited on |
+|---|---|
+| `first_check` | The claim was created moments ago and the first attempt has not run. |
+| `negative_cache` | Your nameservers have the record; resolvers are still repeating a cached negative. |
+| `provider_publishing` | Your provider has not pushed the edit to its own nameservers yet. |
+
+```json
+{ "reason": "negative_cache", "secondsRemaining": 180 }
+```
+
+<Note>
+  `cause` and `fix` are product copy and are improved regularly. They are safe to render verbatim
+  and unsafe to match on. If you need to key behaviour off a case, key it off `code`.
+</Note>
+
+Styling the three families differently is worth the effort, and
+[Claim Flow](/guides/claim-a-domain) shows one way to do it.

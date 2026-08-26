@@ -1,5 +1,5 @@
 ---
-title: "Build the waiting screen"
+title: "Claim Flow"
 description: "From claim to proved: what to poll, what to show, and how to tell a wait from a mistake."
 icon: "hourglass"
 ---
@@ -105,9 +105,10 @@ Not every diagnosis is your reader's fault, and treating them alike is the mista
 <CardGroup cols={3}>
   <Card title="Fix it" icon="pen">
     `domain_appended` · `record_at_apex` · `value_formatted` · `record_on_www` ·
-    `no_matching_record` · `record_absent` · `cname_conflict`
+    `no_matching_record` · `record_absent` · `cname_conflict` · `expired_token`
 
-    Primary action, prominent. `fix` is a real instruction.
+    Primary action, prominent. `fix` is a real instruction. `expired_token` is the cheapest of
+    them: the record is in the right place and only its value is stale.
   </Card>
   <Card title="Wait" icon="hourglass">
     `negative_cache` · `not_published`
@@ -137,7 +138,12 @@ verified", but only one is your reader's problem.
 
 ## Do not tell people to delete the record
 
-Leaving it in place is the supported state. A later claim on the same name proves in one run
-because the record is already there, which is what keeps `lastConfirmedAt` moving, and [the token survives archiving and
-reactivation](/concepts/claim-lifecycle#archiving-is-not-deleting) — a domain reactivated a year
-later verifies without anyone opening a DNS panel.
+Leaving it in place is the supported state. A later claim on the same name issues a new token, so
+the record already in the zone comes back as
+[`expired_token`](/diagnostics/catalogue#expired_token) rather than as nothing found: the person
+edits one value instead of working out where the record goes again. Telling them to delete it turns
+that one-line edit back into the whole task.
+
+[Archiving does not retract a proof](/concepts/claim-lifecycle#archiving-is-not-deleting) either —
+every proof keeps its date. It does take back the links published from it, which is the point of
+archiving rather than a side effect of it.

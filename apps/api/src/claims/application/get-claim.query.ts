@@ -1,5 +1,6 @@
 import { err, ok, type Result } from "../../shared/result.ts"
 import type { ClaimDetail } from "../claims.contract.ts"
+import { coexistenceFor } from "../domain/coexistence.ts"
 import type { ClaimRepository, FindCoexistence, FindDomain } from "../domain/ports.ts"
 
 export type ClaimNotFound = { readonly type: "not_found" }
@@ -25,10 +26,8 @@ export function getClaim(deps: GetClaimDeps): GetClaim {
     const domain = await deps.findDomain({ userId, domainId: found.domainId })
     if (domain === null) return err({ type: "not_found" })
 
-    return ok({
-      claim: found,
-      domain,
-      coexistence: await deps.findCoexistence(domain.nameAscii, userId),
-    })
+    const other = await deps.findCoexistence(domain.nameAscii, userId)
+
+    return ok({ claim: found, domain, coexistence: coexistenceFor(other, found) })
   }
 }

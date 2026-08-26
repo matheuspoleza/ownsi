@@ -3,7 +3,8 @@ import type {
   VerificationMethodId,
 } from "../../verification/verification.contract.ts"
 import type { Claim, OpenClaim } from "./claim.ts"
-import type { Coexistence } from "./coexistence.ts"
+import type { OtherProof } from "./coexistence.ts"
+import type { LatestProof } from "./latest-proof.ts"
 import type { ClaimNotice, NoticeKind } from "./notice.ts"
 
 export type ClaimRepository = {
@@ -19,6 +20,7 @@ export type ClaimedDomain = {
   readonly userId: string
   readonly nameAscii: string
   readonly nameUnicode: string
+  readonly archived: boolean
 }
 
 export type FindDomain = (input: {
@@ -54,7 +56,10 @@ export type FindOtherClaimants = (
 export type FindCoexistence = (
   nameAscii: string,
   exceptUserId: string,
-) => Promise<Coexistence | null>
+) => Promise<OtherProof | null>
+
+/** The newest proof of a name, whoever earned it. Scoped to nobody: the name is the question. */
+export type FindLatestProof = (nameAscii: string) => Promise<LatestProof | null>
 
 export type Recipient = {
   readonly email: string
@@ -78,6 +83,13 @@ export type ClaimAnnouncement = {
 }
 
 export type SendNotice = (announcement: ClaimAnnouncement) => Promise<void>
+
+/** Answers the address a stranger can read the proof at, or null when none could be issued. */
+export type PublishProof = (input: {
+  readonly userId: string
+  readonly email: string
+  readonly claimId: string
+}) => Promise<string | null>
 
 export type GenerateId = (prefix: string) => string
 

@@ -61,9 +61,32 @@ export type Challenge = {
   readonly token: string
 }
 
+export type WaitsOn = "claimant" | "resolvers"
+
 export type Explanation = {
   readonly cause: string
   readonly fix: string
+  readonly awaits: WaitsOn
+}
+
+const AWAITS: Record<DiagnosisCode, WaitsOn> = {
+  domain_appended: "claimant",
+  record_at_apex: "claimant",
+  foreign_token: "claimant",
+  expired_token: "claimant",
+  value_formatted: "claimant",
+  no_matching_record: "claimant",
+  cname_conflict: "claimant",
+  record_absent: "claimant",
+  record_on_www: "claimant",
+  not_published: "claimant",
+  negative_cache: "resolvers",
+  servfail: "claimant",
+  lame_delegation: "claimant",
+}
+
+export function awaits(diagnosis: Diagnosis): WaitsOn {
+  return AWAITS[diagnosis.code]
 }
 
 export function challengeHost(domain: string): string {
@@ -71,6 +94,12 @@ export function challengeHost(domain: string): string {
 }
 
 export function explain(diagnosis: Diagnosis, challenge: Challenge): Explanation {
+  return { ...sentences(diagnosis, challenge), awaits: awaits(diagnosis) }
+}
+
+type Sentences = Omit<Explanation, "awaits">
+
+function sentences(diagnosis: Diagnosis, challenge: Challenge): Sentences {
   const { domain, token } = challenge
   const host = challengeHost(domain)
 
@@ -142,7 +171,7 @@ export function explain(diagnosis: Diagnosis, challenge: Challenge): Explanation
   }
 }
 
-function absent(answer: AbsentAnswer, { domain, token }: Challenge): Explanation {
+function absent(answer: AbsentAnswer, { domain, token }: Challenge): Sentences {
   const host = challengeHost(domain)
 
   if (answer.type === "nxdomain") {

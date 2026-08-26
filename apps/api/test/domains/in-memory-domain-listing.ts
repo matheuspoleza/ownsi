@@ -15,6 +15,7 @@ const NONE = {
   proved: 0,
   expired: 0,
   canceled: 0,
+  archived: 0,
 }
 
 export function inMemoryDomainListing(
@@ -22,7 +23,7 @@ export function inMemoryDomainListing(
   claims: ClaimRepository,
 ): DomainListing {
   const listed = async (userId: string): Promise<readonly ListedDomain[]> => {
-    const owned = (await domains.listByUser(userId)).filter((domain) => domain.archivedAt === null)
+    const owned = await domains.listByUser(userId)
 
     return Promise.all(
       owned.map(async (domain) => toListed(domain, await claims.listByDomain(domain.id))),
@@ -30,12 +31,15 @@ export function inMemoryDomainListing(
   }
 
   return {
-    listPage: async ({ userId, name, status, after, limit }) => {
+    listPage: async ({ userId, name, status, archived, after, limit }) => {
       const ordered = [...(await listed(userId))].sort(byNewest)
+      const asked = (entry: ListedDomain) =>
+        name === null
+          ? (entry.domain.archivedAt !== null) === archived
+          : entry.domain.nameAscii === name
+
       const matching = ordered.filter(
-        (entry) =>
-          (name === null || entry.domain.nameAscii === name) &&
-          (status === null || entry.status === status),
+        (entry) => asked(entry) && (status === null || entry.status === status),
       )
 
       const start =
@@ -46,7 +50,10 @@ export function inMemoryDomainListing(
 
     countByStatus: async (userId) => {
       const counted = { ...NONE }
-      for (const entry of await listed(userId)) counted[entry.status] += 1
+      for (const entry of await listed(userId)) {
+        if (entry.domain.archivedAt === null) counted[entry.status] += 1
+        else counted.archived += 1
+      }
 
       return counted
     },

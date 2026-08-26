@@ -1,4 +1,5 @@
-import type { ProofLink } from "../domain/proof-link.ts"
+import { unreachable } from "../../shared/result.ts"
+import type { PublishedProof } from "../application/get-proof.query.ts"
 import { escapeXml, formatProofDate } from "./proof.response.ts"
 
 const CHARACTER_WIDTH = 6.2
@@ -9,12 +10,30 @@ const HEIGHT = 20
 
 const LABEL = "ownsi"
 
-export function proofBadge(link: ProofLink): string {
-  return badge(LABEL, `proved ${formatProofDate(link.attestation.provedAt)}`, "#0f5c36")
+/** A proof was found. Both states of `Recency` are one, so neither colour is a verdict. */
+const PROVED = "#0f5c36"
+
+/** A second fact worth knowing, not a demotion — the palette's `--info`, never a warning. */
+const NEWER = "#1d4ed8"
+
+/** Nothing to show at all, which is the only state that is genuinely absent. */
+const NOTHING = "#737373"
+
+export function proofBadge({ link, recency }: PublishedProof): string {
+  const proved = `proved ${formatProofDate(link.attestation.provedAt)}`
+
+  switch (recency.type) {
+    case "latest":
+      return badge(LABEL, proved, PROVED)
+    case "earlier":
+      return badge(LABEL, `${proved} · newer ${formatProofDate(recency.latestProvedAt)}`, NEWER)
+    default:
+      return unreachable(recency)
+  }
 }
 
 export function unreadableBadge(): string {
-  return badge(LABEL, "link expired", "#737373")
+  return badge(LABEL, "no proof here", NOTHING)
 }
 
 function badge(label: string, message: string, fill: string): string {

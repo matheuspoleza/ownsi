@@ -26,3 +26,10 @@ export const OtherAccountProvedEmail = ({ domain, url }: OtherAccountProvedEmail
     </Section>
   </EmailLayout>
 )
+
+OtherAccountProvedEmail.PreviewProps = {
+  domain: "acme.com",
+  url: "https://ownsi.dev/domains/dom_1",
+} satisfies OtherAccountProvedEmailProps
+
+export default OtherAccountProvedEmail

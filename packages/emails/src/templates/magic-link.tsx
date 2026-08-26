@@ -24,3 +24,10 @@ export const MagicLinkEmail = ({ url, expiresInMinutes }: MagicLinkEmailProps) =
     </Section>
   </EmailLayout>
 )
+
+MagicLinkEmail.PreviewProps = {
+  url: "https://ownsi.dev/api/auth/magic-link/verify?token=ml_9f3a1c7d5e2b48a0",
+  expiresInMinutes: 10,
+} satisfies MagicLinkEmailProps
+
+export default MagicLinkEmail
