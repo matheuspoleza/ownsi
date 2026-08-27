@@ -35,7 +35,7 @@ Vercel already documents: *"You can remove the record after verification is comp
 (DNS failures that are not the user's fault, a "was proved, now is not" state, how many failed
 reads demote somebody) and operating it forever. Neither fit the week.
 
-## 3. Technical decision: Architecture before code
+## 3. Technical decision: Clean archicture + Bounded Context
 
 Bounded contexts force one question: who owns this data. Partway through the week that question
 had an answer nobody liked. `domains/` was four subjects in one folder, `verification/` owned no
@@ -47,7 +47,7 @@ claim is an episode, a verification is a process, and the attempts are the proce
 **Cost:** hours spent on structure before a single endpoint existed. It paid because adding a use
 case stayed mechanical all the way to the last one.
 
-## 4. Product decision: Named failures, tested on a real zone
+## 4. Product decision: Named failures were tested on a real zone
 
 Fifteen diagnosis codes, built against `ownsi.dev` with the cases you can force in a real panel:
 the appended domain, the record on `www`, the record at the apex, a quoted token, a CNAME in the
@@ -59,7 +59,7 @@ way, somebody else's token.
 not broken. A diagnosis may only assert what that read observed. `record_absent` used to say the
 record was never created, at a moment when the zone's own nameservers had not been asked.
 
-## 5. Product decision: Demo on a real zone
+## 5. Product decision: Demo domains using a real zone
 
 Ownsi answers for a demo zone, so a claim completes inside a video with no DNS panel and no wait.
 
@@ -68,7 +68,7 @@ Ownsi answers for a demo zone, so a claim completes inside a video with no DNS p
 **Cost:** operating a zone. In exchange, the demo runs the same code as a real claim, so nothing in
 the video is a branch that exists only for the video.
 
-## 6. Technical decision: Topology set by the first paint
+## 6. Technical decision: Why Cloudflare
 
 The landing flow reads a zone with no account, so `GET /api/zones/:name` is a logged-out visitor's
 first impression and cannot wait for a server to wake up. A Cloudflare Worker serves the static
