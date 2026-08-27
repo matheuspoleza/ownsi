@@ -8,14 +8,19 @@ catalogue](diagnostics/catalogue.mdx) is a product surface, not an appendix.
 
 ## Running it
 
+From the repo root:
+
 ```sh
 bun install
-bun run dev:docs        # from the repo root — emits the generated pages, then serves on :3000
+bun run dev:docs        # regenerates what is generated, then serves on :3000
 ```
 
-`dev` regenerates the OpenAPI document and the diagnostics catalogue first, through turbo's
-`^docs:emit` on `@ownsi/api`. Running the CLI on its own skips that and serves whatever is
-committed.
+It needs no database and no API running — the two generated files are committed. It does
+regenerate them first, through turbo's `^docs:emit` on `@ownsi/api`; running the Mintlify CLI
+directly skips that and serves whatever is in git.
+
+`:3000` is also the API's port, so run one or the other. Mintlify takes the next free port
+when it finds `:3000` busy.
 
 The Mintlify CLI is **not a dependency of this repo** — it pulls Puppeteer and a headless Chromium,
 which is a lot of `bun install` for a preview server. The scripts reach it through `npx`, so it
@@ -26,9 +31,11 @@ you run it often.
 > resolves to the workspace's React 19 and it dies on an invalid-hook-call before rendering
 > anything. `npx` keeps it in its own cache.
 
+Inside this package:
+
 | Script | What it does |
 |---|---|
-| `bun run dev` | preview on `:3000`, or the next free port |
+| `bun run dev` | the preview, without the regenerate the root's `dev:docs` does first |
 | `bun run links` | `mint broken-links`, which also validates the OpenAPI document |
 | `bun test` | the conventions guard — navigation, frontmatter, internal links |
 

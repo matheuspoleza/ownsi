@@ -334,16 +334,20 @@ When a guard fires, move the code. Do not widen the rule.
 
 ## Commands
 
+Setting up from scratch is four commands in [the root README](README.md#running-locally).
+Day to day:
+
 ```
-bun run infra:up   # postgres and the inngest dev server
+bun run setup      # infra:up, then the pending migrations
 bun run dev        # turbo: api + web
 bun run dev:docs   # mintlify on :3000, after regenerating what is generated
 bun run docs:emit  # regenerate openapi.json and the diagnostics catalogue
 bun run typecheck
 bun run lint       # biome
+bun run db:migrate # a new migration, after changing schema.prisma
+bun run db:reset   # drop and replay — a clean slate
 cd apps/api && bun test
 cd apps/web && bun test
-cd packages/db && bun run db:migrate
 ```
 
 The context still to build is `proof`. What it owes is in the PRD, not in the codebase.

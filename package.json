@@ -20,12 +20,13 @@
     "db:generate": "turbo run db:generate",
     "db:migrate": "bun --filter @ownsi/db db:migrate",
     "db:deploy": "bun --filter @ownsi/db db:deploy",
+    "db:reset": "bun --filter @ownsi/db db:reset",
     "db:studio": "bun --filter @ownsi/db db:studio",
     "deploy:web": "turbo run deploy --filter=@ownsi/web",
     "infra:up": "docker compose up -d --wait",
     "infra:down": "docker compose down",
     "infra:logs": "docker compose logs -f",
-    "setup": "bun run infra:up && bun run db:migrate",
+    "setup": "bun run infra:up && bun run db:deploy",
     "dev:emails": "bun --filter @ownsi/emails dev"
   },
   "devDependencies": {

@@ -197,6 +197,9 @@ the regenerate.
 
 ## Commands
 
+Postgres and the Inngest Dev Server have to be up first — [the root
+README](../../README.md#running-locally) is the four commands that get you there.
+
 ```sh
 bun run dev         # watch mode, reads ../../.env
 bun test            # everything under test/

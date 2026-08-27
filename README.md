@@ -30,43 +30,83 @@ and the catalogue generated from `apps/api` so they cannot drift.
 
 ## Running locally
 
-Needs [Bun](https://bun.sh) and a running Docker Desktop.
+You need [Bun](https://bun.sh) and Docker Desktop running. Four commands:
 
 ```sh
 cp .env.example .env
 bun install
-bun run setup     # brings up Postgres and the Inngest Dev Server, and migrates
+bun run setup     # Postgres and the Inngest Dev Server, then the migrations
 bun run dev       # API on :3000, front end on :5173
 ```
 
-Open `http://localhost:5173`. Vite proxies `/api` and `/p` to the API, so dev runs on
-a single origin — the same shape the Worker gives us in production (PRD §3.7).
+Then open **http://localhost:5173**. That is the only address you need: Vite proxies
+`/api` and `/p` to the API, so development runs on one origin — the same shape the
+Cloudflare Worker gives us in production (PRD §3.7).
 
-| Service | Where | What it is |
+One value in `.env` has no default. `BETTER_AUTH_SECRET` is empty and the API refuses to
+start without it, so generate one and paste it in:
+
+```sh
+openssl rand -base64 32
+```
+
+Everything else in `.env.example` already points at the containers `bun run setup` started.
+
+### Signing in
+
+Nothing is emailed locally. `MAILER_DRIVER="log"` prints the whole message into the
+terminal running `bun run dev` — the sign-in link included. Copy it into the browser and
+you are in.
+
+```
+--- email to you@example.com ---
+Sign in to ownsi
+
+Or paste this into your browser: http://localhost:5173/api/auth/magic-link/verify?token=...
+--- end ---
+```
+
+Real sending needs `MAILER_DRIVER="resend"` and a `RESEND_API_KEY` from a verified domain.
+The `log` driver is the one to demo with.
+
+### What is running
+
+| | Where | What it is |
 |---|---|---|
-| Front end | http://localhost:5173 | Vite dev server |
+| Front end | http://localhost:5173 | Vite. **Start here.** |
 | API | http://localhost:3000/api/health | Elysia |
-| API docs | http://localhost:3000/openapi | generated from each route's `response` |
-| Public docs | http://localhost:3000 | Mintlify, via `bun run dev:docs` — not at the same time as the API |
-| Postgres | localhost:5432 | `ownsi` / `ownsi` / `ownsi` |
+| OpenAPI | http://localhost:3000/openapi | generated from each route's own `response` schemas |
+| Inngest | http://localhost:8288 | the Dev Server — the clock behind every pending claim |
+| Postgres | localhost:5432 | user, password and database all `ownsi` |
+
+The public documentation site is separate: `bun run dev:docs` serves Mintlify, also on
+`:3000`, so stop the API first or let it take the next free port.
 
 ## Commands
 
 | Command | What it does |
 |---|---|
-| `bun run setup` | infra + migrate, from scratch |
-| `bun run dev` | api and web in parallel |
-| `bun run dev:docs` | the Mintlify site, after regenerating what is generated |
+| `bun run setup` | infra up, migrations applied — the from-scratch one |
+| `bun run dev` | API and front end together |
+| `bun run dev:docs` | the Mintlify site, regenerating what is generated first |
 | `bun run docs:emit` | rewrite `openapi.json` and the diagnostics catalogue from the code |
-| `bun run infra:up` / `infra:down` / `infra:logs` | docker compose |
-| `bun run db:migrate` / `db:reset` / `db:studio` | Prisma |
-| `bun run build` | build every package |
-| `bun run test` | `bun test` over the core |
-| `bun run lint` / `bun run check` | Biome |
+| `bun run test` | every workspace's tests |
 | `bun run typecheck` | `tsc --noEmit` per workspace |
+| `bun run lint` | Biome |
+| `bun run build` | build every package |
+
+And when things need a hand:
+
+| Command | What it does |
+|---|---|
+| `bun run infra:up` / `infra:down` / `infra:logs` | the two containers |
+| `bun run db:deploy` | apply pending migrations |
+| `bun run db:migrate` | write a new migration after changing `schema.prisma` |
+| `bun run db:reset` | drop everything and replay the migrations — a clean slate |
+| `bun run db:studio` | Prisma Studio, to look at the rows |
 
 Turborepo orchestrates and caches the tasks (`turbo.json`); Bun workspaces resolve the
-packages. The `.env` sits at the root and reaches each app through `--env-file`.
+packages. The one `.env` sits at the root and reaches each app through `--env-file`.
 
 ## What already stands
 
@@ -77,7 +117,7 @@ primitives, and the meerkat and dot-grid world map as real assets.
 
 Reading the zone and sending the magic link are both wired to the real thing:
 `apps/web/src/api/auth.api.ts` calls better-auth's client, and the `auth` context behind
-it renders the email and hands it to Resend.
+it renders the email and hands it to the mailer.
 
 **A claim that runs on its own.** Opening one writes a Postgres row and wakes an Inngest
 durable function that watches it until it becomes history — checking the zone on an

@@ -22,8 +22,8 @@ export function createSendEmail(config: MailerConfig): SendEmail {
 }
 
 function loggedEmail(): SendEmail {
-  return async ({ to, subject }) => {
-    console.log(`email to ${to}: ${subject}`)
+  return async ({ to, subject, text }) => {
+    console.log(`\n--- email to ${to} ---\n${subject}\n\n${text}\n--- end ---\n`)
   }
 }
 
